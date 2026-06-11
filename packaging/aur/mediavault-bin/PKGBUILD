@@ -12,7 +12,7 @@ optdepends=('gnome-keyring: encrypt API keys in system keychain')
 provides=('mediavault')
 conflicts=('mediavault')
 source=("mediavault-linux-amd64::https://github.com/levpr1c/MediaVault/releases/download/v$pkgver/mediavault-linux-amd64")
-sha256sums=('acb060fc7e1d0a9e3585c5ba556fee6be27e13ad91849f89e052b42a27264fb2')
+sha256sums=('2939b9aec86502697ad0eb5a34c2485ad6e38a00492b2a71d742356de38975d5')
 
 package() {
   install -Dm755 "$srcdir/mediavault-linux-amd64" "$pkgdir/usr/bin/mediavault"

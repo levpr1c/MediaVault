@@ -546,7 +546,7 @@ var AdminDashboard = (function() {
   }
 
   function _pickFolder() {
-    fetch('/api/pick_folder', {method:'POST'}).then(function(r) { return r.json(); }).then(function(d) {
+    _api('/api/pick_folder', {method:'POST', body:{}}).then(function(d) {
       if (d.path) {
         document.getElementById('admMediaDir').value = d.path;
       }

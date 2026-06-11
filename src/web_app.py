@@ -1577,14 +1577,14 @@ def api_settings():
     if request.method == 'GET':
         return jsonify(load_settings())
     global settings, _api_cache, _md5_cache
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if data is None:
         return jsonify({'error': 'no data'}), 400
     s = load_settings()
     old_media_dir = s.get('media_dir', '')
     for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key', 'media_dir', 'theme', 'three_bg'):
         if k in data:
-            s[k] = data[k]
+            s[k] = os.path.expanduser(data[k]) if k == 'media_dir' else data[k]
     save_settings(s)
     settings = load_settings()
     _api_cache = {}
@@ -1614,7 +1614,7 @@ def api_set_credential_backend():
     При смене мигрирует все ключи между хранилищами.
     """
     global _credential_store
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if data is None:
         return jsonify({'error': 'no data'}), 400
     name = data.get('backend', '')
@@ -2083,7 +2083,7 @@ def api_gallery():
 @api_error_handler
 def api_pick_folder():
     import subprocess
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     pick_type = data.get('type', 'folder')
     if pick_type == 'folder':
         zenity_cmd = ['zenity', '--file-selection', '--directory', '--title=Select folder']

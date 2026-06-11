@@ -1,0 +1,232 @@
+/* ═══════════════════════════════════════
+   МАКЕТ: PC (Desktop) — правила по умолчанию
+   Все правила вне @media — это PC-дефолты.
+   Мобильные переопределения в @media ниже.
+   ═══════════════════════════════════════ */
+
+:root{--lb-panel-w:300px;--thumb-col-width:220px;--grid-cols:4}
+
+/* ─── ЕДИНЫЙ РЕСПОНСИВ-ХЕДДЕР (DESKTOP + MOBILE) — без inline, без !important ─── */
+#appHeader{flex-shrink:0}
+.hdr-desktop{display:flex;align-items:center;gap:12px;padding:6px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.hdr-tabs{display:flex;gap:2px}
+.hdr-spacer{flex:1;min-width:4px}
+.hdr-actions{display:flex;flex-direction:row;justify-content:flex-end;align-items:center;gap:6px;flex-shrink:0}
+.hdr-nav{display:flex;gap:2px}
+.hdr-mobile{display:none}
+
+/* ─── ОСНОВНОЙ МАКЕТ ─── */
+#mediavaultLayout{display:flex;flex:1;overflow:hidden}
+
+/* ─── САЙДБАР ─── */
+aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-right:1px solid var(--border);padding:16px;overflow:hidden;display:flex;flex-direction:column;transition:background var(--transition),border-color var(--transition),width .25s cubic-bezier(.4,0,.2,1),padding .25s cubic-bezier(.4,0,.2,1)}
+#mvSidebar.collapsed{width:0;padding:0;border-right-color:transparent}
+#mvSidebar-inner{overflow-y:auto;height:100%;min-height:0;white-space:nowrap;opacity:1;transition:opacity .15s ease}
+#mvSidebar.collapsed #mvSidebar-inner{opacity:0;transition:opacity .1s ease}
+
+/* ─── КОНТЕНТ И СТАТУС-БАР ─── */
+#mvMain{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;min-height:0;overflow-anchor:none}
+#mvBottomLinks{display:none}
+#mvBottomSection{display:none}
+#langToggle:focus{outline:none}
+#langToggle:active{transform:none}
+#statusBar{padding:6px 20px;font-size:12px;color:var(--text2);background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;transition:background var(--transition),border-color var(--transition),color var(--transition)}
+
+/* ─── ПОИСК И ФИЛЬТРЫ ─── */
+#searchPanel{margin-top:0}
+.sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:6px}
+#searchPanel input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:12px;margin-bottom:10px;transition:background var(--transition),border-color var(--transition),color var(--transition)}
+#searchPanel input:focus{outline:none;border-color:var(--accent)}
+.search-mode{display:flex;gap:4px;margin-bottom:10px}
+.srch-mode{padding:3px 8px;font-size:12px}
+.srch-mode.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.srch-mode.active:hover{background:var(--accent-hover)}
+.thumb-size-mode{display:flex;gap:4px;margin-bottom:0}
+.thumb-size{padding:3px 8px;font-size:12px}
+.thumb-size.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.thumb-size.active:hover{background:var(--accent-hover)}
+.popular-tags-list{display:flex;flex-wrap:wrap;gap:4px}
+.sidebar-section{margin-top:12px}
+.sidebar-action{width:100%;justify-content:flex-start;margin-top:8px;font-size:13px;text-align:center}
+.sidebar-actions{display:flex;flex-direction:column}
+
+/* ─── ПАНЕЛЬ ИНСТРУМЕНТОВ ГАЛЕРЕИ ─── */
+#galleryToolbar{display:flex;align-items:center;gap:8px;padding:0 0 12px 0;border-bottom:1px solid var(--border);margin-bottom:12px}
+#galleryToolbar .toolbar-group{flex:1;justify-content:center}
+.toolbar-group{display:flex;align-items:center;gap:4px}
+.toolbar-group-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tool-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);font-size:13px;cursor:pointer;transition:all var(--transition);line-height:1.4;min-height:32px;font-family:var(--font-btn)}
+.tool-btn:hover{background:var(--surface2);color:var(--text)}
+.tool-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tool-btn:disabled{opacity:.3;cursor:default;pointer-events:none}
+.tool-btn-icon{padding:5px;min-width:32px}
+.toolbar-sep{width:1px;height:22px;background:var(--border);flex-shrink:0;margin:0 10px}
+
+/* ─── ГАЛЕРЕЯ ─── */
+#gallery{column-width:var(--thumb-col-width,220px);column-gap:8px;flex:1;align-content:flex-start}
+#gallery.few-items{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;column-width:auto}
+#gallery.few-items .gallery-item{width:var(--thumb-col-width,220px);margin-bottom:0}
+.gallery-empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text2)}
+.gallery-empty h2{font-size:20px;margin-bottom:8px;font-weight:500;font-family:var(--font-heading)}
+.gallery-empty p{font-size:14px}
+.gallery-item{display:inline-block;width:100%;margin-bottom:8px;overflow:hidden;cursor:pointer;background:var(--surface);border-radius:4px;break-inside:avoid;animation:fadeSlide .3s ease both}
+.gallery-item:hover{opacity:.9}
+@media(hover:none){.gallery-item:hover{opacity:1}}
+.gallery-item.selected{position:relative}
+.gallery-item.selected::after{content:'';position:absolute;inset:0;border:3px solid var(--accent);border-radius:4px;pointer-events:none;z-index:var(--z-overlay)}
+.gallery-item .select-overlay{position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:50%;background:transparent;border:2px solid rgba(255,255,255,.7);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:var(--z-dropdown);opacity:.7;pointer-events:none}
+.gallery-item.selected .select-overlay{background:var(--accent);border-color:var(--accent);opacity:1}
+
+.gallery-thumb{display:flex;align-items:center;justify-content:center;font-size:48px;background:var(--surface2);color:var(--text2);overflow:hidden;min-height:80px;position:relative}
+.gallery-thumb-preview{position:absolute;inset:0;z-index:var(--z-dropdown);background:var(--surface)}
+.gallery-thumb-preview img,.gallery-thumb-preview video{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-info{padding:6px 8px}
+.gallery-name{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.gallery-tags{display:flex;flex-wrap:wrap;gap:3px}
+.tag-chip{font-size:12px;padding:2px 6px;background:var(--chip-bg);color:var(--chip-text);border-radius:3px;white-space:nowrap;display:inline-block;margin:1px}
+.gallery-spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;position:absolute}
+.video-badge{position:absolute;bottom:6px;right:6px;font-size:18px;z-index:var(--z-dropdown);filter:drop-shadow(0 1px 3px var(--shadow))}
+
+/* ─── ПАГИНАЦИЯ ─── */
+#galleryPagination{display:flex;justify-content:center;align-items:center;gap:8px}
+#galleryPaginationTop{display:none;align-items:center;gap:8px}
+
+/* ─── СЕТКА (GRID/SCROLL) ─── */
+#gallery.fixed{column-width:auto;display:grid;grid-template-columns:repeat(var(--grid-cols,4),1fr);gap:12px;justify-items:center}
+#gallery.fixed .gallery-item{margin-bottom:0;max-width:280px;width:100%}
+#gallery.scroll{column-width:auto;display:flex;flex-direction:column;gap:6px}
+#gallery.scroll .gallery-item{width:100%;margin-bottom:0;display:flex;gap:10px;align-items:flex-start}
+#gallery.scroll .gallery-thumb{width:var(--thumb-col-width,220px);min-height:100px;flex-shrink:0}
+#gallery.scroll .gallery-info{flex:1;padding:8px;display:flex;flex-direction:column;gap:4px}
+#gallery.scroll .gallery-name{font-size:13px;white-space:normal;word-break:break-all;margin-bottom:0}
+
+/* ─── ЛАЙТБОКС (shared/lightbox.js injected) ─── */
+@keyframes lbPulse{0%{transform:scale(1)}50%{transform:scale(1.015)}100%{transform:scale(1)}}
+
+/* ─── АВТОДОПОЛНЕНИЕ (AUTOCOMPLETE) ─── */
+.ac-item{padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:6px}
+.ac-item:hover{background:var(--accent);color:#fff}
+
+/* ─── МАССОВОЕ ТЕГИРОВАНИЕ (BULK TAG) ─── */
+#bulkTagBar{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:10px 16px;z-index:var(--z-overlay);align-items:center;gap:8px}
+#bulkTagBar.active{display:flex}
+#bulkAutocomplete>div{max-height:200px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:4px;display:flex;flex-direction:column-reverse}
+#bulkTagInput{padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px}
+
+/* ─── МОДАЛ КАТЕГОРИЙ ─── */
+#categoryModal{display:none;position:fixed;inset:0;z-index:var(--z-overlay);align-items:center;justify-content:center}
+#categoryModal .cat-modal-overlay{position:fixed;inset:0;background:var(--overlay);z-index:-1}
+#newCategoryName,.cat-tag-input{padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px}
+.cat-modal{background:var(--surface);border-radius:12px;padding:20px;max-width:95vw;width:auto;min-width:300px;margin:0 auto;display:flex;flex-direction:column;max-height:90vh;box-shadow:0 8px 40px var(--shadow)}
+.cat-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0}
+.cat-modal-header h3{margin:0;font-size:16px}
+.cat-modal-add{display:flex;gap:6px;margin-bottom:16px;flex-shrink:0}
+.cat-modal-add input[type="color"]{width:36px;height:32px;padding:2px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer}
+.cat-horizontal-scroll{display:flex;gap:16px;overflow:auto;padding:8px 8px 16px;max-height:none;flex:1;min-height:0}
+.cat-horizontal-scroll > div{flex-shrink:0;width:280px;max-height:60vh;overflow-y:auto;align-self:flex-start}
+
+/* ─── ОБЩЕЕ ДЛЯ МОДАЛОВ ─── */
+.modal-breadcrumb{padding:6px 0;font-size:13px;margin-bottom:4px}
+
+/* ─── КНОПКИ РАСШИРЕНИЯ (язык + тема) ─── */
+.lang-btn,.theme-btn{display:inline-flex;align-items:center;justify-content:center;gap:0;padding:6px;min-width:36px;width:auto;border:none;background:transparent;color:var(--text2);cursor:pointer;border-radius:8px;transition:background .15s,color .15s,gap .3s cubic-bezier(.34,1.56,.64,1);flex-shrink:0;touch-action:manipulation;line-height:1}
+.lang-btn:focus-visible,.theme-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lang-btn:hover,.theme-btn:hover{background:var(--surface2);color:var(--text)}
+.lang-btn:active,.theme-btn:active{transform:scale(.92)}
+.lang-btn .lang-icon,.theme-btn .theme-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lang-btn .lang-icon svg,.theme-btn .theme-icon svg{display:block}
+.lang-btn .lang-text{font-size:14px;font-weight:700;white-space:nowrap;width:0;overflow:hidden;display:block;color:var(--accent);transition:width .35s cubic-bezier(.34,1.56,.64,1)}
+.lang-btn.show-text .lang-text{width:28px;padding-right:4px}
+.lang-btn.show-text{gap:6px}
+.theme-btn .theme-text{font-size:16px;white-space:nowrap;width:0;overflow:hidden;display:block;transition:width 1s cubic-bezier(.34,1.56,.64,1)}
+.theme-btn.show-text{gap:6px}
+.theme-btn.show-text .theme-text{width:20px;transition-duration:0.5s}
+/* Home page — кнопки в topbar */
+#homeView .lang-btn,
+#homeView .theme-btn{height:auto;min-height:34px;padding:6px}
+
+/* ─── ХЕДЕР: АККАУНТ-ДРОПДАУН ─── */
+.hdr-account{position:relative}
+.hdr-dropdown{position:absolute;top:calc(100% + 4px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:170px;display:none;box-shadow:0 6px 20px var(--shadow);z-index:var(--z-dropdown)}
+.hdr-dropdown.open{display:block}
+.hdr-dd-user{padding:10px 14px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-dd-link{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:6px;cursor:pointer;color:var(--text);font-size:13px;text-decoration:none;border:none;outline:none;width:100%;text-align:left;background:none;font-family:var(--font-btn);transition:background .15s,color .15s}
+.hdr-dd-link:hover{background:var(--surface2);color:var(--accent)}
+.hdr-dd-link.hdr-dd-logout{color:var(--danger)}
+.hdr-dd-link.hdr-dd-logout:hover{background:var(--surface2);color:#ef4444}
+.hdr-dd-sep{height:1px;background:var(--border);margin:4px 0}
+
+/* Focus visible for icon buttons */
+.mv-mh-icon:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ─── ПЕРЕКЛЮЧАТЕЛИ ТЕМЫ И САЙДБАРА ─── */
+#sidebarToggle{transition:transform .25s cubic-bezier(.4,0,.2,1)}
+#sidebarToggle.rotated{transform:rotate(180deg)}
+
+@keyframes fadeSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ═══════════════════════════════════════ МОБИЛЬНАЯ ВЁРСТКА (<768px) — переопределения PC ═══════════════════════════════════════ */
+@media(max-width:768px){
+  .hdr-mobile{display:block}
+  .hdr-desktop{display:none}
+  .hdr-dropdown{min-width:160px;right:0;left:auto}
+  .hdr-dropdown .hdr-dd-link{font-size:12px;padding:8px 12px}
+  .desktop-only{display:none}
+  #mvBottomSection{display:block}
+  #sidebarToggle{display:none}
+  .thumb-size{display:none}
+  #mvBottomLinks{display:flex}
+  #galleryToolbar{flex-wrap:wrap;gap:6px;padding-bottom:8px}
+  .toolbar-group-label{font-size:9px}
+  .tool-btn{padding:4px 8px;font-size:12px;min-height:28px}
+  .tool-btn-icon{padding:4px;min-width:28px}
+  /* lightbox mobile styles moved to shared/lightbox.js */
+  #gallery{column-width:140px;column-gap:6px}
+  #gallery.few-items .gallery-item{width:140px}
+  #gallery.fixed{grid-template-columns:repeat(2,1fr);gap:6px}
+  #gallery.scroll .gallery-thumb{width:120px;min-height:80px}
+  .gallery-thumb{min-height:60px;font-size:32px}
+  .gallery-info{padding:4px 6px}
+  .gallery-name{font-size:11px}
+  #galleryPagination{gap:4px}
+  #galleryPaginationTop{gap:4px;margin-bottom:6px}
+}
+/* ═══════════════════════════════════════ МОБИЛЬНАЯ ВЁРСТКА (<480px) — компактная галерея ═══════════════════════════════════════ */
+@media(max-width:480px){
+  #gallery{column-width:120px;column-gap:4px}
+  #gallery.fixed{grid-template-columns:repeat(2,1fr);gap:4px}
+  #gallery.scroll .gallery-thumb{width:100px;min-height:70px}
+  .gallery-thumb{min-height:40px;font-size:24px}
+  #gallery.few-items .gallery-item{width:120px}
+}
+
+/* ─── АНИМАЦИЯ СТРАНИЦ ─── */
+.gallery-item{animation:pageFadeIn .25s ease both}
+@keyframes pageFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── НОМЕРА СТРАНИЦ ─── */
+#pageNumbers{display:flex;align-items:center;gap:2px}
+.page-num{min-width:28px;height:28px;padding:0;text-align:center;font-size:13px}
+.page-num.active{background:var(--accent);color:#fff;font-weight:600}
+#pagePrev:disabled,#pageNext:disabled{opacity:.3;cursor:default}
+
+/* ═══════════════════════════════════════
+   ЧТЕНИЕ КОМИКСОВ / MANGA VIEWER
+   ═══════════════════════════════════════ */
+
+.comic-reader-page{display:block;width:100%;height:auto;margin:0 auto}
+.comic-scroll-mode{padding:0}
+.comic-scroll-mode img{display:block;width:100%;height:auto;margin:0 auto;max-width:1000px}
+.comic-lightbox-mode{display:flex;position:fixed;top:44px;left:0;right:0;bottom:0;z-index:var(--z-overlay);background:var(--bg);align-items:center;justify-content:center}
+.comic-lightbox-mode img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+
+/* ─── ВКЛАДКИ MEDIAVAULT (Gallery / Comics) ─── */
+.mv-tab{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text2);transition:all var(--transition);user-select:none;border:1px solid transparent;background:transparent;font-family:var(--font-btn);border-radius:8px;line-height:1;letter-spacing:.3px;text-transform:uppercase;text-decoration:none}
+.mv-tab:hover{color:var(--text);background:var(--surface2)}
+.mv-tab.active{color:var(--accent);background:var(--surface2);border-color:var(--accent)}
+
+/* ─── СТРАНИЦЫ MEDIAVAULT ─── */
+.mv-page{display:none}
+.mv-page.active{display:flex;flex-direction:column;flex:1;min-height:0}

@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+{% from 'shared/macros.html' import theme_buttons with context %}
+{% block head_extra %}
+<link rel="stylesheet" href="/static/css/admin.css?v=9">
+<link rel="stylesheet" href="/static/css/settings.css?v=2">
+{% endblock %}
+{% block hdr_brand %}{{ _('settings') }}{% endblock %}
+{% block hdr_tabs %}
+      <div class="settings-tabs-row">
+        <button class="settings-tab-btn active" data-tab="appearance" onclick="SettingsApp.switchTab('appearance')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <span data-i18n="settingsAppearance">{{ _('settingsAppearance') }}</span>
+        </button>
+
+        <button class="settings-tab-btn" data-tab="database" onclick="SettingsApp.switchTab('database')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          <span data-i18n="navDatabase">{{ _('navDatabase') }}</span>
+        </button>
+        <button class="settings-tab-btn" data-tab="account" onclick="SettingsApp.switchTab('account')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span data-i18n="accountSettings">{{ _('accountSettings') }}</span>
+        </button>
+      </div>
+{% endblock %}
+{% block hdr_nav_desktop %}{% endblock %}
+{% block hdr_nav %}{% endblock %}
+{% block hdr_actions %}
+{{ theme_buttons(cls='btn-small') }}
+<a href="/" class="mv-mh-icon" title="Home">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+</a>
+{% endblock %}
+{% block hdr_drawer %}{% endblock %}
+{% block content %}
+<div id="adminView">
+  <main class="admin-main">
+    <div class="admin-content-body">
+      <div class="settings-content">
+          <!-- APPEARANCE -->
+          <div class="settings-tab-content active" id="tab-appearance">
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div class="admin-card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  <span data-i18n="settingsMediaPath">{{ _('settingsMediaPath') }}</span>
+                </div>
+              </div>
+              <div class="admin-field">
+                <label class="admin-field-label" for="mediaDir">{{ _('settingsMediaPath') }}</label>
+                <input type="text" id="mediaDir" class="admin-field-input" value="{{ s.get('media_dir', '') }}" placeholder="/path/to/media">
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px">
+                <button class="btn btn-primary" onclick="SettingsApp.saveMediaDir()" data-i18n="save">{{ _('save') }}</button>
+                <button class="btn" onclick="SettingsApp.scanFolder()" data-i18n="settingsScan">{{ _('settingsScan') }}</button>
+              </div>
+            </div>
+
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div class="admin-card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <span data-i18n="effectsTitle">{{ _('effectsTitle') }}</span>
+                </div>
+              </div>
+              <div class="settings-toggle" id="effectsToggle">
+                <input type="checkbox" id="effectsCheckbox" {% if s.get('effects', true) %}checked{% endif %} onchange="SettingsApp.toggleEffects()">
+                <div>
+                  <div class="settings-toggle-label" data-i18n="effectsTitle">{{ _('effectsTitle') }}</div>
+                  <div class="settings-toggle-desc" data-i18n="effectsDescription">{{ _('effectsDescription') }}</div>
+                </div>
+              </div>
+              <div class="settings-toggle" id="bgToggle" style="margin-top:8px">
+                <input type="checkbox" id="bgCheckbox" {% if s.get('three_bg', true) %}checked{% endif %} onchange="SettingsApp.toggleBg()">
+                <div>
+                  <div class="settings-toggle-label">Three.js Background</div>
+                  <div class="settings-toggle-desc">Animated particle background on home &amp; login pages</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ACCOUNT -->
+          <div class="settings-tab-content" id="tab-account">
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div class="admin-card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <span data-i18n="secUsername">{{ _('secUsername') }}</span>
+                </div>
+              </div>
+              <div class="admin-field">
+                <label class="admin-field-label" for="accUsername" data-i18n="secUsername">{{ _('secUsername') }}</label>
+                <input type="text" id="accUsername" class="admin-field-input" value="{{ username }}" placeholder="{{ _('secUsername') }}">
+              </div>
+              <div class="admin-field">
+                <label class="admin-field-label" for="accProfilePassword" data-i18n="accountCurrentPassword">{{ _('accountCurrentPassword') }}</label>
+                <input type="password" id="accProfilePassword" class="admin-field-input" autocomplete="off">
+              </div>
+              <button class="btn btn-primary" onclick="SettingsApp.changeUsername()" data-i18n="accountChangeUsername">{{ _('accountChangeUsername') }}</button>
+              <div id="accountStatusProfile" class="ac-status"></div>
+            </div>
+
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div class="admin-card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span data-i18n="userSetPasswordBtn">{{ _('userSetPasswordBtn') }}</span>
+                </div>
+              </div>
+              <div class="admin-field">
+                <label class="admin-field-label" for="accCurrentPassword">{{ _('accountCurrentPassword') }}</label>
+                <input type="password" id="accCurrentPassword" class="admin-field-input" autocomplete="off">
+              </div>
+              <div class="admin-field">
+                <label class="admin-field-label" for="accNewPassword" data-i18n="secNewPassword">{{ _('secNewPassword') }}</label>
+                <input type="password" id="accNewPassword" class="admin-field-input" autocomplete="off">
+              </div>
+              <div class="admin-field">
+                <label class="admin-field-label" for="accConfirmPassword" data-i18n="accountConfirmPassword">{{ _('accountConfirmPassword') }}</label>
+                <input type="password" id="accConfirmPassword" class="admin-field-input" autocomplete="off">
+              </div>
+              <button class="btn btn-primary" onclick="SettingsApp.changePassword()" data-i18n="userSetPasswordBtn">{{ _('userSetPasswordBtn') }}</button>
+              <div id="accountStatus" class="ac-status"></div>
+            </div>
+          </div>
+
+          <!-- DATABASE -->
+          <div class="settings-tab-content" id="tab-database">
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div class="admin-card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                  <span data-i18n="sectionDatabase">{{ _('sectionDatabase') }}</span>
+                </div>
+              </div>
+              <div class="db-grid" id="stDbGrid"></div>
+            </div>
+            <div class="admin-card" id="stProgressCard" style="display:none">
+              <div class="admin-card-header">
+                <div class="admin-card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  <span data-i18n="settingsRunning">{{ _('settingsRunning') }}</span>
+                </div>
+              </div>
+              <div class="progress-bar-wrap" style="background:var(--surface2);border-radius:8px;height:8px;overflow:hidden;margin:8px 0">
+                <div id="stProgressBar" style="height:100%;width:0%;background:var(--accent);border-radius:8px;transition:width .3s"></div>
+              </div>
+              <div id="stProgressText" style="font-size:12px;color:var(--text2)"></div>
+            </div>
+          </div>
+        </div>
+    </div>
+  </main>
+</div>
+
+<script>
+var SettingsApp = (function() {
+  var _currentTab = 'appearance';
+
+  function _t(key) {
+    if (window._i18nData) {
+      var lang = document.documentElement.getAttribute('lang') || 'en';
+      var d = _i18nData[lang] || _i18nData.en || {};
+      var val = d[key];
+      if (val !== undefined) return val;
+      val = _i18nData.en && _i18nData.en[key];
+      if (val !== undefined) return val;
+    }
+    return key;
+  }
+
+  function _api(url, opts) {
+    opts = opts || {};
+    return fetch(url, {
+      method: opts.method || 'GET',
+      headers: opts.body ? {'Content-Type':'application/json'} : undefined,
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    }).then(function(r) {
+      return r.json().then(function(d) {
+        if (!r.ok) { throw new Error(d.error || 'Error'); }
+        return d;
+      });
+    });
+  }
+
+  function _toast(msg, type) {
+    var t = document.createElement('div');
+    t.className = 'admin-toast' + (type === 'error' ? ' error' : type === 'success' ? ' success' : '');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function() { if (t.parentNode) t.remove(); }, 3000);
+  }
+
+  function switchTab(name) {
+    _currentTab = name;
+    document.querySelectorAll('.settings-tab-content').forEach(function(el) { el.classList.remove('active'); });
+    document.querySelectorAll('.settings-tab-btn').forEach(function(el) { el.classList.remove('active'); });
+    var content = document.getElementById('tab-' + name);
+    var tab = document.querySelector('.settings-tab-btn[data-tab="' + name + '"]');
+    if (content) content.classList.add('active');
+    if (tab) tab.classList.add('active');
+    if (name === 'database') { loadDbTools(); }
+  }
+
+  function toggleEffects() {
+    var cb = document.getElementById('effectsCheckbox');
+    var on = cb.checked;
+    var html = document.documentElement;
+    if (on) {
+      html.removeAttribute('data-no-effects');
+    } else {
+      html.setAttribute('data-no-effects', '');
+    }
+    fetch('/api/effects', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({effects: on})
+    });
+  }
+
+  function toggleBg() {
+    var cb = document.getElementById('bgCheckbox');
+    var on = cb.checked;
+    var html = document.documentElement;
+    if (on) {
+      html.removeAttribute('data-three-bg');
+    } else {
+      html.setAttribute('data-three-bg', '0');
+    }
+    fetch('/api/settings', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({three_bg: on})
+    });
+  }
+
+  function saveMediaDir() {
+    var dir = document.getElementById('mediaDir').value.trim();
+    if (!dir) { _toast('Enter a path', 'error'); return; }
+    _api('/api/settings', {method:'POST', body:{media_dir:dir}}).then(function(d) {
+      if (d.scan_needed) { location.reload(); return; }
+      _toast(_t('save') + ' — OK', 'success');
+    }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  function scanFolder() {
+    var dir = document.getElementById('mediaDir').value.trim();
+    if (!dir) { _toast('Enter media directory first', 'error'); return; }
+    _api('/api/settings', {method:'POST', body:{media_dir:dir}}).then(function() {
+      return _api('/api/scan_folder', {method:'POST'});
+    }).then(function(d) {
+      _toast(_t('settingsScan') + ' — ' + (d.found || 0) + ' ' + _t('filesCountShort'), 'success');
+    }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  /* ─── DATABASE TOOLS ─── */
+  var _dbActions = {
+    clearThumbs: {api:'/api/clear_thumb_cache', danger:true, icon:'clearThumbs', confirm:'secConfirmClearThumb'},
+    clearTags: {api:'/api/clear_tags', danger:true, icon:'clearTags', confirm:'secConfirmClearTag'},
+    regenThumbs: {api:'/api/regenerate_thumbnails', danger:false, icon:'regenThumbs', confirm:'secConfirmRegenThumb'},
+    regenMissing: {api:'/api/generate_missing_thumbnails', danger:false, icon:'regenMissing'}
+  };
+
+  var _dbIcons = {
+    clearThumbs: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+    clearTags: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
+    regenThumbs: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+    regenMissing: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/><circle cx="12" cy="12" r="1"/></svg>'
+  };
+
+  var _dbLabels = {
+    clearThumbs: 'cleanThumbCache', clearTags: 'settingsCleanTagCache',
+    regenThumbs: 'regenAllThumbs', regenMissing: 'genMissingThumbs'
+  };
+  var _dbDescs = {
+    clearThumbs: 'cleanThumbCache', clearTags: 'settingsCleanTagCache',
+    regenThumbs: 'settingsRegenThumbnails', regenMissing: 'settingsRegenMissing'
+  };
+
+  function loadDbTools() {
+    var grid = document.getElementById('stDbGrid');
+    if (grid.hasChildNodes()) return;
+    var html = '';
+    Object.keys(_dbActions).forEach(function(key) {
+      var a = _dbActions[key];
+      html += '<div class="db-tool' + (a.danger ? ' danger' : '') + '" onclick="SettingsApp.dbAction(\'' + key + '\')">' +
+        '<div class="db-tool-icon">' + (_dbIcons[a.icon] || '') + '</div>' +
+        '<div><div class="db-tool-label">' + _t(_dbLabels[key]) + '</div>' +
+        '<div class="db-tool-desc">' + _t(_dbDescs[key]) + '</div></div></div>';
+    });
+    grid.innerHTML = html;
+  }
+
+  function dbAction(key) {
+    var a = _dbActions[key];
+    if (a.confirm) {
+      if (!confirm(_t(a.confirm))) return;
+    }
+    execDbAction(a.api);
+  }
+
+  function execDbAction(apiPath) {
+    if (apiPath === '/api/regenerate_thumbnails' || apiPath === '/api/generate_missing_thumbnails') {
+      document.getElementById('stProgressCard').style.display = 'block';
+    }
+    _api(apiPath, {method:'POST'}).then(function() {
+      _toast(_t('settingsCleared'), 'success');
+      if (apiPath === '/api/regenerate_thumbnails' || apiPath === '/api/generate_missing_thumbnails') {
+        pollDbProgress();
+      }
+    }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  function pollDbProgress() {
+    var interval = setInterval(function() {
+      _api('/api/regenerate_thumbnails_status').then(function(data) {
+        var bar = document.getElementById('stProgressBar');
+        var txt = document.getElementById('stProgressText');
+        if (bar && txt) {
+          var pct = data.total > 0 ? Math.round(data.current / data.total * 100) : 0;
+          bar.style.width = pct + '%';
+          txt.textContent = data.current + ' / ' + data.total + ' (' + _t('settingsRunning') + '...)';
+        }
+        if (!data.running) {
+          clearInterval(interval);
+          if (txt) txt.textContent = data.total + ' ' + _t('settingsProcessed');
+          setTimeout(function() {
+            document.getElementById('stProgressCard').style.display = 'none';
+          }, 3000);
+        }
+      }).catch(function() { clearInterval(interval); });
+    }, 1000);
+  }
+
+  /* ─── ACCOUNT ─── */
+  function changeUsername() {
+    var username = document.getElementById('accUsername').value.trim();
+    var password = document.getElementById('accProfilePassword');
+    password = password ? password.value : '';
+    var statusEl = document.getElementById('accountStatusProfile');
+    if (!username) { statusEl.textContent = _t('secUserReq'); return; }
+    _api('/api/account/change_username', {method:'POST', body:{username:username, password:password}}).then(function() {
+      statusEl.textContent = _t('accountUpdateSuccess');
+      var pw = document.getElementById('accProfilePassword');
+      if (pw) pw.value = '';
+      setTimeout(function() { statusEl.textContent = ''; }, 3000);
+    }).catch(function(e) {
+      statusEl.textContent = e.message.indexOf('wrong_password') > -1 ? _t('accountWrongPassword') : _t('accountUpdateError') + ': ' + e.message;
+    });
+  }
+
+  function changePassword() {
+    var current = document.getElementById('accCurrentPassword').value;
+    var password = document.getElementById('accNewPassword').value;
+    var confirm = document.getElementById('accConfirmPassword').value;
+    var statusEl = document.getElementById('accountStatus');
+    if (password !== confirm) { statusEl.textContent = _t('secPwMismatch'); return; }
+    if (password.length < 4) { statusEl.textContent = _t('secPwTooShort'); return; }
+    _api('/api/set_password', {method:'POST', body:{current_password:current, password:password}}).then(function() {
+      statusEl.textContent = _t('accountPasswordChanged');
+      document.getElementById('accCurrentPassword').value = '';
+      document.getElementById('accNewPassword').value = '';
+      document.getElementById('accConfirmPassword').value = '';
+      setTimeout(function() { statusEl.textContent = ''; }, 3000);
+    }).catch(function(e) {
+      statusEl.textContent = e.message.indexOf('wrong_password') > -1 ? _t('accountWrongPassword') : _t('accountUpdateError') + ': ' + e.message;
+    });
+  }
+
+  return {
+    switchTab: switchTab, toggleEffects: toggleEffects, toggleBg: toggleBg,
+    saveMediaDir: saveMediaDir, scanFolder: scanFolder,
+    dbAction: dbAction, loadDbTools: loadDbTools,
+    changeUsername: changeUsername, changePassword: changePassword
+  };
+})();
+
+document.addEventListener('languageChanged', function() {
+  SettingsApp.loadDbTools();
+});
+</script>
+{% endblock %}

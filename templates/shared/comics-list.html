@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ _('navComics') }}{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="/static/css/content.css?v=10">
+{% endblock %}
+{% block hdr_brand %}{{ super() }}{% endblock %}
+{% block hdr_tabs %}
+{% if mode == 'edit' %}{{ super() }}{% endif %}
+{% if mode != 'edit' %}
+<a href="/mediavault/gallery" class="mv-tab" data-mv="gallery" data-i18n="mvGallery">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+  {{ _('mvGallery') }}
+</a>
+<a href="/mediavault/comics" class="mv-tab active" data-mv="comics" data-i18n="mvComics">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+  {{ _('mvComics') }}
+</a>
+{% endif %}
+{% endblock %}
+{% block hdr_nav_desktop %}{% if mode != 'edit' %}{{ super() }}{% endif %}{% endblock %}
+{% block hdr_nav %}{% if mode != 'edit' %}{{ super() }}{% endif %}{% endblock %}
+{% block hdr_drawer %}
+{% if mode == 'edit' %}
+<div class="mv-drawer-body">
+  <div class="mv-drawer-row" style="flex-wrap:wrap">
+    <span style="font-size:11px;font-weight:700;color:var(--text2);padding:4px 8px;width:100%;text-transform:uppercase;letter-spacing:.6px">TAGFETCH</span>
+    <a href="/content-mgmt/tags-manual" class="tool-btn" style="font-size:12px;padding:7px 12px">Manual</a>
+    <a href="/content-mgmt/tags-auto" class="tool-btn" style="font-size:12px;padding:7px 12px">Auto</a>
+    <a href="/content-mgmt/tags-manage" class="tool-btn" style="font-size:12px;padding:7px 12px">Manage</a>
+    <a href="/content-mgmt/tags-group" class="tool-btn" style="font-size:12px;padding:7px 12px">Groups</a>
+  </div>
+  <div class="mv-drawer-row">
+    <a href="/content-mgmt/comics-edit" class="tool-btn active" style="font-size:12px;padding:7px 12px">COMICS-EDITOR</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div id="contentView">
+  <main class="cm-main">
+{% if mode == 'edit' %}
+    <div id="cmContentBody"></div>
+{% else %}
+    <div class="cm-content-body" id="cmComics">
+      <div class="cm-comics-grid" id="comicsGrid">
+        <div style="text-align:center;padding:40px;color:var(--text2)">{{ _('loading') }}…</div>
+      </div>
+    </div>
+{% endif %}
+  </main>
+</div>
+
+{% if mode == 'edit' or session.get('role') == 'admin' %}
+<div id="comicsModalOverlay">
+  <div class="overlay-bg"></div>
+  <div id="modalInner">
+    <div id="comicPreviewOverlay">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;margin-bottom:8px">
+        <div class="comic-preview-header" style="margin-bottom:0">{{ _('previewComic') }}</div>
+        <button class="open-viewer-btn" id="openViewerBtn" onclick="ComicsPicker.openInViewer()" disabled style="font-size:11px;padding:4px 10px">{{ _('openInViewer') }}</button>
+      </div>
+      <div class="file-count-info" id="fileCountInfo" style="margin-bottom:8px">{{ _('selected').replace('{n}', '0') }}</div>
+      <div class="comic-preview-content" id="comicPreviewContent"></div>
+    </div>
+    <button id="previewToggleBtn" onclick="ComicsPicker.togglePreview()" title="{{ _('showPreview') }}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <div id="comicsAddModal" class="comic-modal">
+      <div class="comic-modal-header">
+        <h2>{{ _('createComic') }}</h2>
+        <div class="modal-actions">
+          <button class="comic-modal-close" onclick="ComicsPicker.closePicker()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg></button>
+        </div>
+      </div>
+      <div class="comic-modal-body">
+        <label for="comicTitle">{{ _('comicsName') }}</label>
+        <input type="text" id="comicTitle" placeholder="{{ _('comicNamePlaceholder') }}">
+        <label for="cpageSearch">{{ _('comicPagesLabel') }}</label>
+        <input type="text" id="cpageSearch" placeholder="{{ _('searchFiles') }}" oninput="ComicsPicker.filterGallery()">
+        <div style="margin-bottom:6px">
+          <button class="tool-btn" id="cpageSortDateBtn" onclick="ComicsPicker.toggleDateSort()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-4 4 4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h10"/><path d="M20 17H10"/></svg>
+            <span data-i18n="sortByName">By name</span>
+          </button>
+        </div>
+        <div id="cpageGrid"></div>
+      </div>
+      <div class="comic-modal-footer">
+        <button class="btn" onclick="ComicsPicker.closePicker()">{{ _('cancel') }}</button>
+        <button class="btn btn-primary" id="saveComicBtn" onclick="ComicsPicker.saveComic()" style="width:100%">{{ _('save') }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if mode == 'edit' %}
+<script src="/static/shared/comics/comics.js?v=2"></script>
+<script type="module" src="/static/content/main.js?v=3"></script>
+{% else %}
+{% if session.get('role') == 'admin' %}<script>window._isAdmin=true;ComicsPicker.init()</script>{% endif %}
+<script type="module" src="/static/shared/comics/comics-list.js?v=1"></script>
+{% endif %}
+{% endblock %}

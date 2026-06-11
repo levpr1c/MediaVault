@@ -1,0 +1,436 @@
+import { _t, api, esc, isImageExt, isVideoExt, toast, hexToRgba, debounce } from './utils.js'
+
+let _ac = null
+let _allFiles = []
+let _filteredFiles = []
+let _layoutMode = 'columns'
+let _thumbSize = 180
+let _sortMode = 'name'
+let _searchQ = ''
+let _pageSize = 0
+let _currentPage = 1
+const state = { cats: [], tagToCat: {}, catCache: {} }
+let _popTags = []
+
+let _lbInstance = null
+
+export function filesRender(body) {
+  _ac = new AbortController()
+  const s = _ac.signal
+  body.innerHTML = `<div class="admin-loading"><span class="fetch-spinner"></span> ${_t('loading')}</div>`
+
+  _loadLayoutPrefs()
+
+  Promise.all([
+    api('/api/categories'),
+    api('/api/gallery?per_page=0'),
+    api('/api/popular_tags')
+  ]).then(([catData, galData, popData]) => {
+    const cats = catData.categories || []
+    const members = catData.members || {}
+    state.cats = cats.map(c => ({ name: c.name, color: c.color, tags: members[c.name] || [] }))
+    state.tagToCat = {}
+    state.catCache = {}
+    state.cats.forEach(c => c.tags.forEach(t => { state.tagToCat[t] = c.name; state.catCache[t] = c.color }))
+
+    _allFiles = (galData.files || []).filter(f => f.path)
+    _sortFiles()
+    _filterFiles()
+
+    _popTags = (popData.tags || []).slice(0, 30)
+
+    _buildHTML(body)
+    _attachEvents(body, s)
+  }).catch(e => {
+    body.innerHTML = `<div class="admin-loading" style="color:var(--danger)">${_t('settingsError')}: ${esc(e.message)}</div>`
+  })
+}
+
+export function filesDestroy() {
+  if (_ac) { _ac.abort(); _ac = null }
+}
+
+function _loadLayoutPrefs() {
+  try {
+    _layoutMode = localStorage.getItem('content_files_layout') || 'columns'
+    _thumbSize = parseInt(localStorage.getItem('content_files_thumb') || '160', 10)
+    _sortMode = localStorage.getItem('content_files_sort') || 'name'
+    _pageSize = parseInt(localStorage.getItem('content_files_pagesize') || '0', 10)
+  } catch (e) {}
+}
+
+function _saveLayoutPrefs() {
+  try {
+    localStorage.setItem('content_files_layout', _layoutMode)
+    localStorage.setItem('content_files_thumb', '' + _thumbSize)
+    localStorage.setItem('content_files_sort', _sortMode)
+    localStorage.setItem('content_files_pagesize', '' + _pageSize)
+  } catch (e) {}
+}
+
+function _sortFiles() {
+  const sorted = _allFiles.slice()
+  if (_sortMode === 'newest') sorted.sort((a, b) => (b.mtime || 0) - (a.mtime || 0))
+  else if (_sortMode === 'oldest') sorted.sort((a, b) => (a.mtime || 0) - (b.mtime || 0))
+  else sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+  _allFiles = sorted
+}
+
+function _filterFiles() {
+  if (!_searchQ || typeof _searchQ !== 'string') { _filteredFiles = _allFiles.slice(); return }
+  const q = _searchQ.toLowerCase()
+  _filteredFiles = _allFiles.filter(f => (f.name || '').toLowerCase().includes(q))
+}
+
+function _buildHTML(body) {
+  body.innerHTML =
+    `<div id="cmFiles" class="cm-files">` +
+      _buildToolbar() +
+      `<div class="cm-files-body">` +
+        _buildLeftPanel() +
+        _buildRightPanel() +
+      `</div>` +
+    `</div>`
+
+  _renderLeftTags((document.getElementById('cmFilesTagSearchQ') || {}).value || '')
+  _renderGallery()
+}
+
+function _buildToolbar() {
+  const sortLabels = { name: _t('sortByName'), newest: _t('sortByNewest'), oldest: _t('sortByOldest') }
+  const sortSvg = name => name === 'name'
+    ? '<path d="M8 3l-4 4 4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h10"/><path d="M20 17H10"/>'
+    : '<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/>'
+
+  const pages = [0, 30, 60, 90]
+  const pageLabels = { 0: _t('modeBoth'), 30: '30', 60: '60', 90: '90' }
+
+  return `<div class="cm-files-toolbar">` +
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text2)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>` +
+    `<input id="cmFilesSearch" class="cm-files-toolbar-search" placeholder="${_t('searchFiles')}...">` +
+    `<span class="cm-files-count" id="cmFilesCount">${_filteredFiles.length}</span>` +
+    `<span class="cm-files-tb-sep"></span>` +
+    `<button class="cm-files-tb-action" id="cmSortBtn" data-action="toggle-sort" title="${sortLabels[_sortMode]}">` +
+      `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">${sortSvg(_sortMode)}</svg>` +
+    `</button>` +
+    `<span class="cm-files-tb-label" id="cmSortLabel">${sortLabels[_sortMode]}</span>` +
+    pages.map(s => `<button class="cm-files-tb-action${_pageSize === s ? ' active' : ''}" data-action="pagesize" data-size="${s}">${pageLabels[s]}</button>`).join('') +
+    `<span class="cm-files-tb-sep"></span>` +
+    `<button class="cm-files-tb-action thumb-size ${_thumbSize === 140 ? 'active' : ''}" data-action="thumbsize" data-size="140" title="S">S</button>` +
+    `<button class="cm-files-tb-action thumb-size ${_thumbSize === 180 ? 'active' : ''}" data-action="thumbsize" data-size="180" title="M">M</button>` +
+    `<button class="cm-files-tb-action thumb-size ${_thumbSize === 220 ? 'active' : ''}" data-action="thumbsize" data-size="220" title="L">L</button>` +
+  `</div>`
+}
+
+function _buildLeftPanel() {
+  return `<div class="cm-files-left">` +
+    `<div class="cm-files-left-search">` +
+      `<input id="cmFilesTagSearchQ" class="cm-tag-search-input" placeholder="${_t('tagSearchPlaceholder')}">` +
+    `</div>` +
+    `<div class="cm-files-left-content" id="cmFilesLeftContent">` +
+      `<div class="admin-loading"><span class="fetch-spinner"></span></div>` +
+    `</div>` +
+  `</div>`
+}
+
+function _renderLeftTags(searchQ) {
+  const container = document.getElementById('cmFilesLeftContent')
+  if (!container) return
+  const q = searchQ ? searchQ.toLowerCase() : ''
+
+  let html = ''
+
+  // Categories
+  state.cats.forEach(cat => {
+    let tags = cat.tags
+    if (q) tags = tags.filter(t => t.toLowerCase().includes(q))
+    if (q && !tags.length && !cat.name.toLowerCase().includes(q)) return
+
+    html += `<div class="cm-files-left-section">` +
+      `<div class="cm-files-left-section-title" style="color:${cat.color}">${esc(cat.name)}</div>` +
+      `<div class="cm-files-left-tags">`
+    tags.forEach(tag => {
+      html += `<span class="tag-chip cm-tags-chip" draggable="true" data-tag="${esc(tag)}" style="color:${cat.color};background:${hexToRgba(cat.color, 0.12)}">${esc(tag)}</span>`
+    })
+    html += `</div></div>`
+  })
+
+  // Uncategorized
+  const uncatTags = _getUncategorizedTags(q)
+  if (uncatTags.length) {
+    html += `<div class="cm-files-left-section">` +
+      `<div class="cm-files-left-section-title" style="color:#999">${_t('uncategorized')}</div>` +
+      `<div class="cm-files-left-tags">`
+    uncatTags.forEach(t => {
+      html += `<span class="tag-chip cm-tags-chip" draggable="true" data-tag="${esc(t.name || t)}" style="color:#999;background:rgba(153,153,153,0.12)">${esc(t.name || t)} <span class="cm-tags-count-badge">(${t.count || 0})</span></span>`
+    })
+    html += `</div></div>`
+  }
+
+  if (!html) html += `<div class="cm-files-gallery-empty">${_t('comicsEmpty')}</div>`
+  container.innerHTML = html
+}
+
+function _buildRightPanel() {
+  return `<div class="cm-files-right">` +
+    `<div class="cm-files-right-scroll">` +
+      `<div class="cm-files-gallery" id="cmFilesGallery">` +
+      `</div>` +
+    `</div>` +
+    `<div class="cm-files-pagination" id="cmFilesPagination">` +
+      `<button class="cm-files-tb-action" data-action="page" data-dir="-1">‹</button>` +
+      `<span id="cmFilesPageInfo"></span>` +
+      `<button class="cm-files-tb-action" data-action="page" data-dir="1">›</button>` +
+    `</div>` +
+  `</div>`
+}
+
+function _getPageItems() {
+  if (_pageSize <= 0) return _filteredFiles
+  const start = (_currentPage - 1) * _pageSize
+  return _filteredFiles.slice(start, start + _pageSize)
+}
+
+function _totalPages() {
+  return _pageSize > 0 ? Math.max(1, Math.ceil(_filteredFiles.length / _pageSize)) : 1
+}
+
+function _renderGallery() {
+  const gallery = document.getElementById('cmFilesGallery')
+  if (!gallery) return
+  gallery.className = 'cm-files-gallery' + (_layoutMode !== 'columns' ? ' ' + _layoutMode : '')
+  gallery.style.setProperty('--thumb-size', _thumbSize + 'px')
+
+  if (_layoutMode === 'fixed') {
+    const w = gallery.offsetWidth || 600
+    const gap = 10
+    const cols = Math.max(2, Math.round((w + gap) / (_thumbSize + gap)))
+    gallery.style.setProperty('--grid-cols', cols)
+  }
+
+  const items = _getPageItems()
+
+  if (!items.length) {
+    gallery.innerHTML = `<div class="cm-files-gallery-empty">${_t('mediaDirEmpty')}</div>`
+    _renderPagination()
+    return
+  }
+
+  gallery.innerHTML = items.map(f => {
+    const thumbSrc = '/api/thumbnail?path=' + encodeURIComponent(f.path)
+    const isImg = isImageExt(f.name)
+    const isVideo = isVideoExt(f.name)
+    return `<div class="cm-files-gallery-item" data-path="${esc(f.path)}" data-action="view-file" data-filepath="${esc(f.path)}">` +
+      `<div class="cm-files-thumb${isVideo ? ' cm-video-thumb' : ''}">` +
+      (isImg || isVideo ? `<img src="${thumbSrc}" loading="lazy">` :
+       `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`) +
+      (isVideo ? '<svg class="cm-video-badge" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>' : '') +
+      `</div>` +
+      `<div class="cm-files-gallery-name">${esc(f.name)}</div>` +
+    `</div>`
+  }).join('')
+  if (_layoutMode === 'columns') {
+    Shared.reorderGalleryDOM(document.getElementById('cmFilesGallery'), '.cm-files-gallery-item')
+  }
+  _renderPagination()
+}
+
+function getVisualOrder() {
+  var gallery = document.getElementById('cmFilesGallery')
+  if (!gallery) return []
+  return Shared.getVisualOrder(gallery, '.cm-files-gallery-item')
+}
+
+function _renderPagination() {
+  const el = document.getElementById('cmFilesPagination')
+  if (!el) return
+  if (_pageSize <= 0 || _filteredFiles.length <= _pageSize) {
+    el.style.display = 'none'
+    return
+  }
+  el.style.display = 'flex'
+  const total = _totalPages()
+  const info = document.getElementById('cmFilesPageInfo')
+  if (info) info.textContent = `${_currentPage} / ${total}`
+  const btns = el.querySelectorAll('[data-action="page"]')
+  if (btns.length >= 2) {
+    btns[0].disabled = _currentPage <= 1
+    btns[1].disabled = _currentPage >= total
+  }
+}
+
+function _getUncategorizedTags(q) {
+  return _popTags.filter(item => {
+    const tag = item.name || item.tag || item
+    if (q && !tag.toLowerCase().includes(q)) return false
+    return !state.tagToCat[tag]
+  }).slice(0, 20)
+}
+
+function _attachEvents(body, signal) {
+  // File search (debounced)
+  const doSearch = debounce(e => {
+    _searchQ = e.target.value
+    _filterFiles()
+    _currentPage = 1
+    _renderGallery()
+    const count = document.getElementById('cmFilesCount')
+    if (count) count.textContent = '' + _filteredFiles.length
+  }, 150)
+  body.querySelector('#cmFilesSearch')?.addEventListener('input', doSearch, { signal })
+
+  // Tag search
+  body.querySelector('#cmFilesTagSearchQ')?.addEventListener('input', e => {
+    _renderLeftTags(e.target.value)
+  }, { signal })
+
+  // Delegated clicks
+  body.addEventListener('click', e => {
+    const el = e.target.closest('[data-action]')
+    if (!el) return
+    const actions = {
+      'view-file': () => viewFile(el.dataset.filepath),
+      'toggle-sort': toggleSort,
+      'thumbsize': () => setThumbSize(parseInt(el.dataset.size, 10)),
+      'pagesize': () => setPageSize(parseInt(el.dataset.size, 10)),
+      'page': () => _goToPage(_currentPage + parseInt(el.dataset.dir, 10))
+    }
+    actions[el.dataset.action]?.()
+  }, { signal })
+
+  // Drag tags
+  body.addEventListener('dragstart', e => {
+    const chip = e.target.closest('.cm-tags-chip')
+    if (!chip) return
+    e.dataTransfer.setData('text/plain', chip.dataset.tag)
+    e.dataTransfer.effectAllowed = 'copy'
+    chip.classList.add('dragging')
+  }, { signal })
+  body.addEventListener('dragend', e => {
+    const chip = e.target.closest('.cm-tags-chip')
+    if (chip) chip.classList.remove('dragging')
+  }, { signal })
+
+  // Drop tag on file
+  body.addEventListener('dragover', e => {
+    const item = e.target.closest('.cm-files-gallery-item')
+    if (item) { e.preventDefault(); item.classList.add('tag-dragover') }
+  }, { signal })
+  body.addEventListener('dragleave', e => {
+    const item = e.target.closest('.cm-files-gallery-item')
+    if (item) item.classList.remove('tag-dragover')
+  }, { signal })
+  body.addEventListener('drop', e => {
+    document.querySelectorAll('.cm-files-gallery-item').forEach(i => i.classList.remove('tag-dragover'))
+    const item = e.target.closest('.cm-files-gallery-item')
+    if (!item) return
+    const tag = e.dataTransfer.getData('text/plain')
+    const path = item.dataset.filepath
+    if (tag && path) assignTag(path, tag)
+  }, { signal })
+
+}
+
+function setPageSize(size) {
+  _pageSize = size
+  _currentPage = 1
+  _saveLayoutPrefs()
+  _renderGallery()
+  document.querySelectorAll('#cmFiles [data-action="pagesize"]').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.size, 10) === size)
+  })
+}
+
+function _goToPage(page) {
+  const total = _totalPages()
+  _currentPage = Math.max(1, Math.min(page, total))
+  _renderGallery()
+}
+
+function toggleSort() {
+  const modes = ['name', 'newest', 'oldest']
+  const idx = modes.indexOf(_sortMode)
+  _sortMode = modes[(idx + 1) % modes.length]
+  _saveLayoutPrefs()
+  _sortFiles()
+  _filterFiles()
+  _currentPage = 1
+  _renderGallery()
+  const btn = document.getElementById('cmSortBtn')
+  if (!btn) return
+  const labels = { name: _t('sortByName'), newest: _t('sortByNewest'), oldest: _t('sortByOldest') }
+  const svg = _sortMode === 'name'
+    ? '<path d="M8 3l-4 4 4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h10"/><path d="M20 17H10"/>'
+    : _sortMode === 'newest'
+    ? '<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/>'
+    : '<path d="M12 19V5"/><path d="M19 12l-7-7-7 7"/>'
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">${svg}</svg>`
+  btn.title = labels[_sortMode]
+  const label = document.getElementById('cmSortLabel')
+  if (label) label.textContent = labels[_sortMode]
+}
+
+function setThumbSize(size) {
+  _thumbSize = size
+  _saveLayoutPrefs()
+  _renderGallery()
+  document.querySelectorAll('#cmFiles [data-action="thumbsize"]').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.size, 10) === size)
+  })
+}
+
+export function onFileSearch(q) {
+  _searchQ = q || ''
+  _filterFiles()
+  _currentPage = 1
+  _renderGallery()
+  const count = document.getElementById('cmFilesCount')
+  if (count) count.textContent = '' + _filteredFiles.length
+  const searchInput = document.getElementById('cmFilesSearch')
+  if (searchInput) searchInput.value = _searchQ
+}
+
+function assignTag(path, tag) {
+  api('/api/tags', { method: 'POST', body: { path, tags: [tag], action: 'add' } })
+    .then(() => {
+      const name = path.split('/').pop()
+      toast(`${tag} → ${name}`, 'success')
+    })
+    .catch(e => toast(e.message, 'error'))
+}
+
+/* ─── KEYBOARD ─── */
+
+document.addEventListener('keydown', function(e) {
+  if (!_lbInstance) return;
+  var overlay = document.getElementById('cmOverlay');
+  if (!overlay || !overlay.classList.contains('open')) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); _lbInstance._prev(); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); _lbInstance._next(); }
+});
+
+/* ─── LIGHTBOX ─── */
+
+function viewFile(path) {
+  if (!_lbInstance) {
+    _lbInstance = new Lightbox({
+      prefix: 'cm',
+      tagPanel: true,
+      onSaveTags: function(path, tags) {
+        return api('/api/save_file', { method: 'POST', body: { path, tags } })
+          .catch(function(e) { toast(e.message, 'error'); throw e })
+      },
+      getCatListFn: function() {
+        return state.cats.map(function(c) { return { name: c.name, color: c.color } })
+      },
+      getTagCategoryNameFn: function(tag) {
+        return state.catCache[tag] || ''
+      },
+      getVisualOrderFn: function() { return getVisualOrder() },
+      hexToRgba: hexToRgba
+    })
+  }
+  const idx = _filteredFiles.findIndex(f => f.path === path)
+  if (idx >= 0) _lbInstance.open(idx, _filteredFiles)
+}

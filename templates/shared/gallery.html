@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block hdr_tabs %}
+<a href="/mediavault/gallery" class="mv-tab{% if subview == 'gallery' %} active{% endif %}" data-mv="gallery" data-i18n="mvGallery">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+  {{ _('mvGallery') }}
+</a>
+<a href="/mediavault/comics" class="mv-tab{% if subview == 'comics' %} active{% endif %}" data-mv="comics" data-i18n="mvComics">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+  {{ _('mvComics') }}
+</a>
+{% endblock %}
+{% block content %}
+<div id="mediavaultView" class="view{% if page == 'mediavault' %} active{% endif %}">
+  <div id="mediavaultLayout">
+    <aside id="mvSidebar" class="desktop-only">
+      <div id="mvSidebar-inner">
+        <div id="searchPanel" class="desktop-only">
+          <div style="font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:6px" data-i18n="mvSearchByTag">{{ _('mvSearchByTag') }}</div>
+          <div style="position:relative">
+            <input type="text" id="searchInput" placeholder="{{ _('mvSearchPlaceholder') }}" data-i18n-placeholder="mvSearchPlaceholder">
+            <div id="searchAutocomplete" style="position:relative"></div>
+          </div>
+        </div>
+        <div id="thumbSizePanel" style="margin-top:12px;display:none"></div>
+        <div id="categorizedTags" style="margin-top:12px">
+          <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:8px" data-i18n="mvCategorized">{{ _('mvCategorized') }}</h3>
+          <div id="categorizedTagsList"></div>
+        </div>
+        {% if session.role == 'admin' %}
+        <div style="margin-top:12px">
+          <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:8px" data-i18n="mvManageTags">{{ _('mvManageTags') }}</h3>
+          <button class="btn btn-sm" id="manageCategoriesBtn" style="width:100%" onclick="MediaVault.openCategoryModal()" data-i18n="mvGroupColors">{{ _('mvGroupColors') }}</button>
+          <button class="btn btn-sm" id="bulkTagBtn" style="margin-top:8px;width:100%" data-i18n="bulkTag">{{ _('bulkTag') }}</button>
+        </div>
+        {% endif %}
+      </div>
+    </aside>
+    <main id="mvMain">
+      <div class="mv-page{% if subview == 'gallery' %} active{% endif %}" data-mv="gallery">
+        <div id="galleryToolbar">
+          <button class="tool-btn tool-btn-icon" id="sidebarToggle" title="{{ _('mvToggleSidebar') }}" data-i18n-title="mvToggleSidebar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="toolbar-group desktop-only">
+            <button class="tool-btn tool-btn-icon active" data-layout="columns" title="Masonry">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </button>
+            <button class="tool-btn tool-btn-icon" data-layout="fixed" title="Grid">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+            </button>
+            <button class="tool-btn tool-btn-icon" data-layout="scroll" title="List">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="4" rx="1"/><rect x="5" y="10" width="14" height="4" rx="1"/><rect x="5" y="16" width="14" height="4" rx="1"/></svg>
+            </button>
+            <span class="toolbar-sep"></span>
+            <button class="tool-btn" id="fetchedOnlyBtn" onclick="MediaVaultGallery.toggleFetchedOnly()"><span data-i18n="navTags">Tags</span></button>
+            <span class="toolbar-sep"></span>
+            <button class="tool-btn active" data-pagesize="0" data-i18n="modeBoth">{{ _('modeBoth') }}</button>
+            <button class="tool-btn" data-pagesize="30">30</button>
+            <button class="tool-btn" data-pagesize="60">60</button>
+            <button class="tool-btn" data-pagesize="90">90</button>
+            <span class="toolbar-sep"></span>
+            <button class="tool-btn thumb-size active" data-size="160" title="Small">S</button>
+            <button class="tool-btn thumb-size" data-size="220" title="Medium">M</button>
+            <button class="tool-btn thumb-size" data-size="300" title="Large">L</button>
+            <span class="toolbar-sep"></span>
+            <button class="tool-btn" id="sortDateBtn" onclick="MediaVaultGallery.toggleDateSort()" data-i18n="sortByName" data-i18n-title="sortByNameTitle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-4 4 4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h10"/><path d="M20 17H10"/></svg>
+              <span data-i18n="sortByName">By name</span>
+            </button>
+          </div>
+        </div>
+        <div id="gallery">
+          <div class="gallery-empty">
+            <h2 data-i18n="mvNoFiles">{{ _('mvNoFiles') }}</h2>
+            <p data-i18n="mvNoFilesDesc">{{ _('mvNoFilesDesc') }}</p>
+          </div>
+        </div>
+        <div id="galleryPagination">
+          <button class="tool-btn tool-btn-icon" id="pagePrev">‹</button>
+          <span id="pageNumbers"></span>
+          <button class="tool-btn tool-btn-icon" id="pageNext">›</button>
+        </div>
+        <div style="display:flex;justify-content:center;gap:8px;margin:12px 0">
+          <a href="/popular-tags" class="btn btn-sm" data-i18n="mvPopularTags">{{ _('mvPopularTags') }}</a>
+        </div>
+        <div id="mvBottomSection">
+          <div id="categorizedTagsMobile"></div>
+          <div id="mvBottomLinks"></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="statusBar">
+    <span id="statusText" data-i18n="loading">{{ _('loading') }}</span>
+  </div>
+
+
+
+  {# Bulk Tag Bar #}
+  <div id="bulkTagBar">
+    <span id="bulkCount" data-i18n="selected" data-i18n-params='{"n":0}'>0 selected</span>
+    <div style="flex:1;position:relative">
+      <input type="text" id="bulkTagInput" placeholder="{{ _('addTag') }}" style="width:100%" data-i18n-placeholder="addTag">
+      <div id="bulkAutocomplete" style="position:absolute;bottom:calc(100% + 6px);left:0;right:0;z-index:60"></div>
+    </div>
+    <button class="btn btn-sm btn-primary" id="bulkAddBtn" data-i18n="mvBulkAdd">{{ _('mvBulkAdd') }}</button>
+    <button class="btn btn-sm" id="bulkCancelBtn" data-i18n="cancel">{{ _('cancel') }}</button>
+  </div>
+
+  {# Category Modal #}
+  <div id="categoryModal">
+    <div class="cat-modal-overlay" onclick="MediaVault.closeCategoryModal()"></div>
+    <div class="cat-modal">
+      <div class="cat-modal-header">
+        <h3 data-i18n="mvCatModalTitle">{{ _('mvCatModalTitle') }}</h3>
+        <button class="btn btn-sm" id="closeCategoryBtn" data-i18n="mvCatModalClose">{{ _('mvCatModalClose') }}</button>
+      </div>
+      <div class="cat-modal-add">
+        <input type="text" id="newCategoryName" placeholder="{{ _('mvCatModalNew') }}" style="flex:1" data-i18n-placeholder="mvCatModalNew">
+        <input type="color" id="newCategoryColor" value="#ff6b6b">
+        <button class="btn btn-sm btn-primary" id="addCategoryBtn" data-i18n="mvBulkAdd">{{ _('mvBulkAdd') }}</button>
+      </div>
+      <div id="categoryList" class="cat-horizontal-scroll"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

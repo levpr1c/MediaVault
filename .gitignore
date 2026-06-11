@@ -1,0 +1,36 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+*.bak
+
+# DB exports (downloaded .db files)
+*.db
+
+# Node (if ever used)
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.tagfetch_settings.json
+.api_cache.json
+.md5_cache.json
+.thumb_cache/
+
+# Build artifacts
+build/
+dist/
+*.spec
+!mediavault.spec
+*.exe
+
+# Local dev / scratch
+scratch/
+tmp/
+*.log

@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == 'standalone' %}{{ filename }}{% else %}{{ _('quickPreview') if preview else comic.title }}{% endif %}{% endblock %}
+{% block head_extra %}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#121212;--surface:#1e1e1e;--surface2:#2a2a2a;--text:#e0e0e0;--text2:#999;--border:#333;--accent:#64b5f6}
+[data-theme="light"]{--bg:#f5f5f5;--surface:#fff;--surface2:#e8e8e8;--text:#1a1a1a;--text2:#666;--accent:#4a90d9;--border:#ddd}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden}
+body{padding-top:44px}
+#topbar{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;gap:4px;padding:6px 8px;height:40px;background:var(--surface);border-bottom:1px solid var(--border)}
+#topbar .back{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;color:var(--text2);text-decoration:none;border-radius:10px;flex-shrink:0}
+#topbar .back:hover{background:var(--surface2);color:var(--text)}
+#topbar .name{flex:1;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 4px}
+#topbar .top-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;font-size:14px;color:var(--text2);background:none;border:none;border-radius:10px;cursor:pointer;flex-shrink:0}
+#topbar .top-btn:hover{background:var(--surface2);color:var(--text)}
+#topbar .top-btn.active{color:var(--accent)}
+#mediaWrap{position:relative;box-sizing:border-box;width:100%;height:calc(100vh - 44px);padding:20px}
+#mediaWrap img,#mediaWrap video{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:100%;max-height:100%;object-fit:contain}
+.nav-zone{position:fixed;top:44px;bottom:80px;z-index:10;cursor:pointer}
+.nav-zone.left{left:0;width:12%}
+.nav-zone.right{right:0;width:12%}
+.nav-zone:active{background:rgba(255,255,255,.05)}
+#tagsOverlay{position:fixed;bottom:0;left:0;right:0;z-index:50;background:var(--surface);border-top:1px solid var(--border);padding:12px 16px 20px;max-height:45vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s ease}
+#tagsOverlay.open{transform:translateY(0)}
+#tagsOverlay .tag{display:inline-block;font-size:13px;font-weight:600;padding:4px 10px;border-radius:4px;background:var(--surface2);margin:3px 4px 3px 0;text-decoration:none;color:inherit}
+#tagsOverlay .cat-group{margin-bottom:12px}
+#tagsOverlay .cat-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);display:flex;align-items:center;gap:5px;margin-bottom:4px}
+#tagsOverlay .cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+#tagsOverlay .tags-wrap{display:flex;flex-wrap:wrap;gap:4px}
+#tagsOverlay .empty-tags{padding:12px 0;color:var(--text2);font-size:13px;text-align:center}
+#tagHint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:20;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:6px 14px;border-radius:16px;pointer-events:none;opacity:0;transition:opacity .4s}
+#tagHint.show{opacity:1}
+#content{overflow:visible}
+#scrollView{padding:0;max-width:100%;margin:0 auto}
+#scrollView .page-wrap{display:block;text-align:center;margin:0 auto}
+#scrollView .page-wrap img{display:inline-block;max-width:100%;height:auto;vertical-align:top;width:auto}
+#lightboxView{display:none;position:fixed;top:44px;left:0;right:0;bottom:0;z-index:50;background:var(--bg);align-items:center;justify-content:center}
+#lightboxView.open{display:flex}
+#lightboxView img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+#pageCounter{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(30,30,30,.85);border-radius:12px;font-size:13px;border:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:2px 8px;transition:opacity .3s;user-select:none;backdrop-filter:blur(4px)}
+[data-theme="light"] #pageCounter{background:rgba(255,255,255,.85)}
+#pageCounter.hidden{opacity:0;pointer-events:none}
+#pageCounter .nav-arrow{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:none;background:none;color:var(--text2);cursor:pointer;border-radius:8px;padding:0;transition:background .15s,color .15s}
+#pageCounter .nav-arrow:hover{background:var(--surface2);color:var(--text)}
+#pageCounter .nav-arrow:disabled{opacity:.25;cursor:default;background:none}
+#pageCounter .num{font-weight:700;color:var(--text);min-width:22px;text-align:center;font-size:14px}
+#pageCounter .total{color:var(--text2);font-size:13px;margin:0 2px}
+#pageCounter .dots-wrap{display:flex;align-items:center;gap:3px;padding:0 2px}
+#pageCounter .dot{width:6px;height:6px;border-radius:50%;background:var(--text2);border:none;padding:0;cursor:pointer;transition:background .2s,transform .2s,opacity .2s;flex-shrink:0}
+#pageCounter .dot.before{background:var(--accent);opacity:.5}
+#pageCounter .dot.active{background:var(--accent);transform:scale(1.6);opacity:1}
+#pageCounter .dot.after{background:var(--surface2)}
+#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:200;font-size:14px;color:var(--text2)}
+#loading.hidden{display:none}
+</style>
+{% endblock %}
+{% block body_start %}<div id="loading">{{ _('svLoading') }}</div>{% endblock %}
+{% block header %}{% endblock %}
+{% block content %}
+<div id="topbar">
+  <a href="{% if mode == 'standalone' %}/mediavault{% else %}/mediavault/comics{% endif %}" class="back">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+  </a>
+  <span class="name">{% if mode == 'standalone' %}{{ filename }}{% else %}{{ _('quickPreview') if preview else comic.title }}{% endif %}</span>
+  {% if mode == 'comics' %}
+  {% if preview and session.get('role') == 'admin' %}
+  <button class="top-btn" id="createComicBtn" onclick="createComic()" title="{{ _('createComic') }}" style="font-size:11px;padding:0 10px;width:auto;font-weight:600;color:var(--accent)">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+    {{ _('createComic') }}
+  </button>
+  {% endif %}
+  <button class="top-btn" id="toggleModeBtn" onclick="toggleMode()" title="{{ _('switchViewMode') }}">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 21h10"/><path d="M12 21V3"/></svg>
+  </button>
+  {% else %}
+  <button class="top-btn" id="toggleTags" onclick="toggleTags()" title="{{ _('navTags') }}">🏷️</button>
+  {% endif %}
+</div>
+
+{% if mode == 'standalone' %}
+<div id="mediaWrap">
+  {% if is_video %}
+    <video src="/api/media?path={{ path_q }}" controls autoplay playsinline></video>
+  {% else %}
+    <img src="/api/media?path={{ path_q }}" alt="{{ filename }}">
+  {% endif %}
+</div>
+
+{% if has_prev %}
+<a href="/mediavault/view?path={{ prev_path_q }}{{ order_qs }}" class="nav-zone left"></a>
+{% endif %}
+{% if has_next %}
+<a href="/mediavault/view?path={{ next_path_q }}{{ order_qs }}" class="nav-zone right"></a>
+{% endif %}
+
+<div id="tagHint">{{ _('svTapForTags') }}</div>
+
+<div id="tagsOverlay">
+  {{ tags_html|safe }}
+</div>
+{% endif %}
+
+{% if mode == 'comics' %}
+<div id="scrollView"></div>
+
+<div id="lightboxView">
+  <img id="lbImage" alt="">
+  <a class="nav-zone left" id="prevLink"></a>
+  <a class="nav-zone right" id="nextLink"></a>
+</div>
+
+<div id="pageCounter">
+  <button class="nav-arrow" id="prevPageBtn" onclick="prevPage()" aria-label="{{ _('prevPage') }}">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <span class="num" id="pageNum">1</span>
+  <div class="dots-wrap" id="dotsWrap"></div>
+  <span class="total" id="pageTotal">1</span>
+  <button class="nav-arrow" id="nextPageBtn" onclick="nextPage()" aria-label="{{ _('nextPage') }}">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+{% if mode == 'standalone' %}
+var _tagsVisible = false;
+function toggleTags() {
+  _tagsVisible = !_tagsVisible;
+  document.getElementById('tagsOverlay').classList.toggle('open', _tagsVisible);
+  document.getElementById('toggleTags').classList.toggle('active', _tagsVisible);
+  document.getElementById('tagHint').classList.remove('show');
+}
+document.getElementById('mediaWrap').addEventListener('click', function(e) {
+  if (e.target.closest('.nav-zone')) return;
+  toggleTags();
+});
+setTimeout(function() {
+  document.getElementById('tagHint').classList.add('show');
+  setTimeout(function() {
+    document.getElementById('tagHint').classList.remove('show');
+  }, 3000);
+}, 500);
+{% endif %}
+
+{% if mode == 'comics' %}
+var _pages = {{ pages|tojson|safe }};
+var _mode = 'scroll';
+var _currentPage = 0;
+var _hideTimer = null;
+function showUI() {
+  var pc = document.getElementById('pageCounter');
+  pc.classList.remove('hidden');
+  clearTimeout(_hideTimer);
+  _hideTimer = setTimeout(function() { pc.classList.add('hidden'); }, 5000);
+}
+var _MAX_DOTS = 9;
+function buildDots() {
+  var wrap = document.getElementById('dotsWrap');
+  var total = _pages.length;
+  if (total <= 1) { wrap.innerHTML = ''; return; }
+  var n = total > _MAX_DOTS ? _MAX_DOTS : total;
+  var h = '';
+  for (var i = 0; i < n; i++) {
+    h += '<button class="dot" onclick="switchToDot(' + i + ')" aria-label=""></button>';
+  }
+  wrap.innerHTML = h;
+  updateDots();
+}
+function switchToDot(dotIdx) {
+  var total = _pages.length;
+  var pageIdx;
+  if (total <= _MAX_DOTS) {
+    pageIdx = dotIdx;
+  } else {
+    pageIdx = Math.round(dotIdx / (_MAX_DOTS - 1) * (total - 1));
+  }
+  switchToPage(pageIdx);
+}
+function updateDots() {
+  var total = _pages.length;
+  var dots = document.querySelectorAll('#dotsWrap .dot');
+  for (var i = 0; i < dots.length; i++) {
+    var pageIdx;
+    if (total <= _MAX_DOTS) {
+      pageIdx = i;
+    } else {
+      pageIdx = Math.round(i / (_MAX_DOTS - 1) * (total - 1));
+    }
+    dots[i].classList.toggle('before', pageIdx < _currentPage);
+    dots[i].classList.toggle('active', pageIdx === _currentPage);
+    dots[i].classList.toggle('after', pageIdx > _currentPage);
+    dots[i].setAttribute('aria-label', 'Page ' + (pageIdx + 1));
+  }
+}
+function updateCounter() {
+  document.getElementById('pageNum').textContent = _currentPage + 1;
+  document.getElementById('pageTotal').textContent = _pages.length;
+  document.getElementById('prevPageBtn').disabled = _currentPage <= 0;
+  document.getElementById('nextPageBtn').disabled = _currentPage >= _pages.length - 1;
+  updateDots();
+  showUI();
+}
+function prevPage() {
+  if (_currentPage > 0) switchToPage(_currentPage - 1);
+}
+function nextPage() {
+  if (_currentPage < _pages.length - 1) switchToPage(_currentPage + 1);
+}
+function switchToPage(idx) {
+  if (idx < 0 || idx >= _pages.length) return;
+  _currentPage = idx;
+  if (_mode === 'lightbox') {
+    document.getElementById('lbImage').src = '/api/media?path=' + _pages[idx].path;
+    var prevLink = document.getElementById('prevLink');
+    if (idx > 0) { prevLink.href = 'javascript:switchToPage(' + (idx - 1) + ')'; prevLink.style.cursor = 'pointer'; }
+    else { prevLink.removeAttribute('href'); prevLink.style.cursor = 'default'; }
+    var nextLink = document.getElementById('nextLink');
+    if (idx < _pages.length - 1) { nextLink.href = 'javascript:switchToPage(' + (idx + 1) + ')'; nextLink.style.cursor = 'pointer'; }
+    else { nextLink.removeAttribute('href'); nextLink.style.cursor = 'default'; }
+  } else {
+    var el = document.getElementById('page-' + idx);
+    if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+  updateCounter();
+}
+function toggleMode() {
+  var scrollView = document.getElementById('scrollView');
+  var lightboxView = document.getElementById('lightboxView');
+  if (_mode === 'scroll') {
+    _mode = 'lightbox';
+    scrollView.style.display = 'none';
+    lightboxView.classList.add('open');
+    switchToPage(_currentPage);
+    document.getElementById('toggleModeBtn').classList.add('active');
+  } else {
+    _mode = 'scroll';
+    scrollView.style.display = 'block';
+    lightboxView.classList.remove('open');
+    document.getElementById('toggleModeBtn').classList.remove('active');
+  }
+  showUI();
+}
+function buildPages() {
+  var container = document.getElementById('scrollView');
+  var html = '';
+  for (var i = 0; i < _pages.length; i++) {
+    html += '<div class="page-wrap" id="page-' + i + '"><img src="/api/media?path=' + _pages[i].path + '" alt="Page ' + (i + 1) + '" loading="lazy"></div>';
+  }
+  container.innerHTML = html;
+}
+var _scrolling = false;
+var _scrollRaf = null;
+window.addEventListener('scroll', function() {
+  if (_mode !== 'scroll') return;
+  showUI();
+  if (_scrollRaf) return;
+  if (!_scrolling) {
+    _scrolling = true;
+    updateCounter();
+  }
+  _scrollRaf = requestAnimationFrame(function() {
+    _scrollRaf = null;
+    var wraps = document.querySelectorAll('#scrollView .page-wrap');
+    var found = 0;
+    for (var i = 0; i < wraps.length; i++) {
+      var rect = wraps[i].getBoundingClientRect();
+      if (rect.top < window.innerHeight / 2 && rect.bottom > 120) {
+        found = i;
+        break;
+      }
+    }
+    if (found !== _currentPage) {
+      _currentPage = found;
+      updateCounter();
+    }
+  });
+}, {passive: true});
+window.addEventListener('scrollend', function() {
+  if (_mode !== 'scroll') return;
+  _scrolling = false;
+  var wraps = document.querySelectorAll('#scrollView .page-wrap');
+  var found = 0;
+  for (var i = 0; i < wraps.length; i++) {
+    var rect = wraps[i].getBoundingClientRect();
+    if (rect.top < window.innerHeight / 2 && rect.bottom > 120) {
+      found = i;
+      break;
+    }
+  }
+  _currentPage = found;
+  updateCounter();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prevPage(); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); nextPage(); }
+  else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleMode(); }
+});
+var _touchStartX = 0;
+document.addEventListener('touchstart', function(e) {
+  _touchStartX = e.touches[0].clientX;
+  showUI();
+}, {passive: true});
+document.addEventListener('touchend', function(e) {
+  var dx = e.changedTouches[0].clientX - _touchStartX;
+  if (Math.abs(dx) > 50) {
+    if (dx < 0) nextPage();
+    else prevPage();
+  }
+}, {passive: true});
+document.addEventListener('mousemove', showUI);
+buildPages();
+buildDots();
+switchToPage(0);
+{% if preview %}
+function createComic() {
+  var title = prompt('Comic title');
+  if (!title || !title.trim()) return;
+  title = title.trim();
+  var paths = _pages.map(function(p) { return decodeURIComponent(p.path); });
+  var btn = document.getElementById('createComicBtn');
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+  fetch('/api/comics/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({title: title, paths: paths, cover_path: paths[0] || ''})
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) { alert('Error: ' + data.error); btn.textContent = 'Create'; btn.disabled = false; return; }
+    window.location.href = '/comics/view?id=' + data.id;
+  }).catch(function(err) {
+    alert('Error: ' + err.message);
+    btn.textContent = 'Create';
+    btn.disabled = false;
+  });
+}
+{% endif %}
+{% endif %}
+document.getElementById('loading').classList.add('hidden');
+{% if mode == 'standalone' %}
+var _pxStart, _pyStart, _pxStartT;
+document.addEventListener('pointerdown', function(e) { _pxStart = e.clientX; _pyStart = e.clientY; _pxStartT = Date.now(); });
+document.addEventListener('pointerup', function(e) {
+  if (_pxStart === undefined) return;
+  var dx = e.clientX - _pxStart;
+  var dy = e.clientY - _pyStart;
+  var dt = Date.now() - _pxStartT;
+  if (dx > 80 && Math.abs(dy) < 60 && dt < 500 && _pxStart < 40) {
+    window.history.back();
+  }
+  _pxStart = undefined;
+});
+{% endif %}
+</script>
+{% endblock %}

@@ -3581,11 +3581,11 @@ def main():
         url = 'http://%s:%d' % (args.bind, args.port)
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
 
+    use_reloader = args.debug and not getattr(sys, 'frozen', False)
     if getattr(sys, 'frozen', False) and args.debug:
-        app.config['PROPAGATE_EXCEPTIONS'] = True
-        app.run(host=args.bind, port=args.port, debug=False, use_reloader=False, threaded=True)
+        app.run(host=args.bind, port=args.port, debug=True, use_reloader=False,
+                use_debugger=False, use_evalex=False, threaded=True)
     else:
-        use_reloader = args.debug and not getattr(sys, 'frozen', False)
         app.run(host=args.bind, port=args.port, debug=args.debug, use_reloader=use_reloader, threaded=True)
 
 if __name__ == '__main__':

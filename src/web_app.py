@@ -142,7 +142,7 @@ def _has_users():
             _has_users_cached = bool(row and row[0] > 0)
             db.close()
         except Exception:
-            _has_users_cached = False
+            return False
     return bool(_has_users_cached)
 
 def _invalidate_users_cache():
@@ -3535,6 +3535,7 @@ def main():
     else:
         app.secret_key = s['secret_key']
 
+    _ensure_db_schema()
     _ensure_admin_user()
 
     if args.debug:
@@ -3562,6 +3563,7 @@ def main():
 
     # Миграция старого JPEG-кэша превью в AVIF (однократно)
     if not settings.get('thumb_migrated'):
+        _ensure_db_schema()
         try:
             db = _db_conn()
             db.execute('DELETE FROM thumbnail_cache')

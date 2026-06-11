@@ -13,20 +13,31 @@
 
 ## 🚀 Быстрый старт
 
+### AUR (Arch Linux)
+
 ```bash
-# 1. Создать виртуальное окружение (один раз)
+yay -S mediavault-bin
+# или
+paru -S mediavault-bin
+mediavault
+# → http://localhost:5050
+```
+
+FFmpeg и GNOME Keyring устанавливаются автоматически зависимостями пакета.
+
+### Вручную (любой дистрибутив)
+
+```bash
+git clone https://github.com/levpr1c/MediaVault
+cd MediaVault
 python3 -m venv venv
-
-# 2. Установить зависимости
 venv/bin/pip install -r requirements.txt
-
-# 3. Запустить
 venv/bin/python src/web_app.py
-# → Открой браузер: http://localhost:5050
+# → http://localhost:5050
 ```
 
 > FFmpeg нужен для превью видео. Установи: `sudo apt install ffmpeg` (Linux) или `brew install ffmpeg` (macOS).
-> `python3-keyring` — опционально, для хранения API-ключей в системной связке (GNOME Keyring, в будущем — KDE KWallet). Если пакет не установлен, ключи хранятся в settings.json.
+> `python3-keyring` — опционально, для хранения API-ключей в системной связке. Если пакет не установлен, ключи хранятся в settings.json.
 
 ---
 

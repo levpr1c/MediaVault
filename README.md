@@ -6,7 +6,23 @@ Local web tool for collecting, tagging and viewing media files with Rule34/Danbo
 
 ## Quick start
 
+### AUR (Arch Linux)
+
 ```bash
+yay -S mediavault-bin
+# or
+paru -S mediavault-bin
+mediavault
+# → http://localhost:5050
+```
+
+FFmpeg and GNOME Keyring are handled automatically by the package.
+
+### Manual (any distro)
+
+```bash
+git clone https://github.com/levpr1c/MediaVault
+cd MediaVault
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 venv/bin/python src/web_app.py

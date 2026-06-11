@@ -1,5 +1,4 @@
 flask
 requests
 Pillow
-pyinstaller
 keyring

@@ -1,6 +1,85 @@
 {% extends "base.html" %}
 {% block head_extra %}
 <link rel="stylesheet" href="/static/css/content.css?v=10">
+<style>
+/* ─── NHentai Search: card thumbnails ─── */
+.nh-card-thumb {
+  width: 100%; height: 200px; border-radius: 8px; overflow: hidden;
+  background: var(--surface2); position: relative;
+}
+.nh-card-thumb img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.nh-card-thumb.nh-thumb-missing {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); font-size: 12px;
+}
+.nh-card-thumb.nh-thumb-missing::after { content: 'No cover'; }
+.nh-card-title {
+  font-size: 13px; font-weight: 600; line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nh-card-meta {
+  font-size: 11px; color: var(--text2);
+}
+
+/* ─── Detail card ─── */
+.nh-detail-card { overflow: hidden; }
+.nh-detail-body {
+  display: flex; gap: 24px; align-items: flex-start;
+}
+.nh-detail-cover {
+  flex-shrink: 0; width: 200px; border-radius: 10px; overflow: hidden;
+  background: var(--surface2); position: relative;
+}
+.nh-detail-cover img {
+  width: 100%; display: block; border-radius: 10px;
+}
+.nh-detail-cover.nh-cover-missing {
+  min-height: 200px; display: flex; align-items: center;
+  justify-content: center; color: var(--text2); font-size: 12px;
+}
+.nh-detail-cover.nh-cover-missing::after { content: 'No cover'; }
+.nh-detail-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+
+/* ─── Stats ─── */
+.nh-detail-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+.nh-stat {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13px; color: var(--text2); background: var(--bg);
+  padding: 4px 10px; border-radius: 6px;
+}
+.nh-stat svg { flex-shrink: 0; opacity: .7; }
+
+/* ─── Tag chips ─── */
+.nh-detail-tags {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  max-height: 320px; overflow-y: auto;
+}
+.nh-tag-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px 3px 6px; border-radius: 6px;
+  font-size: 12px; font-weight: 500;
+  background: var(--chip-bg); color: var(--chip-text);
+  cursor: grab; user-select: none;
+  transition: background .15s, color .15s;
+}
+.nh-tag-chip:hover { background: var(--surface3); color: var(--text); }
+.nh-tag-chip:active { cursor: grabbing; }
+.nh-tag-cat {
+  font-size: 10px; opacity: .55; text-transform: uppercase;
+  letter-spacing: .3px; margin-right: 1px;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .nh-detail-body { flex-direction: column; }
+  .nh-detail-cover { width: 100%; max-width: 300px; }
+}
+@media (max-width: 480px) {
+  .nh-card-thumb { height: 150px; }
+}
+</style>
 {% endblock %}
 {% block title %}NHentai Search{% endblock %}
 {% block hdr_brand %}NHENTAI SEARCH{% endblock %}
@@ -27,5 +106,5 @@
     <div id="nhDetail" style="display:none"></div>
   </main>
 </div>
-<script type="module" src="/static/content/nhentai_search.js?v=1"></script>
+<script type="module" src="/static/content/nhentai_search.js?v=2"></script>
 {% endblock %}

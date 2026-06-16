@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="/static/css/content.css?v=10">
+<style>
+  .fs-debug { font-size:11px; color:var(--muted); margin-top:8px; }
+  .fs-debug summary { cursor:pointer; user-select:none; }
+  .fs-debug pre { font-size:10px; max-height:200px; overflow:auto; background:var(--bg); padding:6px; border-radius:4px; margin:4px 0; }
+  .fs-img-error { opacity:0.4; outline:1px dashed var(--muted); }
+  .fs-backend-badge { font-size:10px; font-weight:400; color:var(--muted); margin-left:4px; }
+</style>
+{% endblock %}
+{% block title %}Franchise Search{% endblock %}
+{% block hdr_brand %}
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><circle cx="11" cy="11" r="8"/><path d="M12 8v4l3 3"/></svg>
+FRANCHISE SEARCH
+{% endblock %}
+{% block hdr_tabs %}
+<div class="cm-hdr-left">
+  <a href="/content-mgmt/tags-manual" class="cm-hdr-btn">← {{ _('mvHeader') }}</a>
+</div>
+{% endblock %}
+{% block hdr_drawer %}{% endblock %}
+{% block content %}
+<div id="contentView">
+  <main class="admin-main">
+    <h2 class="admin-page-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><circle cx="11" cy="11" r="8"/><path d="M12 8v4l3 3"/></svg>
+      {{ _('franchiseSearch') }}
+    </h2>
+    <div class="admin-card" style="margin-bottom:20px">
+      <form method="get" action="/franchise-search" style="display:flex;gap:10px;align-items:center">
+        <input name="q" type="text" value="{{ q }}" placeholder="{{ _('franchiseSearchPlaceholder') }}" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px">
+        <button type="submit" class="btn btn-sm btn-primary" style="padding:10px 20px;font-size:14px;height:auto">{{ _('franchiseSearchBtn') }}</button>
+      </form>
+    </div>
+    {% if q %}
+    <div id="franchiseResults">
+      <div class="db-grid" style="grid-template-columns:repeat(3,1fr);gap:20px">
+        {% set site_names = {'rule34': 'Rule34', 'danbooru': 'Danbooru', 'nhentai': 'NHentai'} %}
+        {% for site in ['rule34', 'danbooru', 'nhentai'] %}
+        {% set bk_name = backends_used.get(site, '?') if backends_used else '?' %}
+        <div>
+          <h3 style="margin:0 0 10px;font-size:16px;color:var(--text)">
+            {{ site_names[site] }}
+            <span class="fs-backend-badge">[{{ bk_name }}]</span>
+          </h3>
+          {% if results[site] and results[site].results %}
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">
+            {% for r in results[site].results[:20] %}
+            {% set img_src = r.preview_url or r.sample_url or r.file_url or r.thumbnail or '' %}
+            <div class="admin-card" style="padding:8px">
+              <a href="{{ r.file_url or r.thumbnail or '#' }}" target="_blank" rel="noopener">
+                <img src="{{ img_src }}" loading="lazy"
+                     data-fb-file="{{ r.file_url or '' }}"
+                     data-fb-sample="{{ r.sample_url or '' }}"
+                     data-fb-thumb="{{ r.thumbnail or '' }}"
+                     onerror="franchiseImgFallback(this)"
+                     style="width:100%;aspect-ratio:auto;border-radius:4px;display:block">
+              </a>
+              <div style="font-size:11px;margin-top:4px;color:var(--muted)">#{{ r.id }}{% if r.title %}: {{ r.title[:40] }}{% endif %}</div>
+              <div style="font-size:10px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ r.tags[:5]|join(', ') }}">{{ r.tags[:5]|join(', ') }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          <details class="fs-debug">
+            <summary>[Debug] raw URLs</summary>
+            <p><strong>Backend:</strong> {{ bk_name }} &middot; <strong>Total:</strong> {{ results[site].total if results[site].total is defined else results[site].results|length }}</p>
+            <p><strong>Sample URLs (first 5):</strong></p>
+            <pre>{% for r in results[site].results[:5] %}[#{{ r.id }}]
+  preview_url={{ r.preview_url or '(empty)' }}
+  sample_url={{ r.sample_url or '(empty)' }}
+  file_url={{ r.file_url or '(empty)' }}
+  thumbnail={{ r.thumbnail or '(empty)' }}
+{% endfor %}</pre>
+          </details>
+          {% else %}
+          <p class="muted" data-i18n="franchiseNoResults">{{ _('franchiseNoResults') }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <script>
+    function franchiseImgFallback(img) {
+      var src = img.src;
+      var fbFile = img.getAttribute('data-fb-file');
+      var fbSample = img.getAttribute('data-fb-sample');
+      var fbThumb = img.getAttribute('data-fb-thumb');
+      if (!src || src === fbFile || src === fbSample || src === fbThumb) {
+        console.warn('[franchise] no more fallbacks');
+        img.style.opacity = '0.25';
+        img.style.outline = '1px dashed var(--muted)';
+        return;
+      }
+      if (fbSample && src !== fbSample) {
+        console.log('[franchise] fallback sample_url');
+        img.src = fbSample;
+        return;
+      }
+      if (fbFile && src !== fbFile) {
+        console.log('[franchise] fallback file_url');
+        img.src = fbFile;
+        return;
+      }
+      if (fbThumb && src !== fbThumb) {
+        console.log('[franchise] fallback thumbnail');
+        img.src = fbThumb;
+        return;
+      }
+      img.style.opacity = '0.25';
+      img.style.outline = '1px dashed var(--muted)';
+    }
+    </script>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}

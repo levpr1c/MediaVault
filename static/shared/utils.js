@@ -133,6 +133,9 @@ var _i18nData = {
     settingsRegenMissing: 'Generate missing thumbnails',
     secConfirmClearThumb: 'Clear ALL cached thumbnails? They will be regenerated on demand.',
     secConfirmRegenThumb: 'Regenerate ALL thumbnails now? This may take a while.',
+    secConfirmClearBrowser: 'Clear browser cache? All clients will reload thumbnails and media on next visit.',
+    settingsClearBrowserCache: 'Clear browser cache',
+    settingsClearBrowserCacheDesc: 'Increment cache buster — forces browsers to refetch thumbnails and media.',
     settingsError: 'Error',
 
     // Security
@@ -361,6 +364,9 @@ var _i18nData = {
     settingsRegenMissing: 'Сгенерировать недостающие',
     secConfirmClearThumb: 'Очистить ВСЕ кэшированные превью? Они будут перегенерированы при просмотре.',
     secConfirmRegenThumb: 'Перегенерировать ВСЕ превью сейчас? Это может занять время.',
+    secConfirmClearBrowser: 'Сбросить кэш браузера? Все клиенты перезагрузят превью и медиа при следующем визите.',
+    settingsClearBrowserCache: 'Сбросить кэш браузера',
+    settingsClearBrowserCacheDesc: 'Инкрементировать cache buster — браузеры перезапросят превью и медиафайлы.',
     settingsError: 'Ошибка',
 
     // Security
@@ -862,3 +868,8 @@ Shared.toggleDropdown = function(id) {
 };
 
 window.Shared = Shared;
+
+window._cbSuffix = function() {
+  var b = window.CONFIG && CONFIG.cacheBuster;
+  return b ? '&cb=' + b : '';
+};

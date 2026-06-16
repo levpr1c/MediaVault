@@ -8,7 +8,10 @@ Flask single-file (`src/web_app.py`, 3571 строк, 71 роут, 33 `@admin_re
 venv/bin/python src/web_app.py             # http://0.0.0.0:5050
 venv/bin/python src/web_app.py --debug     # авто-релоад + verbose
 venv/bin/python src/web_app.py --bind 127.0.0.1
-venv/bin/python check.py                   # синтаксис (68) + smoke (3)
+venv/bin/python test.py                    # синтаксис + локаль + мёртвый код + тесты
+venv/bin/python test.py --check py         # только Python
+venv/bin/python test.py --check js         # только JavaScript
+venv/bin/python test.py --check smoke      # smoke-тест (запуск Flask)
 ```
 
 ```bash

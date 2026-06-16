@@ -218,7 +218,7 @@ var TagfetchManual = (function() {
 
     var ext = name.split('.').pop().toLowerCase();
     var isVideo = ['mp4','webm','mov','avi','mkv'].includes(ext);
-    var mediaUrl = '/api/media?path=' + encodeURIComponent(absPath);
+    var mediaUrl = '/api/media?path=' + encodeURIComponent(absPath) + _cbSuffix();
 
     if (isVideo) {
       document.getElementById('localPreview').innerHTML = '<video src="' + mediaUrl + '" controls autoplay muted></video>';

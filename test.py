@@ -14,29 +14,42 @@ def ok(msg):   global PASS; PASS += 1; print(f'\033[32m  PASS\033[0m {msg}')
 def ng(msg):   global FAIL; FAIL += 1; print(f'\033[31m!! FAIL\033[0m {msg}')
 
 def check_python():
+    print('--- Python ---')
+    global PASS, FAIL; PASS, FAIL = 0, 0
     for f in sorted(SRC.glob('*.py')):
         r = subprocess.run([PYTHON, '-m', 'py_compile', str(f)],
                           capture_output=True)
         (ok if r.returncode == 0 else ng)(f'py_compile {f.name}')
+    print(f'  {PASS} passed, {FAIL} failed')
+    return FAIL == 0
 
 def check_js():
+    print('--- JavaScript ---')
+    global PASS, FAIL; PASS, FAIL = 0, 0
     for f in sorted(STATIC.rglob('*.js')):
         r = subprocess.run(['node', '--check', str(f)], capture_output=True)
         label = str(f.relative_to(STATIC))
         (ok if r.returncode == 0 else ng)(f'node --check {label}')
+    print(f'  {PASS} passed, {FAIL} failed')
+    return FAIL == 0
 
 def check_css():
+    print('--- CSS ---')
+    global PASS, FAIL; PASS, FAIL = 0, 0
     for f in sorted((STATIC / 'css').glob('*.css')):
         size = f.stat().st_size
         (ok if size > 0 else ng)(f'exists {f.name} ({size}b)')
+    print(f'  {PASS} passed, {FAIL} failed')
+    return FAIL == 0
 
 def syntax_check():
-    global PASS, FAIL; PASS, FAIL = 0, 0
-    print('--- Python ---'); check_python()
-    print('--- JavaScript ---'); check_js()
-    print('--- CSS ---'); check_css()
-    print(f'\n--- {PASS} passed, {FAIL} failed ---')
-    return FAIL == 0
+    print('--- Python ---')
+    ok_py = check_python()
+    print('\n--- JavaScript ---')
+    ok_js = check_js()
+    print('\n--- CSS ---')
+    ok_css = check_css()
+    return ok_py and ok_js and ok_css
 
 def smoke_test():
     print('--- Smoke Test ---')
@@ -693,23 +706,29 @@ def watch():
         print('\nstopped')
 
 
+_CHECK_GROUPS = {
+    'py':   lambda: check_python(),
+    'js':   lambda: check_js(),
+    'css':  lambda: check_css(),
+    'syntax': lambda: syntax_check(),
+    'locale': lambda: check_locale(),
+    'dead':   lambda: check_dead_code() and check_dead_js(),
+    'func':   lambda: check_functions(),
+    'smoke':  lambda: smoke_test(),
+}
+
 if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser(
         description='Syntax + smoke + locale + dead code + function tests for MediaVault.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=(
-            'Examples:\n'
-            '  python3 check.py            full: syntax + smoke + locale + dead code + functions\n'
-            '  python3 check.py --quick    syntax + locale + dead code + functions (no Flask)\n'
-            '  python3 check.py --locale   locale + dead code + functions only\n'
-            '  python3 check.py --watch    re-run syntax check on file changes'
-        ),
     )
-    parser.add_argument('--quick', action='store_true', help='skip smoke test (no Flask)')
-    parser.add_argument('--locale', action='store_true', help='locale + dead code + functions only')
-    parser.add_argument('--fix', action='store_true', help='remove unused LOCALE keys from web_app.py and utils.js')
-    parser.add_argument('--watch', action='store_true', help='watch mode (re-run syntax check on file changes)')
+    parser.add_argument('--check', nargs='+', metavar='CHECK',
+                        choices=list(_CHECK_GROUPS),
+                        help='One or more checks: py, js, css, syntax, locale, dead, func, smoke')
+    parser.add_argument('--watch', action='store_true', help='watch mode (re-run syntax check)')
+    parser.add_argument('--fix', action='store_true', help='remove unused LOCALE keys')
     args = parser.parse_args()
 
     if args.fix:
@@ -717,24 +736,14 @@ if __name__ == '__main__':
         sys.exit(0)
     elif args.watch:
         watch()
-    elif args.locale:
-        ok_loc = check_locale()
-        ok_dc = check_dead_code()
-        ok_dj = check_dead_js()
-        ok_ft = check_functions()
-        sys.exit(0 if (ok_loc and ok_dc and ok_dj and ok_ft) else 1)
-    elif args.quick:
+    elif args.check:
+        ok = all(_CHECK_GROUPS[c]() for c in args.check)
+        sys.exit(0 if ok else 1)
+    else:
+        # default: syntax + locale + dead + func (no smoke)
         ok_syn = syntax_check()
         ok_loc = check_locale()
         ok_dc = check_dead_code()
         ok_dj = check_dead_js()
         ok_ft = check_functions()
         sys.exit(0 if (ok_syn and ok_loc and ok_dc and ok_dj and ok_ft) else 1)
-    else:
-        ok_syntax = syntax_check()
-        ok_locale = check_locale()
-        ok_dc = check_dead_code()
-        ok_dj = check_dead_js()
-        ok_ft = check_functions()
-        ok_smoke = smoke_test()
-        sys.exit(0 if (ok_syntax and ok_locale and ok_dc and ok_dj and ok_ft and ok_smoke) else 1)

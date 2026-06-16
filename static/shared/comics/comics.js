@@ -109,9 +109,9 @@ var ComicsPicker = (function() {
       _previewEl.style.left = left + 'px';
       _previewEl.style.top = top + 'px';
       if (fileData.type === 'video') {
-        _previewEl.innerHTML = '<video src="/api/media?path=' + encodeURIComponent(path) + '" autoplay muted loop playsinline controls></video>';
+        _previewEl.innerHTML = '<video src="/api/media?path=' + encodeURIComponent(path) + _cbSuffix() + '" autoplay muted loop playsinline controls></video>';
       } else {
-        _previewEl.innerHTML = '<img src="/api/media?path=' + encodeURIComponent(path) + '" alt="">';
+        _previewEl.innerHTML = '<img src="/api/media?path=' + encodeURIComponent(path) + _cbSuffix() + '" alt="">';
       }
       _previewEl.classList.add('show');
     }, 300);
@@ -200,7 +200,7 @@ var ComicsPicker = (function() {
   function _itemHtml(f) {
     var sel = _selectedFiles.indexOf(f.path) !== -1;
     var isCover = f.path === _coverPath;
-    var thumb = '/api/thumbnail?path=' + encodeURIComponent(f.path);
+    var thumb = '/api/thumbnail?path=' + encodeURIComponent(f.path) + _cbSuffix();
     var ratio = f.width && f.height ? 'auto ' + f.width + '/' + f.height : 'auto 4/3';
     return '<div class="cpage-item' + (sel ? ' selected' : '') + (isCover ? ' cover' : '') + '" data-path="' + _escHtml(f.path) + '" onclick="ComicsPicker.selectFile(this)">' +
       '<img src="' + thumb + '" alt="" loading="lazy" style="aspect-ratio:' + ratio + '">' +
@@ -358,8 +358,8 @@ var ComicsPicker = (function() {
       var fileData = _galleryData.filter(function(f) { return f.path === p; })[0];
       var isVideo = fileData && fileData.type === 'video';
       var mediaTag = isVideo
-        ? '<video src="/api/media?path=' + encodeURIComponent(p) + '" autoplay muted loop playsinline style="max-height:400px;max-width:400px;display:block"></video>'
-        : '<img src="/api/thumbnail?path=' + encodeURIComponent(p) + '" alt="" loading="lazy">';
+        ? '<video src="/api/media?path=' + encodeURIComponent(p) + _cbSuffix() + '" autoplay muted loop playsinline style="max-height:400px;max-width:400px;display:block"></video>'
+        : '<img src="/api/thumbnail?path=' + encodeURIComponent(p) + _cbSuffix() + '" alt="" loading="lazy">';
       return '<div class="preview-page' + (isCover ? ' preview-cover' : '') + '" draggable="true" data-idx="' + i + '" data-path="' + _escHtml(p) + '">' +
         (isCover ? '<span class="preview-star">★</span>' : '') +
         '<button class="preview-remove" onclick="event.stopPropagation();ComicsPicker.removeFile(' + i + ')" title="' + Shared.t('delete') + '">' +

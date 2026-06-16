@@ -40,7 +40,7 @@ function render() {
         var c = data[i];
         html += '<div class="cm-comic-card" data-id="' + c.id + '">';
         if (c.cover) {
-          html += '<div class="cm-comic-cover"><img src="/api/media?path=' + encodeURIComponent(c.cover) + '" alt="" loading="lazy" onerror="this.parentElement.innerHTML=\'<span class=cm-comic-fallback>&#x1F4C4;</span>\'"></div>';
+          html += '<div class="cm-comic-cover"><img src="/api/media?path=' + encodeURIComponent(c.cover) + _cbSuffix() + '" alt="" loading="lazy" onerror="this.parentElement.innerHTML=\'<span class=cm-comic-fallback>&#x1F4C4;</span>\'"></div>';
         } else {
           html += '<div class="cm-comic-cover"><span class="cm-comic-fallback"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg></span></div>';
         }

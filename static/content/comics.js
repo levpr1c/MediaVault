@@ -30,7 +30,7 @@ function _buildHTML() {
     if (c.cover) {
       html +=
         `<div class="cm-comic-cover">` +
-          `<img src="/api/media?path=${encodeURIComponent(c.cover)}" loading="lazy" onerror="this.parentElement.innerHTML='<span class=cm-comic-fallback>&#x1F4C4;</span>'">` +
+          `<img src="/api/media?path=${encodeURIComponent(c.cover)}${_cbSuffix()}" loading="lazy" onerror="this.parentElement.innerHTML='<span class=cm-comic-fallback>&#x1F4C4;</span>'">` +
         `</div>`
     } else {
       html += `<div class="cm-comic-cover"><span class="cm-comic-fallback">&#x1F4C4;</span></div>`

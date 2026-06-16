@@ -343,6 +343,7 @@ var AdminDashboard = (function() {
       case 'import': return _importDb();
       case 'dedup': confirmKey = 'secConfirmDedup'; apiPath = '/api/deduplicate'; break;
       case 'clearThumbs': confirmKey = 'secConfirmClearThumb'; apiPath = '/api/clear_thumb_cache'; break;
+      case 'clearBrowserCache': confirmKey = 'secConfirmClearBrowser'; apiPath = '/api/clear_browser_cache'; break;
       case 'clearTags': confirmKey = 'secConfirmClearTag'; apiPath = '/api/clear_tags'; break;
       case 'clearFiles': confirmKey = 'secConfirmClearDb'; apiPath = '/api/clear_database'; break;
       case 'clearAll': confirmKey = 'secConfirmClearAll'; apiPath = '/api/delete_all'; break;

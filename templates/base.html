@@ -29,7 +29,9 @@ var CONFIG = {
   mediaDirEmpty: {{ 'true' if media_dir_empty is defined and media_dir_empty else 'false' }},
   page: '{{ page|default('') }}',
   subview: '{{ subview if subview is defined else 'manual' }}',
-  theme: {{ s.theme|tojson }}
+  theme: {{ s.theme|tojson }},
+  cacheBuster: {{ s.cache_buster|default(0)|tojson }},
+  isAdmin: {{ 'true' if session.get('role') == 'admin' else 'false' }}
 };
 </script>
 <script src="/static/shared/utils.js"></script>

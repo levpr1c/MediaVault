@@ -9,14 +9,19 @@ MediaVaultAPI.browse = function(path) {
   return fetch('/api/browse?path=' + encodeURIComponent(path)).then(function(r) { return r.json(); });
 };
 
+function _cb() {
+  var b = window.CONFIG && CONFIG.cacheBuster;
+  return b ? '&cb=' + b : '';
+}
+
 // Фомирование URL для загрузки медиафайла (с поддержкой Range)
 MediaVaultAPI.mediaUrl = function(path) {
-  return '/api/media?path=' + encodeURIComponent(path);
+  return '/api/media?path=' + encodeURIComponent(path) + _cb();
 };
 
 // URL для получения миниатюры (AVIF)
 MediaVaultAPI.thumbnailUrl = function(path) {
-  return '/api/thumbnail?path=' + encodeURIComponent(path);
+  return '/api/thumbnail?path=' + encodeURIComponent(path) + _cb();
 };
 
 // Получение метаданных файла и тегов из БД

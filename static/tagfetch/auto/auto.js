@@ -37,8 +37,8 @@ var TagfetchAuto = (function() {
 
     var ext = (data.name || '').split('.').pop().toLowerCase();
     var isVideo = ['mp4','webm','mov','avi','mkv'].indexOf(ext) !== -1;
-    var thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(data.path);
-    var mediaUrl = '/api/media?path=' + encodeURIComponent(data.path);
+    var thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(data.path) + _cbSuffix();
+    var mediaUrl = '/api/media?path=' + encodeURIComponent(data.path) + _cbSuffix();
 
     var sections = [
       ['dan_artist', '🎨 Artist', 'artist'],
@@ -136,7 +136,7 @@ var TagfetchAuto = (function() {
     overlay.className = 'auto-hover-preview';
     wrap.appendChild(overlay);
     _previewOverlay = overlay;
-    var url = '/api/media?path=' + encodeURIComponent(path);
+    var url = '/api/media?path=' + encodeURIComponent(path) + _cbSuffix();
     var video = document.createElement('video');
     video.src = url;
     video.muted = true;

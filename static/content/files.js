@@ -217,7 +217,7 @@ function _renderGallery() {
   }
 
   gallery.innerHTML = items.map(f => {
-    const thumbSrc = '/api/thumbnail?path=' + encodeURIComponent(f.path)
+    const thumbSrc = '/api/thumbnail?path=' + encodeURIComponent(f.path) + _cbSuffix()
     const isImg = isImageExt(f.name)
     const isVideo = isVideoExt(f.name)
     return `<div class="cm-files-gallery-item" data-path="${esc(f.path)}" data-action="view-file" data-filepath="${esc(f.path)}">` +

@@ -4,7 +4,7 @@ tagfetch web — standalone Flask app for fetching tags from boorus.
 Design matches MediaVault (index.html) dark/light theme.
 """
 
-import hashlib, io, json, logging, math, os, re, secrets, shutil, sqlite3, subprocess, sys, time, threading, urllib.parse, webbrowser
+import hashlib, io, json, logging, math, os, re, secrets, shutil, sqlite3, subprocess, sys, time, threading, urllib.parse
 from functools import wraps
 
 import requests
@@ -203,6 +203,9 @@ LOCALE = {
         'settingsRegenMissing': '🔧 Generate missing thumbnails',
         'secConfirmClearThumb': '⚠️ Clear ALL cached thumbnails? They will be regenerated on demand.',
         'secConfirmRegenThumb': '⚠️ Regenerate ALL thumbnails now? This may take a while.',
+        'secConfirmClearBrowser': '⚠️ Clear browser cache? All clients will reload thumbnails and media on next visit.',
+        'settingsClearBrowserCache': '🧹 Clear browser cache',
+        'settingsClearBrowserCacheDesc': 'Increment cache buster — forces browsers to refetch thumbnails and media.',
         'settingsError': '❌ Error',
         'secPassword': 'Password',
         'secUsername': 'Username',
@@ -401,6 +404,9 @@ LOCALE = {
         'settingsRegenMissing': '🔧 Сгенерировать недостающие',
         'secConfirmClearThumb': '⚠️ Очистить ВСЕ кэшированные превью? Они будут перегенерированы при просмотре.',
         'secConfirmRegenThumb': '⚠️ Перегенерировать ВСЕ превью сейчас? Это может занять некоторое время.',
+        'secConfirmClearBrowser': '⚠️ Сбросить кэш браузера? Все клиенты перезагрузят превью и медиа при следующем визите.',
+        'settingsClearBrowserCache': '🧹 Сбросить кэш браузера',
+        'settingsClearBrowserCacheDesc': 'Инкрементировать cache buster — браузеры перезапросят превью и медиафайлы.',
         'settingsError': '❌ Ошибка',
         'secNewPassword': 'Новый пароль',
         'secPwTooShort': 'Пароль слишком короткий (мин. 4)',
@@ -637,7 +643,7 @@ def load_settings():
         with open(SETTINGS_FILE) as f:
             s = json.load(f)
     except Exception:
-        s = {'media_dir': '', 'theme': 'dark', 'effects': True, 'three_bg': True, 'startup_scan_count': 0, 'startup_scan_dir': ''}
+        s = {'media_dir': '', 'theme': 'dark', 'effects': True, 'three_bg': True, 'cache_buster': 0, 'startup_scan_count': 0, 'startup_scan_dir': ''}
     # replenish api keys from credential store
     if _credential_store:
         for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key'):
@@ -877,13 +883,9 @@ def _regen_all_thumbnails():
 # ── Помощники категорий тегов ──
 
 _COMMON_META_TAGS = [
-    'photo', 'artwork', 'illustration', 'fanart', 'commission',
-    'highres', 'absurdres', 'commentary', 'english_commentary',
+    'photo', 'video', 'gif', 'animated', 'sound',
     'ratio:1:1', 'ratio:3:2', 'ratio:4:3', 'ratio:5:4', 'ratio:16:9',
     'ratio:16:10', 'ratio:21:9', 'ratio:32:9', 'ratio:9:16',
-    'monochrome', 'grayscale', 'colored', 'sketch', 'lineart',
-    'translated', 'remake', 'alternate_version', 'sample',
-    'bad_id', 'bad_duplicate', 'banned',
 ]
 
 # Создаёт категории из Danbooru-ответа (artist, character, copyright, meta, general)
@@ -957,8 +959,7 @@ def _categorize_r34_tag(tag):
 # Создаёт категории для тегов Rule34 (перекрёстная ссылка на Danbooru или эвристика)
 def _ensure_r34_categories(r34_tags):
     """Insert R34 tags into tag_category_members with cross-referenced or heuristic categories.
-    Only tags with a known prefix (artist:, character:, series:, copyright:) get categorized.
-    Flat R34 tags (no prefix) are left uncategorized — user can assign them manually."""
+    All tags get categorized: known prefixes use their category, flat tags go to 'general'."""
     if not r34_tags:
         return
     if not os.path.exists(_DB_PATH):
@@ -968,9 +969,8 @@ def _ensure_r34_categories(r34_tags):
         _ensure_common_meta(db)
         for tag in r34_tags:
             cat = _categorize_r34_tag(tag)
-            if cat != 'general':
-                db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)", [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','meta':'#999999'}.get(cat, '#cccccc')])
-                db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source) VALUES (?, ?, 'rule34')", [tag, cat])
+            db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)", [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
+            db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source) VALUES (?, ?, 'rule34')", [tag, cat])
         db.commit()
         db.close()
     except Exception:
@@ -1093,7 +1093,6 @@ def _ensure_db_schema():
     try:
         db = _db_conn()
         db.execute('CREATE TABLE IF NOT EXISTS files (path TEXT PRIMARY KEY, name TEXT, type TEXT, size INTEGER, mtime INTEGER, tags TEXT, width INTEGER DEFAULT 0, height INTEGER DEFAULT 0, created_at INTEGER)')
-        db.execute('CREATE TABLE IF NOT EXISTS tags (name TEXT PRIMARY KEY)')
         db.execute('CREATE TABLE IF NOT EXISTS tag_categories (name TEXT PRIMARY KEY, color TEXT NOT NULL)')
         db.execute('CREATE TABLE IF NOT EXISTS tag_category_members (tag_name TEXT PRIMARY KEY, category TEXT NOT NULL, source TEXT DEFAULT \'auto\')')
         db.execute('CREATE TABLE IF NOT EXISTS auto_scan (path TEXT PRIMARY KEY, scanned_at INTEGER NOT NULL)')
@@ -2138,9 +2137,14 @@ def api_media():
     if not safe or not os.path.exists(safe):
         abort(404)
     ext = os.path.splitext(safe)[1].lower()
+    resp = send_file(safe, conditional=True)
+    resp.headers['Cache-Control'] = 'public, max-age=86400, immutable'
+    mtime = os.path.getmtime(safe)
+    fsize = os.path.getsize(safe)
+    resp.headers['ETag'] = f'"{int(mtime)}-{fsize}"'
     if ext in _VIDEO_EXTS:
-        return send_file(safe, mimetype='video/' + ext[1:], conditional=True)
-    return send_file(safe)
+        resp.mimetype = 'video/' + ext[1:]
+    return resp
 
 # Отдача превью изображения/видео. Если нет превью — отдаёт оригинал. Параметр: path.
 @app.route('/api/thumbnail')
@@ -2154,11 +2158,19 @@ def api_thumbnail():
         abort(404)
     data = _get_thumbnail(safe)
     if data:
-        return send_file(io.BytesIO(data), mimetype='image/avif')
+        resp = send_file(io.BytesIO(data), mimetype='image/avif')
+        resp.headers['Cache-Control'] = 'public, max-age=86400, immutable'
+        resp.headers['ETag'] = f'"{int(os.path.getmtime(safe))}-{len(data)}"'
+        return resp
     ext = os.path.splitext(safe)[1].lower()
     if ext in _VIDEO_EXTS:
         abort(404)
-    return send_file(safe)
+    resp = send_file(safe, conditional=True)
+    resp.headers['Cache-Control'] = 'public, max-age=86400, immutable'
+    mtime = os.path.getmtime(safe)
+    fsize = os.path.getsize(safe)
+    resp.headers['ETag'] = f'"{int(mtime)}-{fsize}"'
+    return resp
 
 # Информация о файле: размер, размеры изображения, теги из БД. Параметр: path.
 @app.route('/api/fileinfo')
@@ -2499,12 +2511,14 @@ def api_categories():
             if action == 'add_category':
                 db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)", [data['name'], data.get('color', '#888888')])
             elif action == 'assign_tag':
-                source = data.get('source', 'manual')
+                existing = db.execute("SELECT source FROM tag_category_members WHERE tag_name = ?", [data['tag']]).fetchone()
+                source = existing[0] if existing else data.get('source', 'manual')
                 db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source) VALUES (?, ?, ?)", [data['tag'], data['category'], source])
             elif action == 'add_tag':
-                source = data.get('source', 'manual')
                 tag_name = data.get('tag_name') or data.get('tag')
                 cat_name = data.get('cat_name') or data.get('category')
+                existing = db.execute("SELECT source FROM tag_category_members WHERE tag_name = ?", [tag_name]).fetchone()
+                source = existing[0] if existing else data.get('source', 'manual')
                 db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source) VALUES (?, ?, ?)", [tag_name, cat_name, source])
             elif action == 'remove_tag':
                 db.execute("DELETE FROM tag_category_members WHERE tag_name = ?", [data['tag']])
@@ -2515,7 +2529,6 @@ def api_categories():
                 new = data['new_tag']
                 db.execute("UPDATE tag_category_members SET tag_name = ? WHERE tag_name = ?", [new, old])
                 db.execute("UPDATE files SET tags = REPLACE(tags, ?, ?) WHERE tags LIKE ?", [old, new, '%' + old + '%'])
-                db.execute("INSERT OR IGNORE INTO tags (name) VALUES (?)", [new])
             elif action == 'delete_category':
                 name = data['name']
                 db.execute("DELETE FROM tag_category_members WHERE category = ?", [name])
@@ -2636,13 +2649,6 @@ def api_save_file():
             db.close()
             new_tags = merged
 
-        # Ensure each tag is in the tags lookup
-        all_saved = set(t.strip() for t in new_tags.split(',') if t.strip())
-        for t in all_saved:
-            db2 = _db_conn()
-            db2.execute("INSERT OR IGNORE INTO tags (name) VALUES (?)", [t])
-            db2.close()
-
         # Mark persistent found status
         _ensure_scan_results_table()
         if api_tags:
@@ -2741,11 +2747,6 @@ def api_save_all_fetched():
                     'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
                     [rel_path, fname, ftype, size, mtime, merged, width, height, int(time.time())]
                 )
-            if merged:
-                for t in merged.split(','):
-                    t = t.strip()
-                    if t:
-                        db.execute("INSERT OR IGNORE INTO tags (name) VALUES (?)", [t])
             db.commit()
             if dan_tags:
                 _ensure_categories(dan_result)
@@ -2974,10 +2975,11 @@ def api_clear_thumb_cache():
         try:
             db = _db_conn()
             db.execute('DELETE FROM thumbnail_cache')
+            db.execute('VACUUM')
             db.commit()
             count = db.total_changes
             db.close()
-            log_info('clear_thumb_cache removed %d entries', count)
+            log_info('clear_thumb_cache removed %d entries + VACUUM', count)
         except Exception as e:
             log_error('clear_thumb_cache error: %s', e)
             return jsonify({'error': str(e)}), 500
@@ -3196,6 +3198,17 @@ def api_tags_bulk():
         db.close()
     return jsonify({'ok': True})
 
+# Инкрементирует cache_buster — браузер перезапросит thumbnail/media.
+@app.route('/api/clear_browser_cache', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_clear_browser_cache():
+    s = load_settings()
+    s['cache_buster'] = s.get('cache_buster', 0) + 1
+    save_settings(s)
+    log_info('clear_browser_cache: busted to %d', s['cache_buster'])
+    return jsonify({'ok': True, 'cache_buster': s['cache_buster']})
+
 # Очистка in-memory кэша (API + MD5) и таблиц scan_results/auto_scan.
 @app.route('/api/clear_tag_cache', methods=['POST'])
 @admin_required
@@ -3225,19 +3238,25 @@ def api_clear_tag_cache():
 def api_clear_database():
     """Clear all file records from the database (preserves categories)."""
     log_info('clear_database')
+    global _api_cache, _md5_cache
+    _api_cache = {}
+    _md5_cache = {}
     if not os.path.exists(_DB_PATH):
         return jsonify({'ok': True})
     try:
         db = _db_conn()
         db.execute('DELETE FROM files')
+        db.execute('DELETE FROM thumbnail_cache')
         db.execute('DROP TABLE IF EXISTS scan_results')
         db.execute('DROP TABLE IF EXISTS auto_scan')
+        db.execute('DROP TABLE IF EXISTS batch_scan')
+        db.execute('VACUUM')
         db.commit()
         db.close()
         s = load_settings()
         s['startup_scan_count'] = 0
         save_settings(s)
-        log_info('clear_database: cleared files, scan_results, auto_scan')
+        log_info('clear_database: cleared files, thumb_cache, scan_results, auto_scan, batch_scan + VACUUM')
         return jsonify({'ok': True})
     except Exception as e:
         log_error('clear_database error: %s', e)
@@ -3250,6 +3269,9 @@ def api_clear_database():
 def api_clear_all():
     """Clear everything: tag cache, thumb cache, database — then rescan in background."""
     log_info('clear_all: starting')
+    global _api_cache, _md5_cache
+    _api_cache = {}
+    _md5_cache = {}
     api_clear_tag_cache()
     api_clear_thumb_cache()
     api_clear_database()
@@ -3271,13 +3293,14 @@ def api_clear_tags():
     if os.path.exists(_DB_PATH):
         try:
             db = _db_conn()
-            db.execute('DROP TABLE IF EXISTS tags')
             db.execute('DROP TABLE IF EXISTS tag_category_members')
             db.execute('DROP TABLE IF EXISTS scan_results')
             db.execute('DROP TABLE IF EXISTS auto_scan')
+            db.execute('DROP TABLE IF EXISTS batch_scan')
+            db.execute('VACUUM')
             db.commit()
             db.close()
-            log_info('clear_tags: dropped tags, tag_category_members, scan_results, auto_scan')
+            log_info('clear_tags: dropped tag_category_members, scan_results, auto_scan, batch_scan + VACUUM')
         except Exception as e:
             log_error('clear_tags db error: %s', e)
             return jsonify({'error': str(e)}), 500
@@ -3297,15 +3320,16 @@ def api_delete_all():
         try:
             db = _db_conn()
             db.execute('DELETE FROM files')
-            db.execute('DROP TABLE IF EXISTS tags')
             db.execute('DROP TABLE IF EXISTS tag_categories')
             db.execute('DROP TABLE IF EXISTS tag_category_members')
             db.execute('DROP TABLE IF EXISTS scan_results')
             db.execute('DROP TABLE IF EXISTS auto_scan')
+            db.execute('DROP TABLE IF EXISTS batch_scan')
             db.execute('DELETE FROM thumbnail_cache')
+            db.execute('VACUUM')
             db.commit()
             db.close()
-            log_info('delete_all: cleared files, tags, categories, scan data, thumbs')
+            log_info('delete_all: cleared files, categories, scan data, thumbs + VACUUM')
         except Exception as e:
             log_error('delete_all db error: %s', e)
             return jsonify({'error': str(e)}), 500
@@ -3578,8 +3602,7 @@ def main():
     # Фоновое сканирование + открытие браузера (пропускаем reloader parent)
     if not args.debug or os.environ.get('WERKZEUG_RUN_MAIN'):
         threading.Thread(target=_quick_scan, daemon=True).start()
-        url = 'http://%s:%d' % (args.bind, args.port)
-        threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+        # browser auto-open disabled
 
     use_reloader = args.debug and not getattr(sys, 'frozen', False)
     if getattr(sys, 'frozen', False) and args.debug:

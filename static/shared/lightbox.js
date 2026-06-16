@@ -37,7 +37,7 @@ var Lightbox = (function() {
     this._deleteSelected = [];
     this._deleteMode = false;
     this._uniqueId = (++_idxCounter) + '_' + Date.now();
-    this._mediaUrlFn = opts.mediaUrlFn || function(path) { return '/api/media?path=' + encodeURIComponent(path); };
+    this._mediaUrlFn = opts.mediaUrlFn || function(path) { var b = window.CONFIG && CONFIG.cacheBuster; return '/api/media?path=' + encodeURIComponent(path) + (b ? '&cb=' + b : ''); };
     this._nameFn = opts.nameFn || function(f) { return f.name || f.path.split('/').pop(); };
     this._onSaveTags = opts.onSaveTags || null;
     this._onSearchByTag = opts.onSearchByTag || null;
@@ -443,9 +443,10 @@ var Lightbox = (function() {
       tagsHtml += '</div>';
     }
 
+    var isAdmin = window.CONFIG && CONFIG.isAdmin;
     var lblClass = isDel ? 'lb-del-btn active' : 'lb-del-btn';
     var delBarHtml = '';
-    if (isDel) {
+    if (isDel && isAdmin) {
       var selCount = this._deleteSelected.length;
       delBarHtml = '<div id="lbDelBar" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:6px 0;border-top:1px solid var(--border)">' +
         '<span style="font-size:12px;color:var(--text2);flex:1">' + selCount + ' selected</span>' +
@@ -459,24 +460,26 @@ var Lightbox = (function() {
     panel.innerHTML =
       '<div class="lb-header">' +
         '<h3>' + this._esc(file.name || '') + '</h3>' +
-        '<button id="lbDelToggle" class="' + lblClass + '" title="' + (isDel ? 'Exit delete mode' : 'Delete tags') + '">\u2715</button>' +
+        (isAdmin ? '<button id="lbDelToggle" class="' + lblClass + '" title="' + (isDel ? 'Exit delete mode' : 'Delete tags') + '">\u2715</button>' : '') +
       '</div>' +
       '<div class="meta">' + (file.width > 0 ? file.width + '\u00D7' + file.height : '') + '</div>' +
-      (isDel && this._deleteMode ? '<div style="font-size:11px;color:#ff4444;margin-bottom:6px">Select tags to delete</div>' : '') +
+      (isDel && this._deleteMode && isAdmin ? '<div style="font-size:11px;color:#ff4444;margin-bottom:6px">Select tags to delete</div>' : '') +
       delBarHtml +
       (tagsHtml || '<div class="lb-meta-text">No tags</div>') +
-      '<div class="lb-input-row">' +
+      (isAdmin ? '<div class="lb-input-row">' +
       '<input type="text" id="' + this._id('TagInput') + '" placeholder="Add tag">' +
       '</div>' +
-      '<div id="lbAutocomplete"></div>';
+      '<div id="lbAutocomplete"></div>' : '');
 
-    // Wire delete mode controls
-    var delToggle = document.getElementById('lbDelToggle');
-    if (delToggle) delToggle.onclick = this._toggleDeleteMode.bind(this);
-    var delConfirm = document.getElementById('lbDelConfirm');
-    if (delConfirm) delConfirm.onclick = this._deleteSelectedTags.bind(this);
-    var delCancel = document.getElementById('lbDelCancel');
-    if (delCancel) delCancel.onclick = function() { self._deleteMode = false; self._deleteSelected = []; self._renderContent(true); };
+    // Wire delete mode controls (admin only)
+    if (isAdmin) {
+      var delToggle = document.getElementById('lbDelToggle');
+      if (delToggle) delToggle.onclick = this._toggleDeleteMode.bind(this);
+      var delConfirm = document.getElementById('lbDelConfirm');
+      if (delConfirm) delConfirm.onclick = this._deleteSelectedTags.bind(this);
+      var delCancel = document.getElementById('lbDelCancel');
+      if (delCancel) delCancel.onclick = function() { self._deleteMode = false; self._deleteSelected = []; self._renderContent(true); };
+    }
   };
 
   /* ─── NAVIGATION ─── */

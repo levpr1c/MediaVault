@@ -24,7 +24,7 @@
         <button class="btn btn-xs filter-btn" data-filter="db" onclick="setFilter('db')" data-i18n="tfFilterInDb">{{ _('tfFilterInDb') }}</button>
       </div>
       <div class="path-browser" id="browseBrowser"></div>
-      <div id="fetchAllResults" class="fetch-results" style="display:none"></div>
+      <div id="fetchAllResults" class="fetch-results hidden"></div>
     </aside>
     <main>
       <div id="fileInfo" data-i18n="tfSelectFile">{{ _('tfSelectFile') }}</div>
@@ -37,7 +37,7 @@
       <div class="action-bar">
         <button class="btn btn-primary" onclick="fetchTags()" id="fetchBtn" data-i18n="tfFetchTags">{{ _('tfFetchTags') }}</button>
         <button class="btn" onclick="fetchAllFiles()" id="fetchAllBtn" data-i18n="tfFetchAll">{{ _('tfFetchAll') }}</button>
-        <button class="btn" onclick="cancelFetchAll()" id="cancelFetchAllBtn" style="display:none" data-i18n="cancel">{{ _('cancel') }}</button>
+        <button class="btn hidden" onclick="cancelFetchAll()" id="cancelFetchAllBtn" data-i18n="cancel">{{ _('cancel') }}</button>
         <button class="btn" onclick="clearCurrentCache()" id="clearBtn" data-i18n="tfClearCache">{{ _('tfClearCache') }}</button>
         <button class="btn btn-success" onclick="openSaveAllModal()" id="saveAllBtnHeader" data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button>
       </div>

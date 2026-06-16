@@ -124,7 +124,7 @@ var TagfetchManual = (function() {
     var browser = document.getElementById('browseBrowser');
     var breadcrumb = document.getElementById('browseBreadcrumb');
     var fetchAllRes = document.getElementById('fetchAllResults');
-    if (fetchAllRes) fetchAllRes.style.display = 'none';
+    if (fetchAllRes) fetchAllRes.classList.add('hidden');
     TagfetchAPI.browse(path).then(function(data) {
       var parts = data.path.split('/').filter(Boolean);
       var bcHtml = '';
@@ -278,12 +278,16 @@ var TagfetchManual = (function() {
         var allDanTags = (data.dan_general||[]).length + (data.dan_artist||[]).length + (data.dan_character||[]).length + (data.dan_copyright||[]).length + (data.dan_meta||[]).length;
         dc.textContent = '(' + allDanTags + ')';
       }
-      if (data.r34_preview) {
+      if (data.r34_image) {
+        document.getElementById('r34Preview').innerHTML = '<img src="' + Shared.esc(data.r34_image) + '" alt="Rule34 preview" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=placeholder><span class=big>🚫</span>Preview unavailable</div>\'">';
+      } else if (data.r34_preview) {
         document.getElementById('r34Preview').innerHTML = '<img src="' + Shared.esc(data.r34_preview) + '" alt="Rule34 preview" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=placeholder><span class=big>🚫</span>Preview unavailable</div>\'">';
       } else {
         document.getElementById('r34Preview').innerHTML = '<div class="placeholder"><span class="big">🚫</span>No image</div>';
       }
-      if (data.dan_preview) {
+      if (data.dan_image) {
+        document.getElementById('danPreview').innerHTML = '<img src="' + Shared.esc(data.dan_image) + '" alt="Danbooru preview" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=placeholder><span class=big>🚫</span>Preview unavailable</div>\'">';
+      } else if (data.dan_preview) {
         document.getElementById('danPreview').innerHTML = '<img src="' + Shared.esc(data.dan_preview) + '" alt="Danbooru preview" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=placeholder><span class=big>🚫</span>Preview unavailable</div>\'">';
       } else {
         document.getElementById('danPreview').innerHTML = '<div class="placeholder"><span class="big">🚫</span>No image</div>';
@@ -317,9 +321,9 @@ var TagfetchManual = (function() {
     var btn = document.getElementById('fetchAllBtn');
     btn.disabled = true;
     var cancelBtn = document.getElementById('cancelFetchAllBtn');
-    if (cancelBtn) cancelBtn.style.display = '';
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
     var resultsDiv = document.getElementById('fetchAllResults');
-    resultsDiv.style.display = 'block';
+    resultsDiv.classList.remove('hidden');
     resultsDiv.innerHTML = '<div style="padding:4px;font-size:12px;opacity:.7">⏳ Processing…</div>';
 
     _fetchAllData = [];
@@ -328,12 +332,12 @@ var TagfetchManual = (function() {
       if (_fetchAllCancelled) {
         btn.disabled = false;
         btn.innerHTML = '🔍 Fetch All';
-        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (cancelBtn) cancelBtn.classList.add('hidden');
         resultsDiv.innerHTML += '<div style="padding:4px;font-size:12px;opacity:.5">⛔ Cancelled</div>';
         return;
       }
       if (i >= _fileEntries.length) {
-        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (cancelBtn) cancelBtn.classList.add('hidden');
         var html = '<div style="font-size:12px;font-weight:600;padding:4px 0">📋 Results (' + _fileEntries.length + ' files)</div>';
         _fetchAllData.forEach(function(r, idx) {
           var icon = r.saved ? '✅' : (r.found ? '🔍' : '❌');
@@ -373,12 +377,16 @@ var TagfetchManual = (function() {
           var allDanTags = (data.dan_general||[]).length + (data.dan_artist||[]).length + (data.dan_character||[]).length + (data.dan_copyright||[]).length + (data.dan_meta||[]).length;
           dc.textContent = '(' + allDanTags + ')';
         }
-        if (data.r34_preview) {
+        if (data.r34_image) {
+          document.getElementById('r34Preview').innerHTML = '<img src="' + Shared.esc(data.r34_image) + '" alt="Rule34 preview" loading="lazy">';
+        } else if (data.r34_preview) {
           document.getElementById('r34Preview').innerHTML = '<img src="' + Shared.esc(data.r34_preview) + '" alt="Rule34 preview" loading="lazy">';
         } else {
           document.getElementById('r34Preview').innerHTML = '<div class="placeholder"><span class="big">🚫</span>No image</div>';
         }
-        if (data.dan_preview) {
+        if (data.dan_image) {
+          document.getElementById('danPreview').innerHTML = '<img src="' + Shared.esc(data.dan_image) + '" alt="Danbooru preview" loading="lazy">';
+        } else if (data.dan_preview) {
           document.getElementById('danPreview').innerHTML = '<img src="' + Shared.esc(data.dan_preview) + '" alt="Danbooru preview" loading="lazy">';
         } else {
           document.getElementById('danPreview').innerHTML = '<div class="placeholder"><span class="big">🚫</span>No image</div>';

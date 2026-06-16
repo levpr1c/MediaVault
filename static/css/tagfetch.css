@@ -1,4 +1,7 @@
 /* ─── TAGFETCH: МАКЕТ (LAYOUT) ─── */
+.tf-page[data-tf="manual"]{display:flex;flex:1;min-height:0;flex-direction:row}
+#tagfetchView .tf-page[data-tf="manual"]>aside{overflow-y:auto}
+#tagfetchView .tf-page[data-tf="manual"]>main{overflow-y:auto}
 #tagfetchView aside{width:364px;min-width:260px;max-width:500px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:12px;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:8px;resize:horizontal}
 aside::-webkit-resizer{background:var(--surface)!important;border:none!important}
 aside::-webkit-scrollbar-corner{background:var(--surface)!important}

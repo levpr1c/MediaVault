@@ -16,11 +16,11 @@ var TagfetchAuto = (function() {
 
   // Показ/скрытие кнопок сохранения авто-результатов
   function showAutoSave(count) {
-    var show = count > 0 ? 'flex' : 'none';
+    var show = count > 0;
     var ba = document.getElementById('autoActions');
     var bat = document.getElementById('autoActionsTop');
-    if (ba) ba.style.display = show;
-    if (bat) bat.style.display = show;
+    if (ba) ba.classList.toggle('hidden', !show);
+    if (bat) bat.classList.toggle('hidden', !show);
     var bs = document.getElementById('autoSaveStats');
     if (bs) bs.textContent = count + ' files with tags';
     var bst = document.getElementById('autoSaveStatsTop');
@@ -181,15 +181,15 @@ var TagfetchAuto = (function() {
     btn.disabled = true;
     btn.innerHTML = '⏳ Scanning…';
     var cancelBtn = document.getElementById('cancelAutoBtn');
-    if (cancelBtn) cancelBtn.style.display = '';
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
     var scBtn = document.getElementById('saveCancelAutoBtn');
-    if (scBtn) scBtn.style.display = '';
+    if (scBtn) scBtn.classList.remove('hidden');
     var grid = document.getElementById('autoGrid');
     if (grid) grid.innerHTML = '';
     var ba = document.getElementById('autoActions');
-    if (ba) ba.style.display = 'none';
+    if (ba) ba.classList.add('hidden');
     var bat = document.getElementById('autoActionsTop');
-    if (bat) bat.style.display = 'none';
+    if (bat) bat.classList.add('hidden');
     var bs = document.getElementById('autoStats');
     if (bs) bs.textContent = '0 files scanned';
     _autoResults = [];
@@ -207,9 +207,9 @@ var TagfetchAuto = (function() {
       function releaseControls() {
         btn.disabled = false;
         btn.innerHTML = Shared.t('tfStartAuto');
-        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (cancelBtn) cancelBtn.classList.add('hidden');
         var scb = document.getElementById('saveCancelAutoBtn');
-        if (scb) scb.style.display = 'none';
+        if (scb) scb.classList.add('hidden');
         _autoAbortController = null;
       }
 
@@ -284,9 +284,9 @@ var TagfetchAuto = (function() {
   // Отмена сканирования и немедленное сохранение уже полученных результатов
   function saveAndCancelAuto() {
     cancelAutoScan();
-    document.getElementById('saveCancelAutoBtn').style.display = 'none';
+    document.getElementById('saveCancelAutoBtn').classList.add('hidden');
     var cb = document.getElementById('cancelAutoBtn');
-    if (cb) cb.style.display = 'none';
+    if (cb) cb.classList.add('hidden');
     var bs = document.getElementById('autoStats');
     if (bs) bs.textContent = _autoResults.length ? '⛔ Cancelled, saving…' : '⛔ Cancelled';
     if (_autoResults.length) {

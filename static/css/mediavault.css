@@ -126,6 +126,17 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .cat-horizontal-scroll{display:flex;gap:16px;overflow:auto;padding:8px 8px 16px;max-height:none;flex:1;min-height:0}
 .cat-horizontal-scroll > div{flex-shrink:0;width:280px;max-height:60vh;overflow-y:auto;align-self:flex-start}
 
+/* ─── FOOTER LINKS (popular tags etc) ─── */
+.gallery-footer-links{display:flex;justify-content:center;gap:8px;margin:12px 0}
+
+/* ─── BULK TAG INPUT ─── */
+.bulk-input-wrap{flex:1;position:relative}
+.bulk-autocomplete{position:absolute;bottom:calc(100% + 6px);left:0;right:0;z-index:60}
+#bulkTagInput{width:100%}
+
+/* ─── CATEGORY MODAL INPUT ─── */
+.cat-modal-input{flex:1}
+
 /* ─── ОБЩЕЕ ДЛЯ МОДАЛОВ ─── */
 .modal-breadcrumb{padding:6px 0;font-size:13px;margin-bottom:4px}
 

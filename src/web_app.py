@@ -352,6 +352,8 @@ LOCALE = {
         'settingsCleanTagCache': 'Clean Tag Cache',
         'settingsCleanDb': 'Clean Database',
         'settingsCleanAll': 'Clean All',
+        'similarTo': 'Similar to',
+        'similarBtn': 'Similar',
     },
     'ru': {
         'homeTfManual': 'Ручной',
@@ -552,6 +554,8 @@ LOCALE = {
         'settingsCleanTagCache': 'Очистить кэш тегов',
         'settingsCleanDb': 'Очистить БД',
         'settingsCleanAll': 'Очистить всё',
+        'similarTo': 'Похоже на',
+        'similarBtn': 'Похожие',
     },
 }
 
@@ -1574,6 +1578,13 @@ def nhentai_search_page():
     s = load_settings()
     return render_template('nhentai_search.html', page='nhentai-search', s=s)
 
+@app.route('/similar')
+@api_error_handler
+def similar_page():
+    """Похожие изображения по пересечению тегов."""
+    s = load_settings()
+    return render_template('similar.html', page='similar', s=s)
+
 # ─── Settings ────────────────────────────────
 
 @app.route('/settings')
@@ -2273,6 +2284,39 @@ def api_fileinfo():
             info['tag_categories'] = {}
 
     return jsonify(info)
+
+# Похожие изображения по пересечению тегов. Параметр: path.
+@app.route('/api/similar')
+@api_error_handler
+def api_similar():
+    path = request.args.get('path', '')
+    if not path:
+        return jsonify({'error': 'no path'}), 400
+    if not os.path.exists(_DB_PATH):
+        return jsonify({'results': []})
+    db = _db_conn()
+    row = db.execute("SELECT tags FROM files WHERE path = ?", [path]).fetchone()
+    if not row or not row[0]:
+        db.close()
+        return jsonify({'results': []})
+    tags = [t.strip() for t in row[0].split(',') if t.strip()]
+    if not tags:
+        db.close()
+        return jsonify({'results': []})
+    similar = {}
+    for tag in tags:
+        rows = db.execute("""
+            SELECT path, tags FROM files
+            WHERE (',' || tags || ',') LIKE ('%,' || ? || ',%')
+            AND path != ?
+        """, [tag, path]).fetchall()
+        for fpath, ftags in rows:
+            if fpath not in similar:
+                similar[fpath] = {'path': fpath, 'overlap': 0, 'total_tags': len(ftags.split(',')) if ftags else 0}
+            similar[fpath]['overlap'] += 1
+    db.close()
+    results = sorted(similar.values(), key=lambda x: x['overlap'], reverse=True)[:50]
+    return jsonify({'results': results})
 
 # Получение тегов по MD5 с Rule34 и Danbooru. Параметр: path (относительный путь).
 @app.route('/api/fetch_file')

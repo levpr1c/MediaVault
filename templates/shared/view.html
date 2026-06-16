@@ -73,6 +73,9 @@ body{padding-top:44px}
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 21h10"/><path d="M12 21V3"/></svg>
   </button>
   {% else %}
+  <a href="/similar?path={{ path_q }}" class="top-btn" title="{{ _('similarBtn') }}" target="_blank">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+  </a>
   <button class="top-btn" id="toggleTags" onclick="toggleTags()" title="{{ _('navTags') }}">🏷️</button>
   {% endif %}
 </div>

@@ -307,6 +307,8 @@ var _i18nData = {
     settingsCleanDb: "Clean Database",
     settingsCleanDuplicate: "Clean Duplicates",
     settingsCleanTagCache: "Clean Tag Cache",
+    similarTo: "Similar to",
+    similarBtn: "Similar",
     tagfetch: "TAGFETCH",
     tags: "TAGS",
   },
@@ -537,6 +539,8 @@ var _i18nData = {
     settingsCleanDb: "Очистить БД",
     settingsCleanDuplicate: "Очистить дубликаты",
     settingsCleanTagCache: "Очистить кэш тегов",
+    similarTo: "Похоже на",
+    similarBtn: "Похожие",
     tagfetch: "ПОИСК ТЕГОВ",
     tags: "ТЕГИ",
   }

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Similar{% endblock %}
+{% block hdr_brand %}SIMILAR{% endblock %}
+{% block hdr_tabs %}
+<div class="cm-hdr-left">
+  <a href="/" class="cm-hdr-btn">← {{ _('home') }}</a>
+</div>
+{% endblock %}
+{% block hdr_drawer %}{% endblock %}
+{% block content %}
+<div id="contentView">
+  <main class="admin-main">
+    <h2 class="admin-page-title">{{ _('similarTo') }} <span id="simSource" style="color:var(--text2);font-size:14px"></span></h2>
+    <div id="simLoading" class="admin-loading" style="display:flex">
+      <span class="fetch-spinner"></span> <span data-i18n="loading">{{ _('loading') }}</span>
+    </div>
+    <div id="simGrid" class="db-grid"></div>
+  </main>
+</div>
+<script>
+const params = new URLSearchParams(location.search);
+const path = params.get('path');
+if (path) {
+  document.getElementById('simSource').textContent = path.split('/').pop();
+  fetch('/api/similar?path=' + encodeURIComponent(path))
+    .then(r => r.json())
+    .then(data => {
+      const loading = document.getElementById('simLoading');
+      const grid = document.getElementById('simGrid');
+      loading.style.display = 'none';
+      if (!data.results || !data.results.length) {
+        grid.innerHTML = '<div class="admin-loading">{{ _('noResults') }}</div>';
+        return;
+      }
+      grid.innerHTML = data.results.map(f =>
+        `<a href="/view?path=${encodeURIComponent(f.path)}" class="db-tool" style="flex-direction:column;align-items:stretch;gap:4px;text-decoration:none">
+          <img src="/api/thumbnail?path=${encodeURIComponent(f.path)}&cb=${Date.now()}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:6px;background:var(--bg)" loading="lazy">
+          <div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.overlap} tags shared</div>
+        </a>`
+      ).join('');
+    });
+}
+</script>
+<link rel="stylesheet" href="/static/css/content.css?v=10">
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="/static/css/content.css?v=10">
+{% endblock %}
+{% block title %}Kemono/Coomer Import{% endblock %}
+{% block hdr_brand %}KEMONO/COOMER{% endblock %}
+{% block hdr_tabs %}
+<div class="cm-hdr-left">
+  <a href="/content-mgmt/tags-manual" class="cm-hdr-btn">← {{ _('mvHeader') }}</a>
+</div>
+{% endblock %}
+{% block hdr_drawer %}{% endblock %}
+{% block content %}
+<div id="contentView">
+  <main class="admin-main">
+    <h2 class="admin-page-title">Kemono / Coomer Import</h2>
+    <div class="admin-card" style="margin-bottom:20px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <input id="kmUrl" type="text" placeholder="https://kemono.su/... or https://coomer.su/..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px">
+        <button id="kmInfoBtn" class="btn btn-sm btn-primary" style="padding:10px 20px;font-size:14px;height:auto">Get Info</button>
+      </div>
+    </div>
+    <div id="kmLoading" class="admin-loading" style="display:none">
+      <span class="fetch-spinner"></span> Loading...
+    </div>
+    <div id="kmResult" style="display:none">
+      <div class="admin-card" style="margin-bottom:20px">
+        <div id="kmInfo"></div>
+        <button id="kmDownloadBtn" class="btn btn-sm btn-primary" style="margin-top:12px;display:none">Download All</button>
+      </div>
+      <div id="kmProgress" style="display:none">
+        <div class="admin-loading"><span class="fetch-spinner"></span> Downloading...</div>
+      </div>
+      <div id="kmFiles" class="db-grid"></div>
+    </div>
+  </main>
+</div>
+<script>
+document.getElementById('kmInfoBtn').addEventListener('click', getInfo);
+document.getElementById('kmUrl').addEventListener('keydown', e => { if (e.key === 'Enter') getInfo() });
+
+let _currentUrl = '';
+async function getInfo() {
+  const url = document.getElementById('kmUrl').value.trim();
+  if (!url) return;
+  _currentUrl = url;
+  document.getElementById('kmResult').style.display = 'none';
+  const loading = document.getElementById('kmLoading');
+  loading.style.display = 'flex';
+  try {
+    const res = await fetch('/api/kemono/info?url=' + encodeURIComponent(url));
+    const data = await res.json();
+    loading.style.display = 'none';
+    document.getElementById('kmResult').style.display = 'block';
+    if (data.error) {
+      document.getElementById('kmInfo').innerHTML = '<span style="color:var(--danger)">' + data.error + '</span>';
+      return;
+    }
+    document.getElementById('kmInfo').innerHTML =
+      '<p><strong>Artist:</strong> ' + (data.artist || 'unknown') +
+      '<br><strong>Files:</strong> ' + (data.count || 0) +
+      '<br><strong>URL:</strong> <code style="word-break:break-all">' + data.url + '</code></p>';
+    document.getElementById('kmDownloadBtn').style.display = 'inline-block';
+    document.getElementById('kmDownloadBtn').onclick = () => download(url);
+  } catch(e) {
+    loading.style.display = 'none';
+    document.getElementById('kmResult').style.display = 'block';
+    document.getElementById('kmInfo').innerHTML = '<span style="color:var(--danger)">' + e.message + '</span>';
+  }
+}
+
+async function download(url) {
+  document.getElementById('kmDownloadBtn').style.display = 'none';
+  document.getElementById('kmProgress').style.display = 'flex';
+  try {
+    const res = await fetch('/api/kemono/download', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({url}) });
+    const data = await res.json();
+    document.getElementById('kmProgress').style.display = 'none';
+    if (data.error) {
+      document.getElementById('kmInfo').innerHTML += '<br><span style="color:var(--danger)">Download failed: ' + data.error + '</span>';
+      return;
+    }
+    const files = data.downloaded || [];
+    document.getElementById('kmInfo').innerHTML += '<br><span style="color:var(--success)">Downloaded ' + data.count + ' files</span>';
+    if (files.length) {
+      document.getElementById('kmFiles').innerHTML = files.map(f =>
+        '<div style="font-size:12px;padding:4px 8px;background:var(--surface2);border-radius:4px">' + f + '</div>'
+      ).join('');
+    }
+  } catch(e) {
+    document.getElementById('kmProgress').style.display = 'none';
+    document.getElementById('kmInfo').innerHTML += '<br><span style="color:var(--danger)">' + e.message + '</span>';
+  }
+}
+</script>
+{% endblock %}

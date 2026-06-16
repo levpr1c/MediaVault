@@ -1643,6 +1643,52 @@ def api_nhentai_search():
     result = backend.search(query, page)
     return jsonify(result)
 
+# ── Kemono/Coomer Import ─────────────────────
+
+@app.route('/kemono-import')
+@admin_required
+@api_error_handler
+def kemono_import_page():
+    s = load_settings()
+    return render_template('kemono_import.html', page='kemono-import', s=s)
+
+@app.route('/api/kemono/info')
+@admin_required
+@api_error_handler
+def api_kemono_info():
+    url = request.args.get('url', '').strip()
+    if not url:
+        return jsonify({'error': 'no URL'}), 400
+    from backends.gallerydl import GalleryDlBackend
+    backend = GalleryDlBackend()
+    result = backend.get_info(url)
+    return jsonify(result)
+
+@app.route('/api/kemono/download', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_kemono_download():
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({'error': 'no data'}), 400
+    url = data.get('url', '').strip()
+    if not url:
+        return jsonify({'error': 'no URL'}), 400
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'error': 'media_dir not set'}), 400
+    dest = os.path.join(media_dir, 'Downloads', 'kemono')
+    from backends.gallerydl import GalleryDlBackend
+    backend = GalleryDlBackend()
+    info = backend.get_info(url)
+    artist = info.get('artist', 'unknown') if info.get('ok') else 'unknown'
+    dest_sub = os.path.join(dest, artist)
+    os.makedirs(dest_sub, exist_ok=True)
+    result = backend.download(url, dest_sub)
+    if result.get('ok'):
+        _quick_scan()
+    return jsonify(result)
+
 # ── API: Credentials ─────────────────────────
 
 @app.route('/api/credential_status', methods=['GET'])

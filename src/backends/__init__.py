@@ -2,10 +2,12 @@
 
 from .api_raw import ApiRawBackend
 from .nokufind import NokufindBackend
+from .gallerydl import GalleryDlBackend
 
 BACKENDS = {
     'api_raw': ApiRawBackend(),
     'nokufind': NokufindBackend(),
+    'gallerydl': GalleryDlBackend(),
 }
 
 def get_backend(name):

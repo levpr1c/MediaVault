@@ -11,6 +11,7 @@ import requests
 from flask import Flask, jsonify, render_template, request, send_file, abort, Response, stream_with_context, redirect, session
 from PIL import Image
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.exceptions import HTTPException
 
 import credential_store
 from backends import fetch_tags, get_backend
@@ -153,13 +154,11 @@ def _invalidate_users_cache():
 # ── i18n ──
 LOCALE = {
     'en': {
-        'homeTfManual': 'Manual',
-        'homeTfAuto': 'Auto',
         'adminSettings': 'Administration & Settings',
         'adminDesc': 'Configure settings and manage access',
         'tfRefresh': 'Refresh',
         'tfFilterAll': 'All',
-        'tfFilterNoTags': 'No tags',
+        'tfFilterNoTags': 'Untagged',
         'tfFilterFound': 'Found',
         'tfFilterNotFound': 'Not found',
         'tfFilterInDb': 'In DB',
@@ -178,17 +177,11 @@ LOCALE = {
         'tfScanning': 'Scanning cache…',
         'settings': 'Settings',
         'settingsAppearance': 'Appearance',
-        'language': 'Language',
         'settingsApiCreds': '🔑 API Credentials',
-        'settingsR34Uid': 'Rule34 UID',
-        'settingsR34Key': 'Rule34 API Key',
-        'settingsDanLogin': 'Danbooru Login',
-        'settingsDanKey': 'Danbooru API Key',
         'settingsMediaPath': 'Media directory',
         'settingsScan': 'Scan Folder',
         'settingsSystemDialog': 'Browse…',
         'settingsDb': '🗄️ Database',
-        'settingsTheme': '🎨 Theme',
         'settingsSaveStart': '💾 Save & Start',
         'settingsSelectFolder': 'Select folder',
         'settingsCleared': '✅ Cleared',
@@ -198,16 +191,22 @@ LOCALE = {
         'settingsGenerated': 'generated',
         'settingsFailed': 'failed',
         'settingsCancelling': '⏳ Cancelling…',
-        'settingsCancel': 'Cancel',
         'settingsClearCache': '🗑️ Clear thumbnail cache',
         'settingsRegenThumbnails': '🔄 Regenerate all thumbnails',
         'settingsRegenMissing': '🔧 Generate missing thumbnails',
         'secConfirmClearThumb': '⚠️ Clear ALL cached thumbnails? They will be regenerated on demand.',
         'secConfirmRegenThumb': '⚠️ Regenerate ALL thumbnails now? This may take a while.',
         'secConfirmClearBrowser': '⚠️ Clear browser cache? All clients will reload thumbnails and media on next visit.',
+        'secConfirmClearTag': '⚠️ Clear tag cache for all files? Tags will need to be re-fetched.',
+        'secConfirmDedup': '⚠️ Deduplicate database? Duplicate file entries will be removed.',
+        'secConfirmClearDb': '⚠️ Clear ALL files from database? This will remove all scanned files.',
         'settingsClearBrowserCache': '🧹 Clear browser cache',
         'settingsClearBrowserCacheDesc': 'Increment cache buster — forces browsers to refetch thumbnails and media.',
         'settingsError': '❌ Error',
+        'settingsBrowserCache': 'Browser Cache',
+        'settingsBrowserCacheDefault': 'Default (24h)',
+        'settingsBrowserCacheReduced': 'Reduced (1h)',
+        'settingsBrowserCacheNoCache': 'No cache',
         'secPassword': 'Password',
         'secUsername': 'Username',
         'secNewPassword': 'New Password',
@@ -241,7 +240,6 @@ LOCALE = {
         'noFiles': 'No media files found',
         'addTag': 'Add tag...',
         'logout': 'Logout',
-        'modeBoth': 'All',
         'bulkTag': '➕ Add to files',
         'bulkTagExit': '✕ Exit',
         'selected': '{n} selected',
@@ -252,6 +250,13 @@ LOCALE = {
         'mvGallery': 'Gallery',
         'mvComics': 'Comics',
         'mvDesc': 'Browse and explore your media library',
+        'homeComicsFetch': 'Comics Fetch',
+        'franchiseError': 'Search failed',
+        'franchiseNoResults': 'No results found',
+        'franchiseResults': 'Results',
+        'franchiseSearch': 'Franchise Search',
+        'franchiseSearchBtn': 'Search',
+        'franchiseSearchPlaceholder': 'Search all sites by tag…',
         # ── Home page ──
         'cmHeader': 'CONTENT MANAGEMENT',
         'cmDesc': 'Manage tags, categories, and comics',
@@ -300,7 +305,6 @@ LOCALE = {
         'navApiKeys': 'API Keys',
         'navTags': 'Tags',
         'navFiles': 'Files',
-        'navComics': 'Comics',
         'userAddBtn': 'Add User',
         'userSetPasswordBtn': 'Set Password',
         'userRoleAdmin': 'Admin',
@@ -317,7 +321,17 @@ LOCALE = {
         'secKeyring': 'Stored in GNOME Keyring',
         'credPlainText': 'Plain Text',
         'secPlainText': 'Stored in settings file',
-        'contentMedia': 'Media Folder',
+        'adminGalleryDir': 'Gallery folder',
+        'adminComicsDir': 'Comics folder',
+        'navFolders': 'Folders',
+        'sectionFolders': 'Folder Settings',
+        'backendApiRaw': 'API Raw',
+        'backendGallerydl': 'Gallery-DL (universal)',
+        'siteRule34': 'Rule34',
+        'siteDanbooru': 'Danbooru',
+        'siteNhentai': 'NHentai',
+        'siteKemono': 'Kemono',
+        'siteCoomer': 'Coomer',
         'categoryNewName': 'New category name',
         'tagBulkDeleteConfirm': 'Delete all categories and tags?',
         'toAllMedia': 'to all media',
@@ -342,13 +356,11 @@ LOCALE = {
         'uncategorized': 'Uncategorized',
         # ── Settings page ──
         'exportDb': 'Export DB',
-        'exportDbDesc': 'Export database to a SQLite file',
         'dbImport': 'Import DB',
-        'importDbDesc': 'Import database from a SQLite file',
         'cleanThumbCache': 'Clean Thumbnail Cache',
         'regenAllThumbs': 'Regenerate All Thumbnails',
         'genMissingThumbs': 'Generate Missing',
-        'settingsCleanDuplicate': 'Clean Duplicates',
+        'settingsCleanDuplicates': 'Clean Duplicates',
         'settingsCleanTagCache': 'Clean Tag Cache',
         'settingsCleanDb': 'Clean Database',
         'settingsCleanAll': 'Clean All',
@@ -357,8 +369,6 @@ LOCALE = {
         'noResults': 'No results',
     },
     'ru': {
-        'homeTfManual': 'Ручной',
-        'homeTfAuto': 'Авто',
         'adminSettings': 'Администрирование и настройки',
         'adminDesc': 'Настройки и управление доступом',
         'tfRefresh': 'Обновить',
@@ -382,17 +392,11 @@ LOCALE = {
         'tfScanning': 'Сканирование кэша…',
         'settings': 'Настройки',
         'settingsAppearance': 'Внешний вид',
-        'language': 'Язык',
         'settingsApiCreds': '🔑 API доступа',
-        'settingsR34Uid': 'Rule34 UID',
-        'settingsR34Key': 'Rule34 Key',
-        'settingsDanLogin': 'Danbooru Логин',
-        'settingsDanKey': 'Danbooru Key',
         'settingsMediaPath': '/путь/к/медиа',
         'settingsScan': 'Сканировать папку',
         'settingsSystemDialog': '🖥️ Системный диалог',
         'settingsDb': '🗄️ База данных',
-        'settingsTheme': '🎨 Тема',
         'settingsSaveStart': '💾 Сохранить',
         'settingsSelectFolder': 'Выбор папки',
         'settingsCleared': '✅ Очищено',
@@ -402,16 +406,22 @@ LOCALE = {
         'settingsGenerated': 'сгенерировано',
         'settingsFailed': 'ошибок',
         'settingsCancelling': '⏳ Отмена…',
-        'settingsCancel': 'Отмена',
         'settingsClearCache': '🗑️ Очистить кэш превью',
         'settingsRegenThumbnails': '🔄 Перегенерировать все превью',
         'settingsRegenMissing': '🔧 Сгенерировать недостающие',
         'secConfirmClearThumb': '⚠️ Очистить ВСЕ кэшированные превью? Они будут перегенерированы при просмотре.',
         'secConfirmRegenThumb': '⚠️ Перегенерировать ВСЕ превью сейчас? Это может занять некоторое время.',
         'secConfirmClearBrowser': '⚠️ Сбросить кэш браузера? Все клиенты перезагрузят превью и медиа при следующем визите.',
+        'secConfirmClearTag': '⚠️ Очистить кэш тегов для всех файлов? Теги нужно будет получить заново.',
+        'secConfirmDedup': '⚠️ Дедуплицировать базу данных? Дублирующиеся записи будут удалены.',
+        'secConfirmClearDb': '⚠️ Удалить ВСЕ файлы из базы данных? Все отсканированные файлы будут удалены.',
         'settingsClearBrowserCache': '🧹 Сбросить кэш браузера',
         'settingsClearBrowserCacheDesc': 'Инкрементировать cache buster — браузеры перезапросят превью и медиафайлы.',
         'settingsError': '❌ Ошибка',
+        'settingsBrowserCache': 'Кеш браузера',
+        'settingsBrowserCacheDefault': 'По умолчанию (24ч)',
+        'settingsBrowserCacheReduced': 'Уменьшенный (1ч)',
+        'settingsBrowserCacheNoCache': 'Без кеша',
         'secNewPassword': 'Новый пароль',
         'secPwTooShort': 'Пароль слишком короткий (мин. 4)',
         'secPwSet': 'Пароль установлен',
@@ -443,7 +453,6 @@ LOCALE = {
         'noFiles': 'Файлы не найдены',
         'addTag': 'Добавить тег...',
         'logout': 'Выйти',
-        'modeBoth': 'Всё',
         'bulkTag': '➕ Добавить к файлам',
         'bulkTagExit': '✕ Выйти',
         'selected': 'Выбрано: {n}',
@@ -455,6 +464,13 @@ LOCALE = {
         'mvGallery': 'Галерея',
         'mvComics': 'Комиксы',
         'mvDesc': 'Просмотр и управление медиатекой',
+        'homeComicsFetch': 'Поиск комиксов',
+        'franchiseError': 'Ошибка поиска',
+        'franchiseNoResults': 'Ничего не найдено',
+        'franchiseResults': 'Результаты',
+        'franchiseSearch': 'Поиск по всем сайтам',
+        'franchiseSearchBtn': 'Найти',
+        'franchiseSearchPlaceholder': 'Найти тег на всех сайтах…',
         # ── Home page ──
         'cmHeader': 'УПРАВЛЕНИЕ КОНТЕНТОМ',
         'cmDesc': 'Управление тегами, категориями и комиксами',
@@ -503,7 +519,6 @@ LOCALE = {
         'navApiKeys': 'API ключи',
         'navTags': 'Теги',
         'navFiles': 'Файлы',
-        'navComics': 'Комиксы',
         'userAddBtn': 'Добавить',
         'userSetPasswordBtn': 'Сменить пароль',
         'userRoleAdmin': 'Админ',
@@ -520,7 +535,17 @@ LOCALE = {
         'secKeyring': 'Хранится в GNOME Keyring',
         'credPlainText': 'Обычный текст',
         'secPlainText': 'Хранится в файле настроек',
-        'contentMedia': 'Папка с медиа',
+        'adminGalleryDir': 'Папка галереи',
+        'adminComicsDir': 'Папка комиксов',
+        'navFolders': 'Папки',
+        'sectionFolders': 'Настройки папок',
+        'backendApiRaw': 'API Raw',
+        'backendGallerydl': 'Gallery-DL (универсальный)',
+        'siteRule34': 'Rule34',
+        'siteDanbooru': 'Danbooru',
+        'siteNhentai': 'NHentai',
+        'siteKemono': 'Kemono',
+        'siteCoomer': 'Coomer',
         'toAllMedia': 'ко всем медиа',
         'dbImport': 'Импорт БД',
         'loading': 'Загрузка…',
@@ -545,13 +570,11 @@ LOCALE = {
         'uncategorized': 'Без категории',
         # ── Settings page ──
         'exportDb': 'Экспорт БД',
-        'exportDbDesc': 'Экспорт базы данных в SQLite файл',
         'dbImport': 'Импорт БД',
-        'importDbDesc': 'Импорт базы данных из SQLite файла',
         'cleanThumbCache': 'Очистить кэш превью',
         'regenAllThumbs': 'Перегенерировать все превью',
         'genMissingThumbs': 'Сгенерировать недостающие',
-        'settingsCleanDuplicate': 'Очистить дубликаты',
+        'settingsCleanDuplicates': 'Очистить дубликаты',
         'settingsCleanTagCache': 'Очистить кэш тегов',
         'settingsCleanDb': 'Очистить БД',
         'settingsCleanAll': 'Очистить всё',
@@ -650,32 +673,37 @@ def load_settings():
         with open(SETTINGS_FILE) as f:
             s = json.load(f)
     except Exception:
-        s = {'media_dir': '', 'theme': 'dark', 'effects': True, 'three_bg': True, 'cache_buster': 0, 'startup_scan_count': 0, 'startup_scan_dir': '', 'fetch_backend': {}}
-    # replenish api keys from credential store
-    if _credential_store:
-        for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key'):
-            v = _credential_store.get('api:' + k)
-            if v:
-                s[k] = v
-    for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key'):
-        s.setdefault(k, '')
+        s = {'media_dir': '', 'theme': 'dark', 'effects': True, 'three_bg': True, 'cache_buster': 0, 'startup_scan_count': 0, 'startup_scan_dir': '', 'fetch_backend': {}, 'browser_cache': 'default', 'gallery_dir': 'Gallery', 'comics_dir': 'Comics'}
+    # migrate old flat keys → per-site credentials + replenish from keyring
+    s = credential_store.migrate_old_keys(_credential_store, s)
+    s.setdefault('fetch_backend', {})
+    s.setdefault('browser_cache', 'default')
+    s.setdefault('three_bg', True)
+    s.setdefault('gallery_dir', 'Gallery')
+    s.setdefault('comics_dir', 'Comics')
     return s
 
 def save_settings(s):
     global _has_users_cached
     _has_users_cached = None
-    # strip api keys to credential store
-    api_keys = {}
-    for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key'):
-        if k in s and s[k]:
-            api_keys[k] = s[k]
-            del s[k]
+    cred = s.get('credentials', {})
     if _credential_store:
-        for k, v in api_keys.items():
-            _credential_store.set('api:' + k, v)
-    else:
-        # no keyring — keep in settings.json
-        s.update(api_keys)
+        _credential_store.delete('api:r34_uid')
+        _credential_store.delete('api:r34_key')
+        _credential_store.delete('api:dan_login')
+        _credential_store.delete('api:dan_key')
+        _credential_store.delete('api:nh_key')
+        for site, keys in [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']), ('nhentai', ['key'])]:
+            site_cred = cred.get(site, {})
+            for k in keys:
+                val = site_cred.get(k, '')
+                if val:
+                    _credential_store.set(f'api:{site}:{k}', val)
+                else:
+                    _credential_store.delete(f'api:{site}:{k}')
+    # remove any leftover flat keys
+    for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key', 'nh_key'):
+        s.pop(k, None)
     os.makedirs(SETTINGS_DIR, exist_ok=True)
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(s, f, indent=2)
@@ -683,6 +711,14 @@ def save_settings(s):
         os.chmod(SETTINGS_FILE, 0o600)
     except OSError:
         pass
+
+def _cache_control_header():
+    mode = settings.get('browser_cache', 'default')
+    if mode == 'nocache':
+        return 'no-cache'
+    if mode == 'reduced':
+        return 'public, max-age=3600'
+    return 'public, max-age=86400, immutable'
 
 # ── Безопасность путей ──
 
@@ -920,7 +956,14 @@ def _ensure_categories(dan_result):
             continue
         db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)", [cat_name, cat_colors[cat_name]])
         for tag in tags:
-            db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source, last_updated) VALUES (?, ?, 'danbooru', ?)", [tag, cat_name, int(time.time())])
+            db.execute("""
+                INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                VALUES (?, ?, 'danbooru', ?)
+                ON CONFLICT(tag_name) DO UPDATE SET
+                    category = excluded.category,
+                    source = 'danbooru',
+                    last_updated = excluded.last_updated
+            """, [tag, cat_name, int(time.time())])
     _ensure_common_meta(db)
     db.commit()
     db.close()
@@ -977,7 +1020,14 @@ def _ensure_r34_categories(r34_tags):
         for tag in r34_tags:
             cat = _categorize_r34_tag(tag)
             db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)", [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
-            db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source, last_updated) VALUES (?, ?, 'rule34', ?)", [tag, cat, int(time.time())])
+            db.execute("""
+                INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                VALUES (?, ?, 'rule34', ?)
+                ON CONFLICT(tag_name) DO UPDATE SET
+                    category = excluded.category,
+                    source = 'rule34',
+                    last_updated = excluded.last_updated
+            """, [tag, cat, int(time.time())])
         db.commit()
         db.close()
     except Exception:
@@ -1295,8 +1345,16 @@ def api_error_handler(f):
     def wrapper(*args, **kwargs):
         try:
             return f(*args, **kwargs)
+        except HTTPException:
+            raise  # let Flask handle real HTTP errors (404, 403, etc.)
         except Exception as e:
-            log_error(f"API error in {f.__name__}: {e}")
+            path = request.path
+            qs = request.query_string.decode()
+            log_error('API error in %s: %s', f.__name__, e)
+            log_error('  Request: %s %s?%s', request.method, path, qs)
+            if DEBUG_MODE:
+                import traceback
+                log_debug('  Traceback:\n%s', traceback.format_exc())
             return jsonify({'error': str(e)}), 500
     return wrapper
 
@@ -1580,6 +1638,53 @@ def nhentai_search_page():
     s = load_settings()
     return render_template('nhentai_search.html', page='nhentai-search', s=s)
 
+@app.route('/franchise-search')
+@admin_required
+def franchise_search_page():
+    """Parallel search across all sites."""
+    _s = load_settings()
+    q = request.args.get('q', '').strip()
+    results = {}
+    backends_used = {}
+    if q:
+        from backends import search_tags
+        import concurrent.futures
+        sites = ['rule34', 'danbooru', 'nhentai']
+        # Determine which backend is used for each site (for debug display)
+        fb_cfg = _s.get('fetch_backend', {})
+        _def_bk = {'rule34': 'api_raw', 'danbooru': 'api_raw', 'nhentai': 'gallerydl'}
+        backends_used = {site: fb_cfg.get(site) or _def_bk[site] for site in sites}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as exc:
+            fut = {site: exc.submit(search_tags, site, q, 1, _s) for site in sites}
+            for site in sites:
+                try:
+                    results[site] = fut[site].result(timeout=30)
+                except Exception:
+                    results[site] = {'results': [], 'total': 0}
+    return render_template('franchise_search.html', page='franchise-search', s=_s, q=q, results=results, backends_used=backends_used)
+
+@app.route('/api/franchise/search')
+@admin_required
+@api_error_handler
+def api_franchise_search():
+    """API endpoint for franchise search."""
+    q = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+    if not q:
+        return jsonify({'error': 'no query'}), 400
+    from backends import search_tags
+    import concurrent.futures
+    sites = ['rule34', 'danbooru', 'nhentai']
+    results = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as exc:
+        fut = {s: exc.submit(search_tags, s, q, page, load_settings()) for s in sites}
+        for s in sites:
+            try:
+                results[s] = fut[s].result(timeout=30)
+            except Exception:
+                results[s] = {'results': [], 'total': 0}
+    return jsonify(results)
+
 @app.route('/similar')
 @api_error_handler
 def similar_page():
@@ -1606,7 +1711,8 @@ def settings_page():
 @api_error_handler
 def api_settings():
     """GET — вернуть все настройки. POST — обновить указанные поля.
-    Поля: r34_uid, r34_key, dan_login, dan_key, media_dir, theme.
+    Поля: media_dir, theme, three_bg, fetch_backend, browser_cache,
+    gallery_dir, comics_dir, credentials (per-site).
     При смене media_dir сбрасывает startup_scan_count для пересканирования.
     """
     auth = _admin_required()
@@ -1620,7 +1726,15 @@ def api_settings():
         return jsonify({'error': 'no data'}), 400
     s = load_settings()
     old_media_dir = s.get('media_dir', '')
-    for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key', 'media_dir', 'theme', 'three_bg', 'fetch_backend'):
+    if 'credentials' in data:
+        s['credentials'] = data['credentials']
+    # backward compat: accept old flat keys, convert to per-site
+    for old_k, site, cred_k in [('r34_uid', 'rule34', 'uid'), ('r34_key', 'rule34', 'key'),
+                                 ('dan_login', 'danbooru', 'login'), ('dan_key', 'danbooru', 'key'),
+                                 ('nh_key', 'nhentai', 'key')]:
+        if old_k in data:
+            s.setdefault('credentials', {}).setdefault(site, {})[cred_k] = data[old_k]
+    for k in ('media_dir', 'theme', 'three_bg', 'fetch_backend', 'browser_cache', 'gallery_dir', 'comics_dir'):
         if k in data:
             s[k] = os.path.expanduser(data[k]) if k == 'media_dir' else data[k]
     save_settings(s)
@@ -1640,10 +1754,16 @@ def api_nhentai_search():
     page = request.args.get('page', 1, type=int)
     if not query:
         return jsonify({'error': 'no query'}), 400
-    from backends.nokufind import NokufindBackend
-    backend = NokufindBackend()
-    result = backend.search(query, page)
+    from backends import search_tags
+    result = search_tags('nhentai', query, page, load_settings())
     return jsonify(result)
+
+@app.route('/api/kemono/mirrors')
+@admin_required
+@api_error_handler
+def api_kemono_mirrors():
+    from backends.gallerydl import GalleryDlBackend
+    return jsonify({'mirrors': GalleryDlBackend.get_mirrors()})
 
 # ── Kemono/Coomer Import ─────────────────────
 
@@ -1714,15 +1834,18 @@ def api_set_credential_backend():
     if data is None:
         return jsonify({'error': 'no data'}), 400
     name = data.get('backend', '')
+    _PER_SITE = [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']), ('nhentai', ['key'])]
     if name == 'KeyringStore':
         ks = credential_store.KeyringStore()
         if not ks.is_available():
             return jsonify({'error': 'KeyringStore not available', 'current': _credential_store.name() if _credential_store else 'plain'}), 400
         s = load_settings()
-        for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key'):
-            v = s.get(k, '')
-            if v:
-                ks.set('api:' + k, v)
+        for site, keys in _PER_SITE:
+            site_cred = s.get('credentials', {}).get(site, {})
+            for k in keys:
+                v = site_cred.get(k, '')
+                if v:
+                    ks.set(f'api:{site}:{k}', v)
         _credential_store = ks
         s['credential_backend'] = 'KeyringStore'
         save_settings(s)
@@ -1730,10 +1853,12 @@ def api_set_credential_backend():
     elif name == 'plain':
         s = load_settings()
         if _credential_store:
-            for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key'):
-                v = _credential_store.get('api:' + k)
-                if v:
-                    s[k] = v
+            cred = s.setdefault('credentials', {})
+            for site, keys in _PER_SITE:
+                for k in keys:
+                    v = _credential_store.get(f'api:{site}:{k}')
+                    if v:
+                        cred.setdefault(site, {})[k] = v
         _credential_store = None
         s['credential_backend'] = 'plain'
         save_settings(s)
@@ -2095,7 +2220,9 @@ def _quick_scan(force=False):
                     w, h = _get_image_dimensions(full) if ftype == 'image' else (0, 0)
                     # Определяем folder_type по первому компоненту пути
                     first_dir = rel.split('/')[0] if '/' in rel else ''
-                    folder_type = {'Gallery': 'gallery', 'Comics': 'comics', 'Downloads': 'downloads'}.get(first_dir, 'gallery')
+                    gallery_dir = settings.get('gallery_dir', 'Gallery')
+                    comics_dir = settings.get('comics_dir', 'Comics')
+                    folder_type = {gallery_dir: 'gallery', comics_dir: 'comics', 'Downloads': 'downloads'}.get(first_dir, 'gallery')
 
                     db.execute(
                         'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
@@ -2151,8 +2278,13 @@ def api_gallery():
             where_clauses.append('mtime <= ?')
             params.append(to_date)
         if folder and folder in ('gallery', 'comics', 'downloads'):
-            where_clauses.append('folder_type = ?')
-            params.append(folder)
+            if folder in ('gallery', 'comics'):
+                fdir = settings.get(folder + '_dir', folder.capitalize())
+                where_clauses.append('path LIKE ?')
+                params.append(fdir + '/%')
+            else:
+                where_clauses.append('folder_type = ?')
+                params.append(folder)
         where_sql = ' WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''
         if per_page > 0:
             offset = (page - 1) * per_page
@@ -2171,9 +2303,15 @@ def api_gallery():
         total = len(files) if per_page <= 0 else db.execute('SELECT COUNT(DISTINCT path) FROM files' + where_sql, params).fetchone()[0]
         folder_counts = {}
         for ft in ('gallery', 'comics', 'downloads'):
-            c = db.execute('SELECT COUNT(*) FROM files WHERE folder_type = ?', [ft]).fetchone()[0]
+            if ft in ('gallery', 'comics'):
+                fdir = settings.get(ft + '_dir', ft.capitalize())
+                c = db.execute('SELECT COUNT(*) FROM files WHERE path LIKE ?', [fdir + '/%']).fetchone()[0]
+            else:
+                c = db.execute('SELECT COUNT(*) FROM files WHERE folder_type = ?', [ft]).fetchone()[0]
             if c > 0:
                 folder_counts[ft] = c
+        log_debug('api_gallery: folder=%s page=%d per_page=%d → %d files, %d total',
+                  folder or 'all', page, per_page, len(files), total)
         return jsonify({
             'files': files,
             'categories': categories,
@@ -2185,6 +2323,7 @@ def api_gallery():
             'current_folder': folder or 'all'
         })
     except Exception as e:
+        log_error('api_gallery: %s', e)
         return jsonify({'error': str(e)}), 500
 
 # Автоопределение media_dir по путям из БД. Перебирает стандартные директории.
@@ -2244,18 +2383,21 @@ def api_browse():
 def api_media():
     filepath = request.args.get('path', '')
     if not filepath:
+        log_info_yellow('api_media: missing path')
         abort(404)
     safe = _safe_media_path(filepath)
     if not safe or not os.path.exists(safe):
+        log_info_yellow('api_media: not found path=%s safe=%s', filepath, safe)
         abort(404)
     ext = os.path.splitext(safe)[1].lower()
     resp = send_file(safe, conditional=True)
-    resp.headers['Cache-Control'] = 'public, max-age=86400, immutable'
+    resp.headers['Cache-Control'] = _cache_control_header()
     mtime = os.path.getmtime(safe)
     fsize = os.path.getsize(safe)
     resp.headers['ETag'] = f'"{int(mtime)}-{fsize}"'
     if ext in _VIDEO_EXTS:
         resp.mimetype = 'video/' + ext[1:]
+    log_debug('api_media: path=%s → %s (%d bytes)', filepath, safe, fsize)
     return resp
 
 # Отдача превью изображения/видео. Если нет превью — отдаёт оригинал. Параметр: path.
@@ -2264,21 +2406,23 @@ def api_media():
 def api_thumbnail():
     filepath = request.args.get('path', '')
     if not filepath:
+        log_info_yellow('api_thumbnail: missing path')
         abort(404)
     safe = _safe_media_path(filepath)
     if not safe or not os.path.exists(safe):
+        log_info_yellow('api_thumbnail: not found path=%s safe=%s', filepath, safe)
         abort(404)
     data = _get_thumbnail(safe)
     if data:
         resp = send_file(io.BytesIO(data), mimetype='image/avif')
-        resp.headers['Cache-Control'] = 'public, max-age=86400, immutable'
+        resp.headers['Cache-Control'] = _cache_control_header()
         resp.headers['ETag'] = f'"{int(os.path.getmtime(safe))}-{len(data)}"'
         return resp
     ext = os.path.splitext(safe)[1].lower()
     if ext in _VIDEO_EXTS:
         abort(404)
     resp = send_file(safe, conditional=True)
-    resp.headers['Cache-Control'] = 'public, max-age=86400, immutable'
+    resp.headers['Cache-Control'] = _cache_control_header()
     mtime = os.path.getmtime(safe)
     fsize = os.path.getsize(safe)
     resp.headers['ETag'] = f'"{int(mtime)}-{fsize}"'
@@ -2388,21 +2532,22 @@ def api_fetch_file():
             md5 = fname_md5 or compute_md5(filepath)
             md5_cache[rel_path] = md5
 
-        log_debug('api_fetch_file API keys: r34_uid=%s r34_key=%s dan_login=%s dan_key=%s',
-                  'SET' if settings.get('r34_uid') else 'MISSING',
-                  'SET' if settings.get('r34_key') else 'MISSING',
-                  'SET' if settings.get('dan_login') else 'MISSING',
-                  'SET' if settings.get('dan_key') else 'MISSING')
+        creds = settings.get('credentials', {})
+        log_debug('api_fetch_file API keys: rule34:uid=%s rule34:key=%s danbooru:login=%s danbooru:key=%s',
+                  'SET' if creds.get('rule34', {}).get('uid') else 'MISSING',
+                  'SET' if creds.get('rule34', {}).get('key') else 'MISSING',
+                  'SET' if creds.get('danbooru', {}).get('login') else 'MISSING',
+                  'SET' if creds.get('danbooru', {}).get('key') else 'MISSING')
 
         r34_result = api_cache.get(f'{md5}_r34')
         if r34_result is None:
-            r34_result = fetch_rule34(md5, settings.get('r34_uid', ''), settings.get('r34_key', ''))
+            r34_result = fetch_tags('rule34', md5, settings)
             api_cache[f'{md5}_r34'] = r34_result
             time.sleep(API_DELAY)
 
         dan_result = api_cache.get(f'{md5}_dan')
         if dan_result is None:
-            dan_result = fetch_danbooru(md5, settings.get('dan_login', ''), settings.get('dan_key', ''))
+            dan_result = fetch_tags('danbooru', md5, settings)
             api_cache[f'{md5}_dan'] = dan_result
             time.sleep(API_DELAY)
 
@@ -2418,13 +2563,13 @@ def api_fetch_file():
                 if missing_r34:
                     r34_result = api_cache.get(f'{content_md5}_r34')
                     if r34_result is None:
-                        r34_result = fetch_rule34(content_md5, settings.get('r34_uid', ''), settings.get('r34_key', ''))
+                        r34_result = fetch_tags('rule34', content_md5, settings)
                         api_cache[f'{content_md5}_r34'] = r34_result
                         time.sleep(API_DELAY)
                 else:
                     dan_result = api_cache.get(f'{content_md5}_dan')
                     if dan_result is None:
-                        dan_result = fetch_danbooru(content_md5, settings.get('dan_login', ''), settings.get('dan_key', ''))
+                        dan_result = fetch_tags('danbooru', content_md5, settings)
                         api_cache[f'{content_md5}_dan'] = dan_result
                         time.sleep(API_DELAY)
 
@@ -2704,6 +2849,8 @@ def api_save_file():
     rel_path = data.get('path', '')
     tags_str = data.get('tags', '')
     source = data.get('source', '')
+    if not source and data.get('tags'):
+        source = data['tags']
     media_dir = settings.get('media_dir', '')
     if not rel_path or not source or not media_dir:
         return jsonify({'error': 'bad params'}), 400
@@ -2932,16 +3079,12 @@ def api_auto_scan():
     _ensure_auto_scan_table()
     log_info('auto_scan starting with %d paths', len(paths))
 
-    r34_uid = settings.get('r34_uid', '')
-    r34_key = settings.get('r34_key', '')
-    dan_login = settings.get('dan_login', '')
-    dan_key = settings.get('dan_key', '')
-
-    log_debug('auto_scan API keys: r34_uid=%s r34_key=%s dan_login=%s dan_key=%s',
-              'SET' if r34_uid else 'MISSING',
-              'SET' if r34_key else 'MISSING',
-              'SET' if dan_login else 'MISSING',
-              'SET' if dan_key else 'MISSING')
+    creds = settings.get('credentials', {})
+    log_debug('auto_scan API keys: rule34:uid=%s rule34:key=%s danbooru:login=%s danbooru:key=%s',
+              'SET' if creds.get('rule34', {}).get('uid') else 'MISSING',
+              'SET' if creds.get('rule34', {}).get('key') else 'MISSING',
+              'SET' if creds.get('danbooru', {}).get('login') else 'MISSING',
+              'SET' if creds.get('danbooru', {}).get('key') else 'MISSING')
 
     def generate():
         try:
@@ -2983,10 +3126,10 @@ def api_auto_scan():
                         md5 = fname_md5 or compute_md5(filepath)
                         md5_cache[rel_path] = md5
 
-                    r34_result = fetch_rule34(md5, r34_uid, r34_key)
+                    r34_result = fetch_tags('rule34', md5, settings)
                     time.sleep(API_DELAY)
                     api_cache[f'{md5}_r34'] = r34_result
-                    dan_result = fetch_danbooru(md5, dan_login, dan_key)
+                    dan_result = fetch_tags('danbooru', md5, settings)
                     time.sleep(API_DELAY)
                     api_cache[f'{md5}_dan'] = dan_result
 
@@ -3000,11 +3143,11 @@ def api_auto_scan():
                             log_debug('auto_scan[%d/%d] filename MD5 only found %s, trying content MD5 %s for %s',
                                       idx, total, 'dan' if dan_tags else 'r34', content_md5, rel_path)
                             if not r34_tags:
-                                r34_result = fetch_rule34(content_md5, r34_uid, r34_key)
+                                r34_result = fetch_tags('rule34', content_md5, settings)
                                 time.sleep(API_DELAY)
                                 api_cache[f'{content_md5}_r34'] = r34_result
                             if not dan_tags:
-                                dan_result = fetch_danbooru(content_md5, dan_login, dan_key)
+                                dan_result = fetch_tags('danbooru', content_md5, settings)
                                 time.sleep(API_DELAY)
                                 api_cache[f'{content_md5}_dan'] = dan_result
                             r34_tags = r34_result.get('tags', []) if isinstance(r34_result, dict) else []
@@ -3013,10 +3156,10 @@ def api_auto_scan():
                     # If nothing found yet and MD5 wasn't from filename → try filename MD5
                     if not r34_tags and not dan_tags and fname_md5 and md5 != fname_md5:
                         log_debug('auto_scan[%d/%d] trying filename MD5 %s for %s', idx, total, fname_md5, rel_path)
-                        r34_result = fetch_rule34(fname_md5, r34_uid, r34_key)
+                        r34_result = fetch_tags('rule34', fname_md5, settings)
                         time.sleep(API_DELAY)
                         api_cache[f'{fname_md5}_r34'] = r34_result
-                        dan_result = fetch_danbooru(fname_md5, dan_login, dan_key)
+                        dan_result = fetch_tags('danbooru', fname_md5, settings)
                         time.sleep(API_DELAY)
                         api_cache[f'{fname_md5}_dan'] = dan_result
                         r34_tags = r34_result.get('tags', []) if isinstance(r34_result, dict) else []
@@ -3394,14 +3537,13 @@ def api_clear_database():
         db.execute('DELETE FROM thumbnail_cache')
         db.execute('DROP TABLE IF EXISTS scan_results')
         db.execute('DROP TABLE IF EXISTS auto_scan')
-        db.execute('DROP TABLE IF EXISTS batch_scan')
         db.execute('VACUUM')
         db.commit()
         db.close()
         s = load_settings()
         s['startup_scan_count'] = 0
         save_settings(s)
-        log_info('clear_database: cleared files, thumb_cache, scan_results, auto_scan, batch_scan + VACUUM')
+        log_info('clear_database: cleared files, thumb_cache, scan_results, auto_scan + VACUUM')
         return jsonify({'ok': True})
     except Exception as e:
         log_error('clear_database error: %s', e)
@@ -3441,11 +3583,10 @@ def api_clear_tags():
             db.execute('DROP TABLE IF EXISTS tag_category_members')
             db.execute('DROP TABLE IF EXISTS scan_results')
             db.execute('DROP TABLE IF EXISTS auto_scan')
-            db.execute('DROP TABLE IF EXISTS batch_scan')
             db.execute('VACUUM')
             db.commit()
             db.close()
-            log_info('clear_tags: dropped tag_category_members, scan_results, auto_scan, batch_scan + VACUUM')
+            log_info('clear_tags: dropped tag_category_members, scan_results, auto_scan + VACUUM')
         except Exception as e:
             log_error('clear_tags db error: %s', e)
             return jsonify({'error': str(e)}), 500
@@ -3469,7 +3610,6 @@ def api_delete_all():
             db.execute('DROP TABLE IF EXISTS tag_category_members')
             db.execute('DROP TABLE IF EXISTS scan_results')
             db.execute('DROP TABLE IF EXISTS auto_scan')
-            db.execute('DROP TABLE IF EXISTS batch_scan')
             db.execute('DELETE FROM thumbnail_cache')
             db.execute('VACUUM')
             db.commit()
@@ -3720,12 +3860,15 @@ def main():
     init_credential_store()
     if _credential_store and s.get('credential_backend') != 'plain':
         s = load_settings()
+        cred = s.get('credentials', {})
         changed = False
-        for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key'):
-            if s.get(k):
-                if not _credential_store.get('api:' + k):
-                    _credential_store.set('api:' + k, s[k])
-                changed = True
+        for site, keys in [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key'])]:
+            site_cred = cred.get(site, {})
+            for k in keys:
+                val = site_cred.get(k, '')
+                if val and not _credential_store.get(f'api:{site}:{k}'):
+                    _credential_store.set(f'api:{site}:{k}', val)
+                    changed = True
         if changed:
             save_settings(s)
     settings = load_settings()

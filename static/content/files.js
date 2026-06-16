@@ -103,7 +103,7 @@ function _buildToolbar() {
     : '<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/>'
 
   const pages = [0, 30, 60, 90]
-  const pageLabels = { 0: _t('modeBoth'), 30: '30', 60: '60', 90: '90' }
+  const pageLabels = { 0: _t('tfFilterAll'), 30: '30', 60: '60', 90: '90' }
 
   return `<div class="cm-files-toolbar">` +
     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text2)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>` +
@@ -418,7 +418,7 @@ function viewFile(path) {
       prefix: 'cm',
       tagPanel: true,
       onSaveTags: function(path, tags) {
-        return api('/api/save_file', { method: 'POST', body: { path, tags } })
+        return api('/api/save_file', { method: 'POST', body: { path: path, source: tags } })
           .catch(function(e) { toast(e.message, 'error'); throw e })
       },
       getCatListFn: function() {

@@ -76,7 +76,7 @@ body{padding-top:44px}
   <a href="/similar?path={{ path_q }}" class="top-btn" title="{{ _('similarBtn') }}" target="_blank">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
   </a>
-  <button class="top-btn" id="toggleTags" onclick="toggleTags()" title="{{ _('navTags') }}">🏷️</button>
+  <button class="top-btn" id="toggleTags" onclick="toggleTags()" title="{{ _('navTags') }}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></button>
   {% endif %}
 </div>
 
@@ -153,6 +153,7 @@ var _pages = {{ pages|tojson|safe }};
 var _mode = 'scroll';
 var _currentPage = 0;
 var _hideTimer = null;
+var _programmaticScroll = false;
 function showUI() {
   var pc = document.getElementById('pageCounter');
   pc.classList.remove('hidden');
@@ -225,7 +226,11 @@ function switchToPage(idx) {
     else { nextLink.removeAttribute('href'); nextLink.style.cursor = 'default'; }
   } else {
     var el = document.getElementById('page-' + idx);
-    if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+    if (el) {
+      _programmaticScroll = true;
+      el.scrollIntoView({behavior: 'smooth', block: 'start'});
+      setTimeout(function() { _programmaticScroll = false; }, 500);
+    }
   }
   updateCounter();
 }
@@ -254,47 +259,44 @@ function buildPages() {
   }
   container.innerHTML = html;
 }
-var _scrolling = false;
 var _scrollRaf = null;
+function _findCurrentPage() {
+  var wraps = document.querySelectorAll('#scrollView .page-wrap');
+  var bestIdx = 0;
+  var bestDist = Infinity;
+  var vpCenter = window.innerHeight / 2;
+  for (var i = 0; i < wraps.length; i++) {
+    var rect = wraps[i].getBoundingClientRect();
+    var pageCenter = rect.top + rect.height / 2;
+    var dist = Math.abs(pageCenter - vpCenter);
+    if (dist < bestDist) {
+      bestDist = dist;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
 window.addEventListener('scroll', function() {
   if (_mode !== 'scroll') return;
   showUI();
   if (_scrollRaf) return;
-  if (!_scrolling) {
-    _scrolling = true;
-    updateCounter();
-  }
   _scrollRaf = requestAnimationFrame(function() {
     _scrollRaf = null;
-    var wraps = document.querySelectorAll('#scrollView .page-wrap');
-    var found = 0;
-    for (var i = 0; i < wraps.length; i++) {
-      var rect = wraps[i].getBoundingClientRect();
-      if (rect.top < window.innerHeight / 2 && rect.bottom > 120) {
-        found = i;
-        break;
-      }
-    }
-    if (found !== _currentPage) {
-      _currentPage = found;
+    if (_programmaticScroll) return;
+    var idx = _findCurrentPage();
+    if (idx !== _currentPage) {
+      _currentPage = idx;
       updateCounter();
     }
   });
 }, {passive: true});
 window.addEventListener('scrollend', function() {
-  if (_mode !== 'scroll') return;
-  _scrolling = false;
-  var wraps = document.querySelectorAll('#scrollView .page-wrap');
-  var found = 0;
-  for (var i = 0; i < wraps.length; i++) {
-    var rect = wraps[i].getBoundingClientRect();
-    if (rect.top < window.innerHeight / 2 && rect.bottom > 120) {
-      found = i;
-      break;
-    }
+  if (_mode !== 'scroll' || _programmaticScroll) return;
+  var idx = _findCurrentPage();
+  if (idx !== _currentPage) {
+    _currentPage = idx;
+    updateCounter();
   }
-  _currentPage = found;
-  updateCounter();
 });
 document.addEventListener('keydown', function(e) {
   if (e.key === 'ArrowLeft') { e.preventDefault(); prevPage(); }

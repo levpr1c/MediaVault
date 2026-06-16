@@ -16,8 +16,13 @@
     <h2 class="admin-page-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Kemono / Coomer Import</h2>
     <div class="admin-card" style="margin-bottom:20px">
       <div style="display:flex;gap:10px;align-items:center">
-        <input id="kmUrl" type="text" placeholder="https://kemono.su/... or https://coomer.su/..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px">
+        <input id="kmUrl" type="text" placeholder="https://kemono.cr/... or https://coomer.su/..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px">
         <button id="kmInfoBtn" class="btn btn-sm btn-primary" style="padding:10px 20px;font-size:14px;height:auto">Get Info</button>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text-dim);line-height:1.5">
+        Supported domains: <code>kemono.su</code>, <code>kemono.cr</code>, <code>kemono.party</code>, <code>coomer.su</code>, <code>coomer.cr</code> and more.
+        <a href="#" id="kmMirrorsLink" style="color:var(--accent);text-decoration:none">Show all mirrors</a>
+        <div id="kmMirrorsList" style="display:none;margin-top:6px;padding:8px;background:var(--surface2);border-radius:6px;font-size:12px"></div>
       </div>
     </div>
     <div id="kmLoading" class="admin-loading" style="display:none">
@@ -36,6 +41,27 @@
   </main>
 </div>
 <script>
+document.getElementById('kmMirrorsLink').addEventListener('click', async e => {
+  e.preventDefault();
+  const el = document.getElementById('kmMirrorsList');
+  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+  if (!el.dataset.fetched) {
+    try {
+      const res = await fetch('/api/kemono/mirrors');
+      const data = await res.json();
+      var html = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">';
+      (data.mirrors || []).forEach(function(m) {
+        html += '<code style="padding:2px 8px;border-radius:4px;background:var(--surface2);font-size:12px">' + m + '</code>';
+      });
+      html += '</div>';
+      el.innerHTML = html;
+      el.dataset.fetched = '1';
+    } catch(e) {
+      el.innerHTML = '<span style="color:var(--danger)">Failed to load mirrors</span>';
+    }
+  }
+  el.style.display = 'block';
+});
 document.getElementById('kmInfoBtn').addEventListener('click', getInfo);
 document.getElementById('kmUrl').addEventListener('keydown', e => { if (e.key === 'Enter') getInfo() });
 
@@ -53,7 +79,15 @@ async function getInfo() {
     loading.style.display = 'none';
     document.getElementById('kmResult').style.display = 'block';
     if (data.error) {
-      document.getElementById('kmInfo').innerHTML = '<span style="color:var(--danger)">' + data.error + '</span>';
+      var html = '<span style="color:var(--danger)">' + data.error + '</span>';
+      if (data.debug) {
+        html += '<div style="margin-top:10px;padding:10px;background:var(--surface2);border-radius:6px;font-size:12px;font-family:monospace">';
+        html += '<strong style="color:var(--text-dim)">Debug info:</strong><br>';
+        if (data.debug.gdl_path) html += 'Binary path: <code>' + data.debug.gdl_path + '</code><br>';
+        if (data.debug.gdl_version) html += 'Version: <span style="color:var(--danger)">' + data.debug.gdl_version + '</span>';
+        html += '</div>';
+      }
+      document.getElementById('kmInfo').innerHTML = html;
       return;
     }
     document.getElementById('kmInfo').innerHTML =
@@ -77,7 +111,15 @@ async function download(url) {
     const data = await res.json();
     document.getElementById('kmProgress').style.display = 'none';
     if (data.error) {
-      document.getElementById('kmInfo').innerHTML += '<br><span style="color:var(--danger)">Download failed: ' + data.error + '</span>';
+      var html = '<span style="color:var(--danger)">Download failed: ' + data.error + '</span>';
+      if (data.debug) {
+        html += '<div style="margin-top:8px;padding:8px;background:var(--surface2);border-radius:6px;font-size:12px;font-family:monospace">';
+        html += '<strong style="color:var(--text-dim)">Debug info:</strong><br>';
+        if (data.debug.gdl_path) html += 'Binary path: <code>' + data.debug.gdl_path + '</code><br>';
+        if (data.debug.gdl_version) html += 'Version: <span style="color:var(--danger)">' + data.debug.gdl_version + '</span>';
+        html += '</div>';
+      }
+      document.getElementById('kmInfo').innerHTML += html;
       return;
     }
     const files = data.downloaded || [];

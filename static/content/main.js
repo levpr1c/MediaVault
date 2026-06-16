@@ -21,7 +21,7 @@ function loadSection(name) {
 
   const titleEl = document.getElementById('cmPageTitle')
   if (titleEl) {
-    const names = { tags: 'contentTags', files: 'navFiles', comics: 'navComics' }
+    const names = { tags: 'contentTags', files: 'navFiles', comics: 'mvComics' }
     const key = names[name] || name
     titleEl.innerHTML = `<span data-i18n="${key}">${_t(key)}</span>`
   }

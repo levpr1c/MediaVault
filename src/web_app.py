@@ -1092,7 +1092,7 @@ def _ensure_db_schema():
     _ensure_db_dir()
     try:
         db = _db_conn()
-        db.execute('CREATE TABLE IF NOT EXISTS files (path TEXT PRIMARY KEY, name TEXT, type TEXT, size INTEGER, mtime INTEGER, tags TEXT, width INTEGER DEFAULT 0, height INTEGER DEFAULT 0, created_at INTEGER)')
+        db.execute('CREATE TABLE IF NOT EXISTS files (path TEXT PRIMARY KEY, name TEXT, type TEXT, size INTEGER, mtime INTEGER, tags TEXT, width INTEGER DEFAULT 0, height INTEGER DEFAULT 0, created_at INTEGER, folder_type TEXT DEFAULT \'gallery\')')
         db.execute('CREATE TABLE IF NOT EXISTS tag_categories (name TEXT PRIMARY KEY, color TEXT NOT NULL)')
         db.execute('CREATE TABLE IF NOT EXISTS tag_category_members (tag_name TEXT PRIMARY KEY, category TEXT NOT NULL, source TEXT DEFAULT \'auto\')')
         db.execute('CREATE TABLE IF NOT EXISTS auto_scan (path TEXT PRIMARY KEY, scanned_at INTEGER NOT NULL)')
@@ -1104,6 +1104,11 @@ def _ensure_db_schema():
         # Миграция: добавляем колонку source в tag_category_members, если её нет
         try:
             db.execute("ALTER TABLE tag_category_members ADD COLUMN source TEXT DEFAULT 'auto'")
+        except Exception:
+            pass  # колонка уже существует
+        # Миграция: добавляем колонку folder_type в files, если её нет
+        try:
+            db.execute("ALTER TABLE files ADD COLUMN folder_type TEXT DEFAULT 'gallery'")
         except Exception:
             pass  # колонка уже существует
         db.commit()
@@ -1987,7 +1992,7 @@ def _quick_scan(force=False):
                 if db.execute('SELECT 1 FROM files WHERE path = ?', [rel]).fetchone():
                     continue
 
-                # New file — insert with auto-tags
+                # New file — insert with auto-tags and folder_type
                 try:
                     auto_tags = _get_auto_tags(full)
                     auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
@@ -1996,10 +2001,13 @@ def _quick_scan(force=False):
                     size = os.path.getsize(full)
                     mtime = int(os.path.getmtime(full))
                     w, h = _get_image_dimensions(full) if ftype == 'image' else (0, 0)
+                    # Определяем folder_type по первому компоненту пути
+                    first_dir = rel.split('/')[0] if '/' in rel else ''
+                    folder_type = {'Gallery': 'gallery', 'Comics': 'comics', 'Downloads': 'downloads'}.get(first_dir, 'gallery')
 
                     db.execute(
-                        'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
-                        [rel, f, ftype, size, mtime, merged, w, h, int(time.time())]
+                        'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                        [rel, f, ftype, size, mtime, merged, w, h, int(time.time()), folder_type]
                     )
                     count += 1
                 except Exception as e:
@@ -2030,15 +2038,17 @@ def api_scan_folder():
 @app.route('/api/gallery')
 @api_error_handler
 def api_gallery():
-    """Return files from DB with pagination for MediaVault gallery."""
+    """Return files from DB with pagination for MediaVault gallery.
+    Supports ?folder=gallery|comics|downloads to filter by folder_type."""
     if not os.path.exists(_DB_PATH):
-        return jsonify({'files': [], 'categories': {}, 'total': 0, 'media_dir_set': False})
+        return jsonify({'files': [], 'categories': {}, 'total': 0, 'media_dir_set': False, 'folder_counts': {}})
     try:
         _ensure_db_schema()
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 0, type=int)
         from_date = request.args.get('from_date', None, type=int)
         to_date = request.args.get('to_date', None, type=int)
+        folder = request.args.get('folder', None, type=str)
         db = _db_conn()
         where_clauses = []
         params = []
@@ -2048,6 +2058,9 @@ def api_gallery():
         if to_date is not None:
             where_clauses.append('mtime <= ?')
             params.append(to_date)
+        if folder and folder in ('gallery', 'comics', 'downloads'):
+            where_clauses.append('folder_type = ?')
+            params.append(folder)
         where_sql = ' WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''
         if per_page > 0:
             offset = (page - 1) * per_page
@@ -2064,13 +2077,20 @@ def api_gallery():
             seen.add(r[0])
             files.append({'path': r[0], 'name': r[1], 'tags': r[2] or '', 'type': r[3], 'width': r[4], 'height': r[5], 'mtime': r[6], 'fetched': _has_non_meta_tags(r[2] or '')})
         total = len(files) if per_page <= 0 else db.execute('SELECT COUNT(DISTINCT path) FROM files' + where_sql, params).fetchone()[0]
+        folder_counts = {}
+        for ft in ('gallery', 'comics', 'downloads'):
+            c = db.execute('SELECT COUNT(*) FROM files WHERE folder_type = ?', [ft]).fetchone()[0]
+            if c > 0:
+                folder_counts[ft] = c
         return jsonify({
             'files': files,
             'categories': categories,
             'total': total,
             'page': page,
             'per_page': per_page,
-            'media_dir_set': bool(settings.get('media_dir', ''))
+            'media_dir_set': bool(settings.get('media_dir', '')),
+            'folder_counts': folder_counts,
+            'current_folder': folder or 'all'
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

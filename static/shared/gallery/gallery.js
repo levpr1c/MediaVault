@@ -20,6 +20,7 @@ var MediaVaultGallery = (function() {
   var _previewOverlay = null;
   var _fetchedOnly = false;
   var _sortMode = 'name'; // 'name' | 'newest' | 'oldest'
+  var _currentFolder = 'all';
 
   var parseTags = Shared.parseTags;
 
@@ -32,6 +33,7 @@ var MediaVaultGallery = (function() {
     if (_layoutMode !== 'columns') params.mode = _layoutMode;
     if (_searchQuery) params.q = _searchQuery;
     if (_searchMode !== 'both') params.sm = _searchMode;
+    if (_currentFolder !== 'all') params.folder = _currentFolder;
     return params;
   }
 
@@ -54,7 +56,46 @@ var MediaVaultGallery = (function() {
       if (p.has('mode')) _layoutMode = p.get('mode');
       if (p.has('q')) _searchQuery = p.get('q');
       if (p.has('sm')) _searchMode = p.get('sm');
+      if (p.has('folder')) _currentFolder = p.get('folder');
     } catch(e) {}
+  }
+
+  // Установка фильтра по типу папки (gallery/comics/downloads) и перезагрузка
+  function _setFolder(folder) {
+    if (folder === _currentFolder) return;
+    _currentFolder = folder;
+    _currentPage = 1;
+    loadGallery();
+  }
+
+  // Отрисовка вкладок-пилюлек для фильтрации по типу папки
+  function _renderFolderTabs(folder_counts, current_folder) {
+    var toolbar = document.getElementById('galleryToolbar');
+    if (!toolbar) return;
+    var container = document.getElementById('folderTabs');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'folderTabs';
+      container.className = 'toolbar-group';
+      var toggle = document.getElementById('sidebarToggle');
+      if (toggle && toggle.nextSibling) {
+        toolbar.insertBefore(container, toggle.nextSibling);
+      } else {
+        toolbar.insertBefore(container, toolbar.firstChild);
+      }
+    }
+    var labels = { 'all': 'All', 'gallery': 'Gallery', 'comics': 'Comics', 'downloads': 'Downloads' };
+    var html = '<button class="tool-btn folder-tab' + (current_folder === 'all' ? ' active' : '') + '" data-folder="all">' + labels['all'] + '</button>';
+    ['gallery', 'comics', 'downloads'].forEach(function(ft) {
+      if (folder_counts && folder_counts[ft] > 0) {
+        html += '<button class="tool-btn folder-tab' + (current_folder === ft ? ' active' : '') + '" data-folder="' + ft + '">' + labels[ft] + ' <span style="opacity:.6;font-size:11px">' + folder_counts[ft] + '</span></button>';
+      }
+    });
+    container.innerHTML = html;
+    container.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-folder]');
+      if (btn) _setFolder(btn.dataset.folder);
+    });
   }
 
   // Построение индекса путь → {row} для быстрого доступа
@@ -74,7 +115,11 @@ var MediaVaultGallery = (function() {
   function loadGallery() {
     var status = document.getElementById('statusText');
     if (status) status.textContent = 'Loading…';
-    fetch('/api/gallery').then(function(r) { return r.json(); }).then(function(data) {
+    var apiUrl = '/api/gallery';
+    if (_currentFolder && _currentFolder !== 'all') {
+      apiUrl += '?folder=' + encodeURIComponent(_currentFolder);
+    }
+    fetch(apiUrl).then(function(r) { return r.json(); }).then(function(data) {
       if (data.error) {
         if (status) status.textContent = 'Error: ' + data.error;
         return;
@@ -88,6 +133,7 @@ var MediaVaultGallery = (function() {
       if (!urlParams.has('sm')) _searchMode = 'both';
       var searchInput = document.getElementById('searchInput');
       if (searchInput) searchInput.value = _searchQuery;
+      _renderFolderTabs(data.folder_counts || {}, data.current_folder || 'all');
       if (!data.media_dir_set && _galleryData.length > 0) {
         var gallery = document.getElementById('gallery');
         gallery.innerHTML = '<div class="gallery-empty"><h2>📁 Media folder not set</h2>' +
@@ -746,7 +792,8 @@ var MediaVaultGallery = (function() {
     isSelectMode: function() { return _selectMode; },
     selectedPaths: function() { return _selectedPaths; },
     toggleFetchedOnly: toggleFetchedOnly,
-    toggleDateSort: toggleDateSort
+    toggleDateSort: toggleDateSort,
+    setFolder: _setFolder
   };
 })();
 

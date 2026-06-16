@@ -143,12 +143,30 @@ def _parse_js_i18ndata():
     return result
 
 
+_EXCLUDED_KEYS = frozenset([
+    'clearBrowser', 'clearThumbs', 'clearTags', 'regenThumbs', 'regenMissing',
+    'clearFiles', 'clearAll', 'languageChanged', 'loginBgCanvas', 'dedup',
+    'import', 'export', 'dbExport', 'dbImport', 'dbDeduplicate',
+    'dbClearThumbs', 'dbClearTags', 'dbClearFiles', 'dbRegenThumbs',
+    'dbRegenMissing', 'dbClearAll', 'dragOver', 'dragLeave',
+    'KeyringStore', 'PlainTextStore',
+])
+# Keys used via indirect patterns not detectable by static analysis
+_HARDCODED_USED = frozenset([
+    'credKeyring', 'credPlainText', 'secKeyring', 'secPlainText',
+    'secConfirmClearDb', 'secConfirmDedup',
+    'backendApiRaw', 'backendGallerydl',
+    'siteRule34', 'siteDanbooru', 'siteNhentai', 'siteKemono', 'siteCoomer',
+])
+
 def _extract_html_keys():
     """Extract all i18n keys used in .html templates."""
     keys = set()
     pat_jinja = re.compile(r"\{%-?\s*_\s*\(\s*['\"]([^'\"]+)['\"]\s*\)\s*-?%\}")
     pat_jinja2 = re.compile(r"\{\{\s*_\s*\(\s*['\"]([^'\"]+)['\"]\s*\)\s*\}\}")
     pat_data = re.compile(r'data-i18n(?:-[a-z]+)?="([^"]+)"')
+    # Indirect: values in _dbLabels / _dbDescs / confirm: fields within <script> blocks
+    pat_indirect = re.compile(r"['\"](\w+)['\"]\s*[,\]\}]")
     for fpath in sorted(glob.glob(str(ROOT / 'templates/**/*.html'), recursive=True)):
         with open(fpath, encoding='utf-8') as f:
             content = f.read()
@@ -158,17 +176,31 @@ def _extract_html_keys():
             keys.add(m.group(1))
         for m in pat_data.finditer(content):
             keys.add(m.group(1))
+        # Extract i18n keys from _dbLabels/_dbDescs/confirm dict values in <script> blocks
+        for script_m in re.finditer(r'<script[^>]*>(.*?)</script>', content, re.DOTALL):
+            script_body = script_m.group(1)
+            for m in pat_indirect.finditer(script_body):
+                key = m.group(1)
+                if re.match(r'^[a-z][a-zA-Z]*[A-Z][a-zA-Z]*$', key) and key not in _EXCLUDED_KEYS:
+                    keys.add(key)
+                elif key in _HARDCODED_USED:
+                    keys.add(key)
     return keys
 
 
 def _extract_js_keys():
-    """Extract all i18n keys used in .js files (literal strings only)."""
+    """Extract all i18n keys used in .js files."""
     keys = set()
     pat_call = re.compile(r"(?:Shared\.t|_t)\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
+    pat_tool = re.compile(r"_tool\(\s*['\"][^'\"]+['\"]\s*,\s*['\"]([^'\"]+)['\"]")
     for fpath in sorted(glob.glob(str(STATIC / '**/*.js'), recursive=True)):
         with open(fpath, encoding='utf-8') as f:
             content = f.read()
         for m in pat_call.finditer(content):
+            key = m.group(1)
+            if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', key):
+                keys.add(key)
+        for m in pat_tool.finditer(content):
             key = m.group(1)
             if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', key):
                 keys.add(key)
@@ -251,7 +283,7 @@ def check_locale():
     html_keys = _extract_html_keys()
     js_used_keys = _extract_js_keys()
     py_keys = _extract_py_keys()
-    all_used = html_keys | js_used_keys | py_keys
+    all_used = html_keys | js_used_keys | py_keys | _HARDCODED_USED
 
     missing_in_locale = all_used - server_all
     if missing_in_locale:
@@ -611,7 +643,7 @@ def fix_unused_keys():
     html_keys = _extract_html_keys()
     js_used_keys = _extract_js_keys()
     py_keys = _extract_py_keys()
-    all_used = html_keys | js_used_keys | py_keys
+    all_used = html_keys | js_used_keys | py_keys | _HARDCODED_USED
 
     unused = server_all - all_used
     print('--- Fix Unused Keys ---')

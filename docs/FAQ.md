@@ -142,6 +142,39 @@ curl -X POST http://localhost:5050/api/regenerate_thumbnails
 ### ❓ Не работает смена языка
 Кнопка с глобусом в правом верхнем углу хедера. Язык меняется на лету, без перезагрузки. Если не сработало — обнови страницу вручную (`F5`).
 
+### ❓ Что такое «бэкенды» в админ-панели?
+Бэкенды определяют, какой модуль используется для получения тегов с каждого сайта:
+- **API Raw** — для Rule34 и Danbooru (прямые API)
+- **API Raw** — для Rule34, Danbooru и NHentai (прямые API)
+- **Gallery-DL** — для Kemono и Coomer (через gallery-dl CLI), а также для NHentai (по умолчанию)
+Настройка: Admin Panel → Backends. Если бэкенд не выбран — используется `api_raw` по умолчанию.
+
+### ❓ Зачем нужны иконки сайтов?
+Иконки Rule34, Danbooru, NHentai, Kemono, Coomer используются в интерфейсе админ-панели (секция Backends) для визуальной идентификации сайтов. Иконки — реальные favicon (скачанные с сайтов), доступны через `window.SiteIcons.getIconImg('rule34', 16)`.
+
+### ❓ Что такое Folder Settings в админке?
+Раздел Folders в Admin Panel позволяет настроить имена подпапок в вашей медиа-директории:
+- **Gallery folder** (по умолч. `Gallery`) — файлы из этой подпапки считаются галереей
+- **Comics folder** (по умолч. `Comics`) — файлы из этой подпапки считаются комиксами
+Это используется для фильтрации в `/api/gallery?folder=gallery|comics`.
+
+### ❓ Зачем нужен Browser Cache в настройках?
+Определяет, как долго браузер кэширует медиа-файлы и превью:
+- **Default** — кэш на сутки (`max-age=86400`)
+- **Reduced** — кэш на час (`max-age=3600`)
+- **No Cache** — без кэширования (`no-cache`)
+Полезно при разработке или частом обновлении файлов. Настройка: Settings → Appearance → Browser Cache.
+
+### ❓ Как работать с Kemono/Coomer?
+Используется встроенная интеграция через `gallery-dl`:
+1. Убедись что `gallery-dl` установлен в системе
+2. Открой `/kemono-import` или используй API: `POST /api/kemono/download` с URL поста
+3. Файлы скачиваются в `media_dir/Downloads/kemono/`
+Поддерживаются зеркала: `.su`, `.cr`, `.cv`, `.party`, `.so`, `.us`, `.co` для kemono и coomer.
+
+### ❓ Как искать теги на NHentai?
+Через страницу поиска `/nhentai-search` (кнопка «Comics Fetch» на главной) или через API: `GET /api/nhentai/search?q=query`. Использует `GalleryDlBackend` (gallery-dl) для поиска и получения данных.
+
 ---
 
 ## Безопасность

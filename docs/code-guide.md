@@ -31,15 +31,16 @@
 20. [Декораторы: правильный порядок и @api_error_handler](#20-декораторы-правильный-порядок-и-api_error_handler)
 21. [Credential Store: хранение API-ключей](#21-credential-store-хранение-api-ключей)
 22. [Thumbnail System: регенерация с SSE](#22-thumbnail-system-регенерация-с-sse)
-23. [Content Management: новая структура роутов](#23-content-management-новая-структура-роутов)
+ 23. [Content Management: новая структура роутов](#23-content-management-новая-структура-роутов)
+ 24. [Новые фичи (new-features branch)](#24-новые-фичи-new-features-branch)
 
 ---
 
 ## 1. Что это вообще такое?
 
-**MediaVault** — это Flask-приложение (один файл `src/web_app.py`, 3571 строка, 71 роут, 33 `@admin_required`, 53 `@api_error_handler`) с 13 Jinja2-шаблонами и 25 JS-модулями:
+**MediaVault** — это Flask-приложение (один файл `src/web_app.py`, 3896 строк, 82 роута, 41 `@admin_required`, 62 `@api_error_handler`) с 17 Jinja2-шаблонами, 25 JS-модулями и 3 модулями бэкендов:
 
-1. **Скачивает теги** с Rule34.xxx и Danbooru по MD5-хешу файла
+1. **Скачивает теги** с Rule34.xxx, Danbooru и NHentai по MD5-хешу файла
 2. **Позволяет тегировать** свою медиа-коллекцию (картинки, видео)
 3. **Показывает галерею** с поиском, фильтрацией, лайтбоксом
 4. **Автоматически определяет** тип файла (photo/video), соотношение сторон (16:9, 4:3)
@@ -47,22 +48,17 @@
 6. **Встроенный ридер** с scroll и lightbox режимами, навигацией клавишами
 7. **Авторизация** per-user: username+password, сессии, админ-панель
 
-Три под-приложения:
-- **MediaVault** (`/mediavault/`) — просмотр файлов и комиксов, read-only
-- **Content Management** (`/content-mgmt/`) — теги, категории, комиксы, загрузка тегов. Admin-only
-- **Admin** (`/admin`) — пользователи, БД, API-ключи. Settings (`/settings`) — настройки с вкладками
-
 ```mermaid
 flowchart TD
-    User[Пользователь] -->|браузер| Flask[Flask сервер<br/>web_app.py 3571 строка]
+    User[Пользователь] -->|браузер| Flask[Flask сервер<br/>web_app.py 3896 строк]
     
-    Flask --> Auth[Система авторизации<br/>@admin_required × 33<br/>@auth_required × 2<br/>session-based]
-    Flask --> Tpl[Jinja2 шаблоны<br/>13 файлов в 6 папках<br/>12 extend base.html]
-    Flask --> Static[Статика<br/>25 JS модулей + 6 CSS<br/>8441 строк]
+    Flask --> Auth[Система авторизации<br/>@admin_required × 41<br/>@auth_required × 2<br/>session-based]
+    Flask --> Tpl[Jinja2 шаблоны<br/>17 файлов в 7 папках<br/>15 extend base.html]
+    Flask --> Static[Статика<br/>25 JS модулей + 6 CSS<br/>~6040 строк]
     Flask --> DB[(SQLite<br/>10 таблиц)]
     Flask --> FS[Файловая система<br/>медиа-директория]
     Flask --> Cred[Credential Store<br/>GNOME Keyring / plain]
-    Flask --> API[Rule34 / Danbooru API]
+    Flask --> API[Rule34 / Danbooru / NHentai API]
 
     Tpl --> Pages[16 страниц]
     Pages --> Home["/ — главная 3 блока"]
@@ -139,8 +135,12 @@ flowchart TD
 ```
 MediaVault/
 ├── src/
-│   ├── web_app.py             ← ВЕСЬ СЕРВЕР (3571 строка, 71 роут)
-│   └── credential_store.py    ← Хранилище API-ключей (GNOME Keyring / plain text)
+│   ├── web_app.py             ← ВЕСЬ СЕРВЕР (3849 строк, 76 роутов)
+│   ├── credential_store.py    ← Хранилище API-ключей (GNOME Keyring / plain text)
+│   └── backends/              ← Система бэкендов для тегов (2 модуля)
+│       ├── __init__.py        ← BACKENDS registry, fetch_tags(), search_tags()
+│       ├── api_raw.py         ← ApiRawBackend (Rule34 + Danbooru + NHentai)
+│       └── gallerydl.py       ← GalleryDlBackend (Rule34 + Danbooru + NHentai + Kemono + Coomer)
 ├── templates/                      ← Jinja2-шаблоны (все extend base.html)
 │   ├── base.html              ← Главный скелет: <head>, CONFIG, JS, CSS, footer
 │   ├── home.html              ← Главная страница / (3 блока, аккаунт-дропдаун)
@@ -158,7 +158,7 @@ MediaVault/
 │   ├── content-mgmt/
 │   │   └── tags.html          ← Управление тегами/категориями (39 строк)
 │   └── admin/
-│       └── admin.html         ← SPA Admin Panel: пользователи, БД, API-ключи (43 строки)
+│       └── admin.html         ← SPA Admin Panel: 5 разделов (Users, Database, API Keys, Folders, Backends, 49 строк)
 ├── static/
 │   ├── css/
 │   │   ├── shared.css         ← Общие стили: base, header, mobile, темы (257 строк)
@@ -195,7 +195,10 @@ MediaVault/
 │   │   ├── comics.js          ← CRUD комиксов (109 строк)
 │   │   └── utils.js           ← Утилиты, делегаты к Shared (51 строка)
 │   └── admin/
-│       └── admin.js           ← AdminDashboard SPA (620 строк)
+│       └── admin.js           ← AdminDashboard SPA (747 строк, 5 разделов)
+│   └── shared/
+│       └── icons.js           ← window.SiteIcons SVG-иконки (30 строк)
+├── static/shared/icons/       ← SVG файлы: rule34.svg, danbooru.svg, nhentai.svg, kemono.svg, coomer.svg
 ├── AGENTS.md                  ← Памятка для OpenCode
 ├── DESING.md                  ← Полный гайд по дизайн-системе
 ├── docs/code-guide.md         ← ЭТОТ ФАЙЛ
@@ -208,14 +211,18 @@ MediaVault/
 | Файл | Строк | Что делает |
 |------|-------|------------|
 | **Python** | | |
-| `web_app.py` | 3571 | **Весь сервер** — 71 роут, БД, кэш, i18n, auth |
-| `credential_store.py` | 67 | Хранилище API-ключей (Keyring / plain text) |
-| **Total Python** | **3638** | **2 файла** |
+| `web_app.py` | 3896 | **Весь сервер** — 82 роута, БД, кэш, i18n, auth, backends |
+| `credential_store.py` | 122 | Хранилище API-ключей (Keyring / plain text) |
+| `backends/__init__.py` | 41 | BACKENDS registry, fetch_tags(), search_tags() |
+| `backends/api_raw.py` | 210 | ApiRawBackend: Rule34 + Danbooru + NHentai fetch + search |
+| `backends/gallerydl.py` | 338 | GalleryDlBackend: Rule34 + Danbooru + NHentai + Kemono + Coomer |
+| **Total Python** | **4607** | **5 файлов** |
 | **JS** | | |
-| `shared/lightbox.js` | 953 | Единый лайтбокс (zoom, nav, tags, swipe) |
-| `shared/utils.js` | 864 | i18n словари, layout utilities |
+| `shared/lightbox.js` | 956 | Единый лайтбокс (zoom, nav, tags, swipe) |
+| `shared/utils.js` | 887 | i18n словари, layout utilities |
 | `shared/gallery/gallery.js` | 753 | Галерея: загрузка, фильтр, пагинация, сортировка, popular tags |
-| `admin/admin.js` | 620 | AdminDashboard SPA: пользователи, БД, API-ключи |
+| `admin/admin.js` | 726 | AdminDashboard SPA: 5 разделов (Users, Database, API Keys, Folders, Backends) |
+| `shared/icons.js` | 25 | Site icons: SVG-иконки для Rule34, Danbooru, NHentai, Kemono, Coomer |
 | `tagfetch/manual/manual.js` | 603 | Ручной режим Tagfetch + файловый браузер |
 | `shared/comics/comics.js` | 510 | Файловый браузер ComicsPicker (cpGrid, preview, DnD) |
 | `content/files.js` | 436 | Файлы, masonry, lightbox |
@@ -229,39 +236,44 @@ MediaVault/
 | `tagfetch/api.js` | 96 | API-вызовы (autoStatus, autoScan) |
 | `shared/gallery/lightbox.js` | 96 | Лайтбокс (делегирует в Shared) |
 | `shared/comics/comics-list.js` | 83 | Список комиксов (MV view, add-card для admin) |
+| `content/nhentai_search.js` | 83 | NHentai поиск (ES модуль, страница поиска) |
 | `mediavault/db.js` | 77 | Работа с БД |
 | `content/main.js` | 54 | Точка входа Content Manager (ES модуль) |
 | `shared/comics/picker-bridge.js` | 53 | ES-мост ComicsPicker |
 | `content/utils.js` | 51 | Утилиты, делегаты к Shared (ES модуль) |
 | `mediavault/utils.js` | 45 | Утилиты |
-| `mediavault/api.js` | 42 | API-вызовы |
+| `mediavault/api.js` | 47 | API-вызовы |
 | `shared/api.js` | 37 | Базовый fetch с обработкой ошибок |
 | `tagfetch/tagfetch.js` | 17 | Определение вкладки из URL (getCurrentTab) |
-| **Total JS** | **6862** | **25 файлов** (без lib/three.module.js) |
+| **Total JS** | **6038** | **27 файлов** (без lib/three.module.js) |
 | **CSS** | | |
 | `content.css` | 460 | Content SPA: drag-drop теги, файлы, комиксы |
-| `admin.css` | 384 | Admin SPA: карточки, таблицы, модалы |
+| `admin.css` | 418 | Admin SPA: карточки, таблицы, модалы |
 | `shared.css` | 257 | CSS vars, темы, base, header, mobile, fonts |
-| `mediavault.css` | 232 | Галерея, лайтбокс, комиксы, тегирование, хедер |
-| `tagfetch.css` | 134 | Tagfetch |
+| `mediavault.css` | 244 | Галерея, лайтбокс, комиксы, тегирование, хедер |
+| `tagfetch.css` | 129 | Tagfetch |
 | `settings.css` | 112 | Settings SPA: табы, карточки, DB tools grid |
-| **Total CSS** | **1579** | **6 файлов** |
+| **Total CSS** | **1620** | **6 файлов** |
 | **Templates** | | |
-| `settings.html` | 535 | Настройки с 4 табами (SPA) |
-| `shared/view.html` | 357 | Просмотр standalone + comics reader |
-| `home.html` | 281 | Главная 3 блока + Three.js bg |
-| `base.html` | 200 | Главный скелет: head, CONFIG, JS, CSS, footer |
+| `settings.html` | 414 | Настройки с 4 табами (SPA) |
+| `shared/view.html` | 369 | Просмотр standalone + comics reader |
+| `home.html` | 285 | Главная 3 блока + Three.js bg |
+| `base.html` | 214 | Главный скелет: head, CONFIG, JS, CSS, footer |
 | `login.html` | 177 | Логин username+password + Three.js bg (standalone) |
 | `shared/gallery.html` | 128 | Галерея + comics tabs + lightbox |
+| `kemono_import.html` | 122 | Страница импорта с Kemono |
 | `shared/comics-list.html` | 107 | Список комиксов (MV + CM режимы) |
 | `shared/macros.html` | 73 | 6 Jinja2-макросов |
 | `tagfetch/manual.html` | 61 | Ручной режим Tagfetch |
-| `admin/admin.html` | 43 | Admin SPA |
+| `franchise_search.html` | 58 | Страница франчайз-поиска |
+| `admin/admin.html` | 48 | Admin SPA (5 разделов) |
+| `similar.html` | 45 | Страница похожих файлов |
 | `content-mgmt/tags.html` | 39 | Управление тегами/категориями |
 | `tagfetch/auto.html` | 33 | Авто-режим Tagfetch |
 | `shared/popular_tags.html` | 31 | Популярные теги |
-| **Total templates** | **2065** | **13 файлов** |
-| **Total** | **14144** | **Весь проект** (Python 3638 + JS 6862 + CSS 1579 + Templates 2065)
+| `nhentai_search.html` | 31 | Страница поиска NHentai |
+| **Total templates** | **2235** | **17 файлов** |
+| **Total** | **14500** | **Весь проект** (Python 4607 + JS 6038 + CSS 1620 + Templates 2235)
 
 ---
 
@@ -273,7 +285,8 @@ MediaVault/
 venv/bin/python src/web_app.py             # http://0.0.0.0:5050
 venv/bin/python src/web_app.py --debug     # auto-reload + verbose logging
 venv/bin/python src/web_app.py --bind 127.0.0.1
-venv/bin/python check.py                   # syntax + smoke test (32 checks)
+venv/bin/python test.py                    # syntax + locale + dead code + func tests
+venv/bin/python test.py --check smoke      # smoke test (Flask start + page load)
 ```
 
 ### Что происходит при запуске: пошагово
@@ -303,11 +316,14 @@ flowchart TD
 - Все INSERT'ы в **одной транзакции** — быстро и атомарно
 - Если `media_dir` не настроен — сканирование пропускается
 
-### Файл: `check.py` (32 проверки)
+### Файл: `test.py` (782 строки)
 
-Скрипт `python3 check.py` выполняет:
-1. **Синтаксические проверки** (27 шт): импорт модулей, наличие всех функций, констант, декораторов, ключей i18n
-2. **Smoke test** (5 шт): запуск Flask, загрузка главной страницы, проверка API `/api/auth_status`, `/api/settings`, `/api/gallery`
+Скрипт `venv/bin/python test.py` выполняет:
+1. **Синтаксические проверки** (`--check py` / `--check js` / `--check css`): компиляция Python, AST-парсинг i18n, проверка JS через node
+2. **Locale check** (`--check locale`): проверка parity en↔ru, JS sync, дубликаты
+3. **Dead code check** (`--check dead`): AST (Python) + regex (JS) — неиспользуемые функции
+4. **Function tests** (`--check func`): инжект тестовых функций Python (`_has_non_meta_tags()`, `_get_aspect_ratio_tag()` и др.)
+5. **Smoke test** (`--check smoke`): запуск Flask на :15050, GET /login (200) + /api/gallery (401)
 
 ### 4.2 Сборка бинарника (PyInstaller)
 
@@ -505,23 +521,23 @@ erDiagram
 
 | Метрика | Значение |
 |---------|----------|
-| Строк кода | **3571** |
-| `def` функций | **138** (включая 4 внутренние) |
-| `@app.route` (роутов) | **71** |
-| `@admin_required` | **33** (32 API + 1 страница) |
+| Строк кода | **3896** |
+| `def` функций | **138+** (включая внутренние) |
+| `@app.route` (роутов) | **82** |
+| `@admin_required` | **41** (40 API + 1 страница) |
 | `@auth_required` | **2** |
-| `@api_error_handler` | **53** |
-| `@app.before_request` | **1** (`check_auth`, строка 1907) |
-| `@app.after_request` | **1** (`log_access`, строка 1924) |
-| `@app.context_processor` | **2** (`inject_i18n` строка 549, `inject_media_vars` строка 556) |
+| `@api_error_handler` | **62** |
+| `@app.before_request` | **1** (`check_auth`) |
+| `@app.after_request` | **1** (`log_access`) |
+| `@app.context_processor` | **2** (`inject_i18n`, `inject_media_vars`) |
 
 ### Структура файла по строкам
 
 ```mermaid
 flowchart LR
-    subgraph "web_app.py (3571 строк)"
+    subgraph "web_app.py (3896 строк)"
         A["1-84: Логирование\n11 функций, ANSI colors"] --> B["85-145: Импорты, константы\nMETA_TAGS, _MEDIA_EXTS"]
-        B --> C["150-546: LOCALE i18n\n380 ключей (190en + 190ru)"]
+        B --> C["150-546: LOCALE i18n\n414 ключей (207en + 207ru)"]
         C --> D["549-556: context_processors\ninject_i18n + inject_media_vars"]
         D --> E["560-630: БД-функции\n_db_conn, find_file_in_db"]
         E --> F["632-668: Загрузка/сохранение\nload_settings / save_settings"]
@@ -529,10 +545,10 @@ flowchart LR
         G --> H["702-1060: Helpers\n_get_auto_tags, _video_has_audio,\n_get_aspect_ratio, _get_tag_categories,\n_get_file_type, _get_image_dimensions"]
         H --> I["1062-1224: Thumbnail system\n_get_thumbnail, _make_thumbnail_bytes,\n_regen_all_thumbnails, SSE-stream"]
         I --> J["1225-1275: Декораторы\n@auth_required, @admin_required,\n@api_error_handler"]
-        J --> K["1280-1920: Роуты страниц (16)\n+ API роуты (55)"]
+        J --> K["1280-1950: Роуты страниц (20)\n+ API роуты (62)"]
         K --> L["1907-1925: Middleware\ncheck_auth (before_request),\nlog_access (after_request)"]
         L --> M["1940-2014: _quick_scan\nСтартовое сканирование (daemon)"]
-        M --> N["2015-3571: API эндпоинты\nSystem, Auth, Admin, Media,\nTags, Comics, Admin-Tools"]
+        M --> N["2015-3896: API эндпоинты\nSystem, Auth, Admin, Media,\nTags, Comics, Admin-Tools"]
     end
 ```
 
@@ -586,7 +602,7 @@ _log.setLevel(_logging.ERROR)
 
 ### 2. i18n: LOCALE словари (строки 150-546)
 
-**380 ключей всего** — 190 английских (`LOCALE['en']`) + 190 русских (`LOCALE['ru']`).
+**414 ключей всего** — 207 английских (`LOCALE['en']`) + 207 русских (`LOCALE['ru']`).
 
 В шаблонах доступна функция-глобаль `_()`:
 ```jinja2
@@ -856,9 +872,9 @@ def log_access(response):
 4. Все INSERT'ы в **единой транзакции**
 5. **Не использует Pillow** — `width`/`height` = 0 при вставке, запросы к API не делаются
 
-### 9. Credential Store (`src/credential_store.py`, 67 строк)
+### 9. Credential Store (`src/credential_store.py`, 122 строки)
 
-Отдельный модуль для безопасного хранения API-ключей Rule34 и Danbooru.
+Отдельный модуль для безопасного хранения API-ключей Rule34, Danbooru и NHentai.
 
 **Класс `KeyringStore`:**
 - Обёртка над библиотекой `keyring`, service name: `'mediavault'`
@@ -869,12 +885,12 @@ def log_access(response):
 - `GET /api/credential_status` — текущий бэкенд + доступные варианты
 - `POST /api/set_credential_backend` — миграция ключей между бэкендами
 
-### 10. API endpoints (71 route, 9 групп)
+### 10. API endpoints (82 route, 10 групп)
 
 ```mermaid
 flowchart TD
-    subgraph "71 Route ⋅ 33 admin ⋅ 2 auth ⋅ 53 err_handler"
-        P["Pages (16)\nHTML страницы"]
+    subgraph "82 Route ⋅ 41 admin ⋅ 2 auth ⋅ 62 err_handler"
+        P["Pages (20)\nHTML страницы"]
         S["System (5)\n/api/settings, theme..."]
         A["Auth (5)\n/api/login, logout..."]
         AU["Admin-Users (5)\n/api/admin/users/*"]
@@ -883,9 +899,10 @@ flowchart TD
         TE["Tags-Edit (3)\n/api/tags, bulk..."]
         AT["Admin-Tools (13)\nexport, regen, dedup"]
         C["Comics (6)\n/api/comics/*"]
+        NF["New Features (8)\nnhentai, kemono,\nfranchise, cache"]
     end
 
-    P -->|"1 admin, 17 public"| A
+    P -->|"1 admin, 19 public"| A
     S -->|"1 admin, 4 public"| A
     A -->|"2 auth_required, 3 public"| A
     AU -->|"5 admin"| A
@@ -894,32 +911,37 @@ flowchart TD
     TE -->|"3 admin"| A
     AT -->|"12 admin, 1 public"| A
     C -->|"4 admin, 2 public"| A
+    NF -->|"5 admin, 3 public"| A
 ```
 
-#### Pages (16) — HTML страницы
+#### Pages (20) — HTML страницы
 
 | Роут | Функция | Декораторы | Примечание |
 |------|---------|------------|------------|
-| `/` | `index()` (строка 1353) | — | Главная: 3 блока (MV/CM/Admin), аккаунт-дропдаун |
-| `/login` | `login_page()` (строка 1929) | — | Username+password. Не `base.html`. Редирект если уже залогинен |
-| `/mediavault/gallery` | `mediavault_gallery()` (строка 1363) | — | Галерея: masonry/grid/list, lightbox, теги, поиск |
-| `/mediavault/comics` | `mediavault_comics()` (строка 1368) | — | Список комиксов (MV, read-only) |
-| `/mediavault/view` | `mediavault_view()` (строка 1373) | — | Просмотр файла: prev/next, теги, fullscreen |
-| `/mediavault/comics/view` | `mediavault_comics_view()` (строка 1450) | — | Редирект на `/comics/view` |
-| `/popular-tags` | `popular_tags()` (строка 1454) | — | Облако тегов |
-| `/comics` | `comics_route()` (строка 1463) | — | Редирект на `/mediavault/comics` |
-| `/comics/view` | `comics_view()` (строка 1467) | — | Ридер комиксов: scroll + lightbox |
-| `/content-mgmt/tags-auto` | `cm_tags_auto()` (строка 1503) | — | Tagfetch Auto (SSE). Admin-only рендер |
-| `/content-mgmt/tags-manual` | `cm_tags_manual()` (строка 1511) | — | Tagfetch Manual. Admin-only рендер |
-| `/content-mgmt/tags-manage` | `cm_tags_manage()` (строка 1519) | — | Управление тегами: Files + Groups |
-| `/content-mgmt/tags-group` | `cm_tags_group()` (строка 1530) | — | Только Groups/категории |
-| `/content-mgmt/comics-edit` | `cm_comics_edit()` (строка 1541) | `@admin_required` | Редактор комиксов |
-| `/settings` | `settings_page()` (строка 1549) | — | 4 таба: Appearance, API Keys, Database, Account |
-| `/admin` | `admin_panel()` (строка 1791) | — | Панель администратора (SPA) |
-| `/favicon.ico` | `favicon()` (строка 1349) | — | Inline SVG фавиконка |
-| `/content-mgmnt` | `content_page_legacy()` (строка 1811) | — | Редирект на `/content-mgmt/tags-manage` |
+| `/` | `index()` | — | Главная: 3 блока (MV/CM/Admin), аккаунт-дропдаун |
+| `/login` | `login_page()` | — | Username+password. Не `base.html`. Редирект если уже залогинен |
+| `/mediavault/gallery` | `mediavault_gallery()` | — | Галерея: masonry/grid/list, lightbox, теги, поиск |
+| `/mediavault/comics` | `mediavault_comics()` | — | Список комиксов (MV, read-only) |
+| `/mediavault/view` | `mediavault_view()` | — | Просмотр файла: prev/next, теги, fullscreen |
+| `/mediavault/comics/view` | `mediavault_comics_view()` | — | Редирект на `/comics/view` |
+| `/popular-tags` | `popular_tags()` | — | Облако тегов |
+| `/comics` | `comics_route()` | — | Редирект на `/mediavault/comics` |
+| `/comics/view` | `comics_view()` | — | Ридер комиксов: scroll + lightbox |
+| `/content-mgmt/tags-auto` | `cm_tags_auto()` | — | Tagfetch Auto (SSE). Admin-only рендер |
+| `/content-mgmt/tags-manual` | `cm_tags_manual()` | — | Tagfetch Manual. Admin-only рендер |
+| `/content-mgmt/tags-manage` | `cm_tags_manage()` | — | Управление тегами: Files + Groups |
+| `/content-mgmt/tags-group` | `cm_tags_group()` | — | Только Groups/категории |
+| `/content-mgmt/comics-edit` | `cm_comics_edit()` | `@admin_required` | Редактор комиксов |
+| `/nhentai-search` | `nhentai_search_page()` | — | Поиск по NHentai (Feature 11) |
+| `/franchise-search` | `franchise_search_page()` | — | Поиск по всем сайтам (Feature 8) |
+| `/kemono-import` | `kemono_import_page()` | — | Страница импорта с Kemono (Feature 7) |
+| `/similar` | `similar_page()` | — | Страница похожих файлов |
+| `/settings` | `settings_page()` | — | 4 таба: Appearance, API Keys, Database, Account |
+| `/admin` | `admin_panel()` | — | Панель администратора (SPA) |
+| `/favicon.ico` | `favicon()` | — | Inline SVG фавиконка |
+| `/content-mgmnt` | `content_page_legacy()` | — | Редирект на `/content-mgmt/tags-manage` |
 
-**Итого: 16 страниц + favicon + legacy redirect = 18 `@app.route`, 17 функций, 1 с `@admin_required`.**
+**Итого: 20 страниц + favicon + legacy redirect = 22 `@app.route`, 21 функция, 1 с `@admin_required`.**
 
 #### System (5) — системные API
 
@@ -1022,7 +1044,7 @@ flowchart TD
 
 | Группа | Роутов | `@admin_required` | `@auth_required` | `@api_error_handler` |
 |--------|--------|--------------------|------------------|----------------------|
-| Pages (HTML) | 16 + 2* | 1 | 0 | 0 |
+| Pages (HTML) | 20 | 1 | 0 | 0 |
 | System | 5 | 1 | 0 | 5 |
 | Auth | 5 | 0 | 2 | 5 |
 | Admin-Users | 5 | 5 | 0 | 5 |
@@ -1031,9 +1053,8 @@ flowchart TD
 | Tags-Edit | 3 | 3 | 0 | 3 |
 | Admin-Tools | 13 | 12 | 0 | 13 |
 | Comics | 6 | 4 | 0 | 6 |
-| **Всего** | **71** | **33** | **2** | **53** |
-
-\* favicon.ico + legacy redirect включены в Pages (без декораторов)
+| New Features | 8 | 5 | 0 | 8 |
+| **Всего** | **82** | **41** | **2** | **62** |
 
 ### Контекстные процессоры
 
@@ -1054,23 +1075,27 @@ flowchart TD
 
 Все страницы, кроме `/login`, наследуют `base.html` через `{% extends "base.html" %}`. Это даёт общий скелет: `<head>` с CONFIG JSON, CSS, JS, хедер, футер.
 
-#### 13 шаблонов (2065 строк)
+#### 17 шаблонов (2235 строк)
 
 | Файл | Строк | Роут |
 |------|-------|------|
-| templates/base.html | 200 | Shell, CONFIG JSON, CSS/JS links, header blocks |
-| templates/settings.html | 535 | Settings с 4 табами (SPA) |
-| templates/shared/view.html | 357 | Fullscreen viewer + comics reader |
-| templates/home.html | 281 | Home page 3 блока, Three.js bg |
+| templates/base.html | 214 | Shell, CONFIG JSON, CSS/JS links, header blocks |
+| templates/settings.html | 414 | Settings с 4 табами (SPA) |
+| templates/shared/view.html | 369 | Fullscreen viewer + comics reader |
+| templates/home.html | 285 | Home page 3 блока, Three.js bg |
 | templates/login.html | 177 | Login (standalone, не base.html), Three.js bg |
 | templates/shared/gallery.html | 128 | Gallery + lightbox |
+| templates/kemono_import.html | 122 | Kemono import page |
 | templates/shared/comics-list.html | 107 | Comics list (MV view + CM edit modes) |
 | templates/shared/macros.html | 73 | 6 Jinja2-макросов |
 | templates/tagfetch/manual.html | 61 | Manual tagfetch |
+| templates/franchise_search.html | 58 | Franchise search page |
+| templates/admin/admin.html | 48 | Admin SPA |
+| templates/similar.html | 45 | Similar files page |
 | templates/content-mgmt/tags.html | 39 | Tags management |
-| templates/admin/admin.html | 43 | Admin SPA |
 | templates/tagfetch/auto.html | 33 | Auto tagfetch |
 | templates/shared/popular_tags.html | 31 | Popular tags |
+| templates/nhentai_search.html | 31 | NHentai search page |
 
 #### `base.html` — скелет страницы
 
@@ -1113,7 +1138,7 @@ flowchart TD
 
 #### Два паттерна модулей
 
-В проекте 30 JS-файлов. 25 используют IIFE (Immediately Invoked Function Expression) с глобальным `window.*` API. 5 используют ES-модули (с `import`/`export`).
+В проекте 27 JS-файлов. 21 используют IIFE (Immediately Invoked Function Expression) с глобальным `window.*` API. 6 используют ES-модули (с `import`/`export`).
 
 **IIFE-паттерн (25 файлов):**
 
@@ -1140,8 +1165,8 @@ window.MediaVaultGallery = MediaVaultGallery;
 <button onclick="MediaVaultGallery.loadGallery()">Load</button>
 ```
 
-**ES-модули (5 файлов):**
-- `content/main.js`, `content/tags.js`, `content/files.js`, `content/comics.js`, `content/utils.js` — Content Manager
+**ES-модули (6 файлов):**
+- `content/main.js`, `content/tags.js`, `content/files.js`, `content/comics.js`, `content/utils.js`, `content/nhentai_search.js` — Content Manager
 - `shared/home-bg.js` — Three.js фон (импортирует `'three'` через importmap)
 - `shared/comics/picker-bridge.js` — мост для ComicsPicker из ES в IIFE
 
@@ -1149,7 +1174,7 @@ ES-модули загружаются через `<script type="module" src="..
 
 #### 25 JS-файлов (6862 строк, без three.module.js)
 
-**shared/ (5 файлов, 2098 строк):**
+**shared/ (6 файлов, 2128 строк):**
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
@@ -1158,6 +1183,7 @@ ES-модули загружаются через `<script type="module" src="..
 | static/shared/home-bg.js | 145 | Three.js background для home/login (ES module) |
 | static/shared/init.js | 99 | Entry point: drawer, banner, page init |
 | static/shared/api.js | 37 | Базовый fetch GET/POST/POST upload |
+| static/shared/icons.js | 30 | Site icons: Rule34, Danbooru, NHentai, Kemono, Coomer |
 
 **shared/gallery/ (3 файла, 1073 строк):**
 
@@ -2195,7 +2221,7 @@ def api_error_handler(f):
 - Ловит любые исключения
 - Возвращает единый JSON-формат: `{'error': str(e)}` с HTTP 500
 - Логирует через `log_error()`
-- Применён ко всем 53 API endpoint'ам
+- Применён ко всем 62 API endpoint'ам
 
 ### Итоговый шаблон для нового API-эндпоинта
 
@@ -2209,6 +2235,23 @@ def my_endpoint():
         return jsonify({'error': 'no data'}), 400
     return jsonify({'ok': True})
 ```
+
+### 20.1 Эталонные HTTP-коды ответов
+
+Единый формат ошибок для всех эндпоинтов, обёрнутых `@api_error_handler`:
+
+| HTTP-код | Условие | Формат ответа |
+|----------|---------|---------------|
+| 200 | Успех | Данные запроса |
+| 400 | Нет тела POST-запроса | `{"error": "no data"}` |
+| 400 | Отсутствует обязательный query-параметр | `{"error": "no query"}` / `{"error": "no URL"}` |
+| 400 | Путь содержит `..` | `{"error": "invalid path"}` |
+| 401 | Не аутентифицирован (`@auth_required`, `@admin_required`) | `{"error": "unauthorized"}` |
+| 403 | Недостаточно прав, не admin (`@admin_required`) | `{"error": "forbidden"}` |
+| 404 | Файл не найден | `{"error": "file not found"}` |
+| 500 | Любое необработанное исключение | `{"error": str(e)}` (+ traceback в --debug) |
+
+Порядок срабатывания: `@admin_required` / `@auth_required` возвращают 401/403 на этапе декоратора, до тела функции. `@api_error_handler` ловит исключения из тела функции и возвращает 500. Ручные проверки (например, `if data is None`) возвращают 400 из тела функции.
 
 ---
 
@@ -2354,6 +2397,387 @@ data: {"generated": 98, "failed": 2, "skipped": 0, "total_elapsed": 34.2}
 
 ---
 
+## 24. Новые фичи (new-features branch)
+
+### Обзор
+
+Ветка `new-features` добавляет: систему бэкендов для тегов, выбор бэкенда в админке, SVG-иконки сайтов, систему подпапок (Gallery/Comics), настройки браузерного кэша, поддержку Kemono/Coomer через gallery-dl, поиск NHentai через GalleryDlBackend, редизайн UI и рефакторинг админ-панели (5 разделов).
+
+### 24.1 Система бэкендов (`src/backends/`)
+
+Новая директория с модульной архитектурой для получения тегов и данных с разных сайтов.
+
+```
+src/backends/
+├── __init__.py       ← BACKENDS registry (2), fetch_tags(), search_tags()
+├── api_raw.py        ← ApiRawBackend: Rule34 + Danbooru + NHentai (прямые API, 210 строк)
+└── gallerydl.py      ← GalleryDlBackend: все 5 сайтов (gallery-dl Python API, 338 строк)
+```
+
+**`backends/__init__.py`** (41 строка):
+
+| Функция | Назначение |
+|---------|-----------|
+| `get_backend(name)` | Получить экземпляр бэкенда по имени |
+| `fetch_tags(site, md5, settings)` | Получить теги по MD5 через настроенный бэкенд |
+| `search_tags(site, query, page, settings)` | Поиск по тегу/запросу |
+
+`BACKENDS` registry (2 бэкенда):
+```python
+BACKENDS = {
+    'api_raw': ApiRawBackend(),
+    'gallerydl': GalleryDlBackend(),
+}
+```
+
+Настройка `fetch_backend` (dict) в settings.json определяет какой бэкенд использовать для каждого сайта. По умолчанию: Rule34/Danbooru → `api_raw`, NHentai/Kemono/Coomer → `gallerydl`. Поддерживаемые ключи: `rule34`, `danbooru`, `nhentai`, `kemono`, `coomer`.
+
+**`api_raw.py`** (210 строк) — `ApiRawBackend`:
+- `fetch(site, md5, settings)` — Rule34 XML API + Danbooru JSON API + NHentai API v2 с 3 retry и задержкой 1s
+- `search(site, query, page, settings)` — поиск по тегам с пагинацией (limit=100), Rule34/Danbooru/NHentai
+- `_fetch_rule34()` — прямая интеграция с Rule34 API, 3 попытки, User-Agent `MediaVault/1.0`
+- `_fetch_danbooru()` — Danbooru JSON API, Basic Auth через login+key, 3 попытки
+- `_fetch_nhentai()` — NHentai API v2, Key-Header авторизация, 3 попытки
+- `_search_rule34()` / `_search_danbooru()` / `_search_nhentai()` — поиск с разбором результата (id, tags, file_url, preview_url, dimensions)
+- **Rule34 требует обязательную аутентификацию** (uid + key) — без них API возвращает 403
+- Задержка между ретраями: `API_DELAY = 1.0`
+
+**`gallerydl.py`** (338 строк) — `GalleryDlBackend`:
+- Использует **Python API** (`gallery_dl.extractor.find`, `job.DataJob`, `job.DownloadJob`) — не CLI subprocess
+- Поддерживает все 5 сайтов: Rule34, Danbooru, NHentai, Kemono, Coomer
+- `fetch(site, md5, settings)` — получение тегов/метаданных по MD5
+- `search(site, query, page, settings)` — поиск по тегам/запросу
+- `get_info(url)` — метаданные (artist, post_id, список файлов)
+- `download(url, dest_dir)` — загрузка всех файлов, возвращает список путей
+- `is_available()` — проверка наличия gallery-dl (через Python import)
+- `get_mirrors()` — статический метод, возвращает список зеркал Kemono/Coomer (`.su`, `.cr`, `.cv`, `.party`, `.so`, `.us`, `.co`)
+- Thread-safe через `threading.Lock`
+- gallery-dl сам обходит Cloudflare для всех сайтов
+
+### 24.2 Выбор бэкенда в админ-панели
+
+**Раздел «Backends»** в Admin Panel (`/admin`):
+- Загружает `fetch_backend` из `/api/settings`
+- Для каждого сайта показывает иконку (через `window.SiteIcons`) и выпадающий список бэкендов
+- Сайты: Rule34/Danbooru → `api_raw`, NHentai/Kemono/Coomer → `gallerydl`
+- Кнопка **Save** — отправляет `POST /api/settings` с `{fetch_backend: {site: backend, ...}}`
+- Реализация: `admin.js` → `_sections.backends` (строки 278-339)
+
+**i18n ключи:** `sectionBackends`, `backendsDesc`, `backendApiRaw`, `backendGallerydl`, `siteRule34`, `siteDanbooru`, `siteNhentai`, `siteKemono`, `siteCoomer`, `navBackends`.
+
+### 24.3 Site Icons (`static/shared/icons.js` + `static/shared/icons/`)
+
+**Файл:** `static/shared/icons.js` (30 строк)
+
+```javascript
+window.SiteIcons = {
+    _svg: {
+        rule34: '...',   // Красный круг с "34"
+        danbooru: '...', // Коричневая буква D
+        nhentai: '...',  // Розовая молния NHentai
+        kemono: '...',   // Оранжевая маска
+        coomer: '...',   // Синяя маска
+    },
+    getIcon(site),        // Вернуть data URI
+    getIconImg(site, size),  // <img> с data URI
+    getIconDataURI(site),    // data: URI иконки
+}
+```
+
+Реальные favicon data URI встроены прямо в JS (для PNG/ICO — base64, для SVG — URL-encoded). Используются в:
+- Admin Backend Selection UI (каждая строка сайта показывает иконку)
+- Доступны через `window.SiteIcons.getIconImg('rule34', 16)`
+
+Плацехолдер SVG-файлы в `static/shared/icons/` — для обратной совместимости:
+- `rule34.svg`, `danbooru.svg`, `nhentai.svg`, `kemono.svg`, `coomer.svg`
+
+### 24.4 Система подпапок (Folder System)
+
+**Настройки:** `gallery_dir` (по умолч. `Gallery`) и `comics_dir` (по умолч. `Comics`) в settings.json.
+
+**Как работает:**
+1. При стартовом сканировании (`_quick_scan`), для каждого файла определяется `folder_type` по первому компоненту пути
+2. Маппинг: директория → folder_type задаётся через настройки:
+   ```python
+   folder_type = {gallery_dir: 'gallery', comics_dir: 'comics', 'Downloads': 'downloads'}.get(first_dir, 'gallery')
+   ```
+3. В таблицу `files` добавлена колонка `folder_type` (строка)
+4. API `/api/gallery` поддерживает фильтрацию по `folder_type` через query-параметр `folder`
+
+**UI в админ-панели:**
+- Раздел **Folders** (5-й nav-элемент, между API Keys и Backends)
+- Показывает текущую media_dir (readonly)
+- Поля: Gallery folder (gallery_dir), Comics folder (comics_dir)
+- Кнопка **Save** — POST `/api/settings` с gallery_dir/comics_dir
+- Реализация: `admin.js` → `_sections.folders` (строки 246-276)
+
+**i18n ключи:** `adminGalleryDir`, `adminComicsDir`, `navFolders`, `sectionFolders`.
+
+### 24.5 Browser Cache (настройки кэширования)
+
+**Настройка:** `browser_cache` в settings.json (по умолч. `'default'`).
+
+**Функция `_cache_control_header()`** (строка 721):
+```python
+def _cache_control_header():
+    mode = settings.get('browser_cache', 'default')
+    if mode == 'nocache':
+        return 'no-cache'
+    if mode == 'reduced':
+        return 'public, max-age=3600'
+    return 'public, max-age=86400, immutable'
+```
+
+**Где применяется:** `/api/media`, `/api/thumbnail` — `Cache-Control` заголовок + `ETag` (mtime + size).
+
+**Три режима:**
+
+| Режим | Cache-Control | ETag | Когда нужно |
+|-------|---------------|------|-------------|
+| `default` | `public, max-age=86400, immutable` | Да | Обычный режим, кэш на сутки |
+| `reduced` | `public, max-age=3600` | Да | Разработка, частые изменения |
+| `nocache` | `no-cache` | Да | QA, всегда свежие файлы |
+
+**UI:** Settings → Appearance → Browser Cache — выпадающий список (`<select>`).
+
+**Дополнительно:**
+- `POST /api/clear_browser_cache` — инкрементирует `cache_buster` в settings, все URL-ы с `&cb=N` обновляются
+- `cacheBuster` в CONFIG JSON → используется во всех URL `/api/media?path=...&cb=N` и `/api/thumbnail?path=...&cb=N`
+- `_cbSuffix()` в `Shared/utils.js` — читает `CONFIG.cacheBuster` для всех JS-запросов
+- i18n ключи: `settingsBrowserCache`, `settingsBrowserCacheDefault`, `settingsBrowserCacheReduced`, `settingsBrowserCacheNoCache`
+
+### 24.6 UPSERT для сохранения source
+
+**Изменение:** `INSERT OR IGNORE` → `INSERT ... ON CONFLICT DO UPDATE SET source=excluded.source`
+
+**Где применено (2 места):**
+
+1. `_ensure_categories()` (Danbooru, строка 965):
+```sql
+INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+VALUES (?, ?, 'danbooru', ?)
+ON CONFLICT(tag_name) DO UPDATE SET
+    category = excluded.category,
+    source = 'danbooru',
+    last_updated = excluded.last_updated
+```
+
+2. `_ensure_r34_categories()` (Rule34, строка 1029):
+```sql
+INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+VALUES (?, ?, 'rule34', ?)
+ON CONFLICT(tag_name) DO UPDATE SET
+    category = excluded.category,
+    source = 'rule34',
+    last_updated = excluded.last_updated
+```
+
+**Эффект:** При повторном фетче тегов source обновляется (не застревает в `'auto'`), и категория тоже обновляется. Источник (`danbooru`/`rule34`) всегда отражает актуальный API, откуда пришёл тег.
+
+### 24.7 Kemono URL система
+
+**Расширенный regex для доменов Kemono/Coomer:**
+```python
+_KEMONO_DOMAINS = r'(?:kemono|coomer)\.(?:su|cr|cv|party|so|us|co)'
+```
+
+Поддерживает 6 доменов: `kemono.su`, `kemono.cr`, `kemono.cv`, `kemono.party`, `kemono.so`, `kemono.us`, `kemono.co` (и coomer-варианты).
+
+**`get_mirrors()`** — статический метод `GalleryDlBackend`, возвращает массив всех известных зеркал (14 штук).
+
+**Новые API эндпоинты:**
+| Endpoint | Описание |
+|----------|----------|
+| `GET /api/kemono/mirrors` | Список зеркал Kemono/Coomer |
+| `GET /api/kemono/info?url=...` | Метаданные поста (через gallery-dl) |
+| `POST /api/kemono/download` | Скачать пост в `media_dir/Downloads/kemono/` |
+| `GET /kemono-import` | Страница импорта с Kemono |
+
+### 24.8 Редизайн (CSS + HTML)
+
+**Изменения в gallery.html:**
+- Инлайн-стили → CSS классы (`.sidebar-label`, etc.)
+- Удалены дублирующиеся стили, вынесены в mediavault.css
+
+**Изменения в view.html:**
+- Эмодзи 🏷️ → inline SVG иконка тегов
+- Эмодзи ✕ → inline SVG крестик
+
+**Глобальные изменения:**
+- Класс `.hidden` используется для скрытия элементов вместо прямого `display:none` в атрибуте style
+- Все JS-модули переведены на `classList.toggle`/`add`/`remove` вместо прямого `element.style.display = 'none'`
+
+**Tagfetch CSS:**
+- Исправлен layout для manual страницы — `.tf-layout` теперь `display:flex` (был `grid`)
+
+### 24.9 Comics picker + viewer фиксы
+
+| Баг | Фикс |
+|-----|------|
+| Модал ComicsPicker не влазил на мобильных | `#modalInner max-width: 95vw` |
+| Огромный отступ в `.comic-modal-body` | `min-height: 0` (переопределён `min-height: 100%` от родителя) |
+| Счётчик страниц дёргался при программном скролле | `_programmaticScroll` guard + порог срабатывания |
+
+**Scroll guard реализация в `view.html`:**
+```javascript
+var _currentPage = 1;
+var _programmaticScroll = false;
+// При программном скролле — флаг, обработчик scroll игнорируется
+// Только реальный скролл пользователя обновляет счётчик
+```
+
+### 24.10 Админ-панель: рефакторинг (5 разделов)
+
+**Было:** 3 раздела (Users, Database, API Keys с media_dir внутри).
+
+**Стало:** 5 разделов в хедере Admin Panel:
+1. **Users** — управление пользователями (без изменений)
+2. **Database** — инструменты БД (без изменений)
+3. **API Keys** — API-ключи Rule34/Danbooru + Credential Backend (media_dir вынесен)
+4. **Folders** — настройки gallery_dir/comics_dir (новый, media_dir перенесён сюда)
+5. **Backends** — выбор бэкенда для каждого сайта (новый)
+
+**Изменения в `admin.js`:**
+- `_sections.folders` — новый раздел (строки 246-276): gallery_dir + comics_dir
+- `_sections.backends` — новый раздел (строки 278-339): выбор бэкенда per-site
+- `_sections['api-keys']` — убран media_dir, теперь только ключи + credential backend
+- `_saveSettings()` helper — DRY: POST `/api/settings` + toast (неявно через `_api`)
+- `_errorFallback()` — единый обработчик ошибок (неявно через `.catch` в `_api`)
+- Добавлены методы: `_saveFolderSettings()`, `_saveBackends()`, `_saveApiKeys()`
+
+**Изменения в `admin.html`:**
+- 5 иконок в `hdr_nav` (добавлены folders, backends)
+- Селектор секций в `loadSection()`: `{users, database, api-keys, folders, backends}`
+- Заголовок `adminPageTitle` обновляется динамически
+
+### 24.11 Новые API эндпоинты
+
+| Роут | Функция | Декораторы | Описание |
+|------|---------|------------|----------|
+| `POST /api/clear_browser_cache` | `api_clear_browser_cache()` | `@admin_required`, `@api_error_handler` | Инкремент cache_buster |
+| `GET /api/nhentai/search` | `api_nhentai_search()` | `@api_error_handler` | Поиск по NHentai |
+| `GET /api/kemono/mirrors` | `api_kemono_mirrors()` | `@admin_required`, `@api_error_handler` | Зеркала Kemono |
+| `GET /api/kemono/info` | `api_kemono_info()` | `@admin_required`, `@api_error_handler` | Инфо поста Kemono |
+| `POST /api/kemono/download` | `api_kemono_download()` | `@admin_required`, `@api_error_handler` | Скачать пост |
+
+### 24.12 Новые i18n ключи
+
+Добавлено в LOCALE (en + ru) для всех новых фич:
+
+| Ключ (en) | Ключ (ru) |
+|-----------|-----------|
+| `adminGalleryDir`, `adminComicsDir` | `Папка галереи`, `Папка комиксов` |
+| `navFolders`, `sectionFolders` | `Папки`, `Настройки папок` |
+| `navBackends`, `sectionBackends` | `Бэкенды`, `Бэкенды получения тегов` |
+| `backendsDesc` | `Выберите бэкенд для получения тегов с каждого сайта` |
+| `backendApiRaw`, `backendGallerydl` | `API Raw`, `Gallery-DL` |
+| `siteRule34`, `siteDanbooru`, `siteNhentai`, `siteKemono`, `siteCoomer` | Имена сайтов |
+| `settingsBrowserCache*` | Настройки кэша браузера |
+
+### 24.13 Ранее удалено: NokufindBackend
+
+**`NokufindBackend`** **ранее удалён** из проекта.
+
+**Причина:** gallery-dl (уже в зависимостях) сам обходит Cloudflare для всех сайтов, включая NHentai, не требуя дополнительных библиотек. NHentai теперь поддерживается через:
+- `ApiRawBackend` — NHentai API v2 (с Key-Header)
+- `GalleryDlBackend` — gallery-dl Python API (дефолтный бэкенд для NHentai)
+
+### 24.14 Библиотеки: gallery-dl (универсальный бэкенд)
+
+**Что это:** Программа и Python-библиотека для скачивания галерей с сайтов. Поддерживает 270+ сайтов (Rule34, Danbooru, NHentai, Kemono, Coomer и др.).
+
+**Установка:** `pip install gallery-dl` (уже в venv)
+
+**Использование в проекте:** `src/backends/gallerydl.py` (338 строк) — `GalleryDlBackend` через **Python API** (`gallery_dl.extractor`, `job.DataJob`, `job.DownloadJob`), не через CLI subprocess.
+
+**Python API (текущая реализация):**
+```python
+import gallery_dl
+from gallery_dl import job, config, exception
+
+# 1. Найти экстрактор для URL
+extr = gallery_dl.extractor.find(url)
+if not extr:
+    raise exception.NoExtractorError(f'No extractor for {url}')
+
+# 2. Извлечь метаданные (без скачивания)
+data_job = job.DataJob(extr)
+data_job.run()
+for msg_type, value, kwdict in data_job.data:
+    if msg_type == 'url':       # файл для скачивания
+        file_url = value
+        metadata = kwdict       # {id, title, filename, extension, num, ...}
+    elif msg_type == 'directory':
+        dir_meta = value
+
+# 3. Скачать файлы
+config.set((), 'base-directory', '/path/to/output')
+config.set(('extractor',), 'filename', '{id}_{num:>02}.{extension}')
+dl_job = job.DownloadJob(extr)
+status = dl_job.run()  # 0 = успех, >0 = ошибки
+```
+
+**Настройки gallery-dl (Python API):**
+```python
+from gallery_dl import config
+
+config.set((), 'base-directory', '/tmp/gallery-dl')           # глобально
+config.set(('extractor',), 'filename', '{id}.{extension}')    # паттерн имени
+config.set(('extractor', 'kemono'), 'cookies', '/path/cookies.txt')  # куки
+config.set((), 'skip', False)  # перезаписывать существующие
+```
+
+**Иерархия исключений:**
+```
+exception.GalleryDLException (code=1)
+├── ExtractionError (code=4)     — HttpError, AuthenticationError, NotFoundError
+└── InputError (code=32)         — FormatError, NoExtractorError
+```
+
+**Поддерживаемые сайты в GalleryDlBackend:**
+
+| Сайт | Методы | Примечание |
+|------|--------|------------|
+| Rule34 | `fetch()`, `search()` | Поиск и получение тегов по MD5 |
+| Danbooru | `fetch()`, `search()` | Полный доступ (галерея не требует auth) |
+| NHentai | `fetch()`, `search()` | Дефолтный бэкенд; cloudflare не проблема |
+| Kemono | `get_info()`, `download()` | Импорт постов, зеркала через get_mirrors() |
+| Coomer | `get_info()`, `download()` | Аналогично Kemono |
+
+**Что нужно для работы:** `pip install gallery-dl` (уже в venv). Системный CLI **не требуется** — используется Python API.
+
+### 24.15 Выполненные фичи (16.06.2026)
+
+Три крупные фичи, реализованные и задокументированные в этом цикле:
+
+#### 24.15.1 Per-site credentials ✅
+- Мигрированы глобальные ключи (r34_uid/r34_key/dan_login/dan_key) в per-site формат: `credentials.rule34.*`, `credentials.danbooru.*`
+- Admin UI: поля grouped by site с иконками (Details)
+- KeyringStore: ключи `api:site:keyname` вместо `api:r34_uid`
+- load_settings()/save_settings() — миграция старых ключей + per-site чтение
+- See: `src/credential_store.py`, `static/admin/admin.js`, `docs/new-features-summary.md`
+
+#### 24.15.2 Franchise search ✅
+- Страница `/franchise-search` + API `/api/franchise/search`
+- Сервер-сайд рендеринг (без отдельного JS модуля)
+- Параллельный dispatch: ThreadPoolExecutor → search_tags() для rule34, danbooru, nhentai
+- Результаты с source badge + site icon
+- Header link + 6 i18n ключей
+- See: `src/web_app.py`, `templates/franchise_search.html`
+
+#### 24.15.3 Gallery-dl как универсальный бэкенд ✅
+**Решение от 16.06.2026:** Вместо 3-х новых библиотек (rule34Py, Pybooru, enma/nhentai-tools) — используем gallery-dl (уже в venv) для search() и fetch() на всех сайтах.
+
+**Что сделано:**
+1. GalleryDlBackend полностью переписан на Python API (gallery_dl.extractor, DataJob, DownloadJob)
+2. Поддерживает все 5 сайтов: Rule34, Danbooru, NHentai, Kemono, Coomer
+3. Зарегистрирован в BACKENDS registry (gallerydl) — доступен в Admin UI
+4. Admin UI: 2 варианта per-site (api_raw или gallery_dl)
+5. Дефолтный бэкенд для NHentai/Kemono/Coomer (gallery-dl сам обходит Cloudflare)
+6. NokufindBackend удалён — gallery-dl полностью заменяет
+
+---
+
 ## Быстрые ссылки
 
 | Что нужно | Куда смотреть |
@@ -2374,7 +2798,7 @@ data: {"generated": 98, "failed": 2, "skipped": 0, "total_elapsed": 34.2}
 | Создание комикса | `comics.js` + `comics-list.html` + `/api/comics/add` |
 | Мобильный хедер | `base.html` (hdr-desktop/hdr-mobile) + `shared.css` |
 | Drawer controls | `init.js` (toggle) + `gallery.js` (sync) |
-| Content Management | `content/*.js` (5 ES modules) + `content-mgmt/tags.html` + `content.css` |
+| Content Management | `content/*.js` (6 ES modules) + `content-mgmt/tags.html` + `content.css` |
 | Settings | `settings.html` + `settings.css` + `SettingsApp` JS |
 | Admin Panel | `admin/admin.js` + `admin/admin.html` + `admin.css` |
 | **Авторизация** | auth endpoints + middleware + `@admin_required` / `@auth_required` decorators |
@@ -2387,5 +2811,12 @@ data: {"generated": 98, "failed": 2, "skipped": 0, "total_elapsed": 34.2}
 | **Credential Store** | `src/credential_store.py` + `/api/credential_status` + `/api/set_credential_backend` |
 | **SVG темы** | `templates/shared/macros.html` — `theme_buttons()` макрос |
 | **JS утилиты** | `static/shared/utils.js` — `Shared.*` методы |
-| **@api_error_handler** | `web_app.py` — декоратор, применён ко всем 53 API |
+| **@api_error_handler** | `web_app.py` — декоратор, применён ко всем 62 API |
 | **Порядок декораторов** | `@app.route` → `@admin_required/@auth_required` → `@api_error_handler` (критично!) |
+| **Бэкенды (backends)** | `src/backends/` — `fetch_tags()`, `search_tags()`, BACKENDS registry |
+| **Site Icons** | `static/shared/icons.js` — `window.SiteIcons` (getIcon, getIconImg) |
+| **Система подпапок** | `gallery_dir` / `comics_dir` settings + `folder_type` колонка в БД |
+| **Browser Cache** | `_cache_control_header()` + 3 режима (default/reduced/nocache) |
+| **Kemono URL** | `GalleryDlBackend.get_mirrors()` + `/api/kemono/mirrors` |
+| **Admin 5 разделов** | Users, Database, API Keys, Folders, Backends |
+| **UPSERT for source** | `INSERT ... ON CONFLICT DO UPDATE SET source=excluded.source` |

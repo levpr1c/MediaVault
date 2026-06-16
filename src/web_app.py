@@ -354,6 +354,7 @@ LOCALE = {
         'settingsCleanAll': 'Clean All',
         'similarTo': 'Similar to',
         'similarBtn': 'Similar',
+        'noResults': 'No results',
     },
     'ru': {
         'homeTfManual': 'Ручной',
@@ -556,6 +557,7 @@ LOCALE = {
         'settingsCleanAll': 'Очистить всё',
         'similarTo': 'Похоже на',
         'similarBtn': 'Похожие',
+        'noResults': 'Нет результатов',
     },
 }
 

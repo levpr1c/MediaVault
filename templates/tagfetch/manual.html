@@ -30,8 +30,8 @@
       <div id="fileInfo" data-i18n="tfSelectFile">{{ _('tfSelectFile') }}</div>
       <div class="preview-row">
         <div class="preview-panel"><h3 data-i18n="tfLocal">{{ _('tfLocal') }}</h3><div class="preview-box" id="localPreview"><div class="placeholder"><span class="big" data-i18n="tfNoFile">{{ _('tfNoFile') }}</span></div></div></div>
-        <div class="preview-panel"><h3>Rule34</h3><div class="preview-box" id="r34Preview"><div class="placeholder"><span class="big" data-i18n="tfNotFetched">{{ _('tfNotFetched') }}</span></div></div></div>
-        <div class="preview-panel"><h3>Danbooru</h3><div class="preview-box" id="danPreview"><div class="placeholder"><span class="big" data-i18n="tfNotFetched">{{ _('tfNotFetched') }}</span></div></div></div>
+        <div class="preview-panel"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Rule34</h3><div class="preview-box" id="r34Preview"><div class="placeholder"><span class="big" data-i18n="tfNotFetched">{{ _('tfNotFetched') }}</span></div></div></div>
+        <div class="preview-panel"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Danbooru</h3><div class="preview-box" id="danPreview"><div class="placeholder"><span class="big" data-i18n="tfNotFetched">{{ _('tfNotFetched') }}</span></div></div></div>
       </div>
       {% if session.get('role') == 'admin' %}
       <div class="action-bar">
@@ -43,8 +43,8 @@
       </div>
       {% endif %}
       <div class="panels">
-        <div class="panel"><h3>Rule34 <span id="r34Count"></span></h3><div class="tag-colors" id="r34Tags"></div></div>
-        <div class="panel"><h3>Danbooru <span id="danCount"></span></h3><div class="tag-colors" id="danTags"></div></div>
+        <div class="panel"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Rule34 <span id="r34Count"></span></h3><div class="tag-colors" id="r34Tags"></div></div>
+        <div class="panel"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Danbooru <span id="danCount"></span></h3><div class="tag-colors" id="danTags"></div></div>
       </div>
       <div class="actions" id="actions"></div>
       <div class="current-tags" id="currentTags"></div>

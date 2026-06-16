@@ -309,6 +309,7 @@ var _i18nData = {
     settingsCleanTagCache: "Clean Tag Cache",
     similarTo: "Similar to",
     similarBtn: "Similar",
+    noResults: "No results",
     tagfetch: "TAGFETCH",
     tags: "TAGS",
   },
@@ -541,6 +542,7 @@ var _i18nData = {
     settingsCleanTagCache: "Очистить кэш тегов",
     similarTo: "Похоже на",
     similarBtn: "Похожие",
+    noResults: "Нет результатов",
     tagfetch: "ПОИСК ТЕГОВ",
     tags: "ТЕГИ",
   }

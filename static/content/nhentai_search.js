@@ -1,4 +1,4 @@
-import { _t, api, esc } from './utils.js'
+import { _t, api, esc, toast } from './utils.js'
 
 let _ac = null
 
@@ -54,12 +54,30 @@ function showDetail(g) {
     </div>
     <p style="margin:0 0 10px;font-size:12px;color:var(--text2)">ID: ${g.id} · Pages: ${g.pages}</p>
     <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">
-      ${(g.tags||[]).map(t => `<span style="font-size:11px;padding:3px 8px;border-radius:4px;background:var(--surface2);color:var(--text)">${esc(t)}</span>`).join('')}
+      ${(g.tags||[]).map(t => `<span class="cm-tags-chip nh-tag-chip" draggable="true" data-tag="${esc(t)}" title="${esc(t)}">${esc(t)}</span>`).join('')}
     </div>
-    <button class="btn btn-sm btn-primary" id="nhAddTags">Add tags to comic</button>
+    <button class="btn btn-sm btn-primary" id="nhAddAllTags">Add all tags</button>
   </div>`
   document.getElementById('nhDetailClose').addEventListener('click', () => { detail.style.display = 'none' })
-  document.getElementById('nhAddTags').addEventListener('click', () => {
-    console.log('Add tags:', g.tags, 'for gallery', g.id)
+  // Drag tags — uses existing files.js /api/tags drop handlers
+  detail.querySelectorAll('.nh-tag-chip').forEach(chip => {
+    chip.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', chip.dataset.tag)
+      e.dataTransfer.effectAllowed = 'copy'
+    })
+    chip.addEventListener('click', async () => {
+      const tag = chip.dataset.tag
+      try {
+        await navigator.clipboard.writeText(tag)
+      } catch (_) { /* fallback: no clipboard */ }
+    })
+  })
+  document.getElementById('nhAddAllTags').addEventListener('click', () => {
+    const tags = g.tags || []
+    if (!tags.length) return
+    Promise.all(tags.map(tag =>
+      api('/api/categories', { method: 'POST', body: { action: 'assign_tag', tag, category: 'general' } })
+    )).then(() => toast(`Added ${tags.length} tags to DB`, 'success'))
+     .catch(e => toast(e.message, 'error'))
   })
 }

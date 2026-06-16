@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="/static/css/content.css?v=10">
+{% endblock %}
+{% block title %}NHentai Search{% endblock %}
+{% block hdr_brand %}NHENTAI SEARCH{% endblock %}
+{% block hdr_tabs %}
+<div class="cm-hdr-left">
+  <a href="/content-mgmt/tags-manual" class="cm-hdr-btn">← {{ _('mvHeader') }}</a>
+</div>
+{% endblock %}
+{% block hdr_drawer %}{% endblock %}
+{% block content %}
+<div id="contentView">
+  <main class="admin-main">
+    <h2 class="admin-page-title">🔍 NHentai Search</h2>
+    <div class="admin-card" style="margin-bottom:20px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <input id="nhSearch" type="text" placeholder="Search tags, artists, characters…" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px">
+        <button id="nhSearchBtn" class="btn btn-sm btn-primary" style="padding:10px 20px;font-size:14px;height:auto">Search</button>
+      </div>
+    </div>
+    <div id="nhResults" class="admin-loading" style="display:none">
+      <span class="fetch-spinner"></span> <span data-i18n="loading">{{ _('loading') }}</span>
+    </div>
+    <div id="nhGrid" class="db-grid"></div>
+    <div id="nhDetail" style="display:none"></div>
+  </main>
+</div>
+<script type="module" src="/static/content/nhentai_search.js?v=1"></script>
+{% endblock %}

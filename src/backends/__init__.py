@@ -1,9 +1,11 @@
 """Tag fetch backends. Each module exports fetch(site, query, params) -> dict."""
 
 from .api_raw import ApiRawBackend
+from .nokufind import NokufindBackend
 
 BACKENDS = {
     'api_raw': ApiRawBackend(),
+    'nokufind': NokufindBackend(),
 }
 
 def get_backend(name):

@@ -1567,6 +1567,13 @@ def content_mgmt_comics_edit():
     s = load_settings()
     return render_template('shared/comics-list.html', page='content-mgmt', mode='edit', s=s)
 
+@app.route('/nhentai-search')
+@admin_required
+def nhentai_search_page():
+    """NHentai search interface."""
+    s = load_settings()
+    return render_template('nhentai_search.html', page='nhentai-search', s=s)
+
 # ─── Settings ────────────────────────────────
 
 @app.route('/settings')
@@ -1612,6 +1619,18 @@ def api_settings():
         s['startup_scan_count'] = 0
         save_settings(s)
     return jsonify({'ok': True, 'scan_needed': scan_needed})
+
+@app.route('/api/nhentai/search')
+@api_error_handler
+def api_nhentai_search():
+    query = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+    if not query:
+        return jsonify({'error': 'no query'}), 400
+    from backends.nokufind import NokufindBackend
+    backend = NokufindBackend()
+    result = backend.search(query, page)
+    return jsonify(result)
 
 # ── API: Credentials ─────────────────────────
 

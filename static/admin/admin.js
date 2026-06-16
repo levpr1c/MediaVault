@@ -72,9 +72,7 @@ var AdminDashboard = (function() {
       _api('/api/admin/users').then(function(data) {
         _users = data.users || [];
         self._renderTable(body);
-      }).catch(function(e) {
-        body.innerHTML = '<div class="admin-loading" style="color:var(--danger)"><span data-i18n="settingsError">' + _t('settingsError') + '</span>: ' + e.message + '</div>';
-      });
+      }).catch(function(e) { _errorFallback(body, e); });
     },
 
     _renderTable: function(body) {
@@ -130,27 +128,55 @@ var AdminDashboard = (function() {
     }
   };
 
-  // ─── DATABASE ───
+  // ─── DATABASE (includes Folders card) ───
   _sections.database = {
+    _settings: null,
+
     render: function(body) {
+      _loading(body);
+      var self = this;
+      _api('/api/settings').then(function(data) {
+        self._settings = data;
+        self._renderContent(body);
+      }).catch(function(e) { _errorFallback(body, e); });
+    },
+
+    _renderContent: function(body) {
+      var s = this._settings;
       body.innerHTML =
         '<div class="admin-card">' +
         '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="sectionDatabase">' + _t('sectionDatabase') + '</span></span></div>' +
         '<div class="admin-card-desc"><span data-i18n="settingsDb">' + _t('settingsDb') + '</span></div>' +
         '<div class="db-grid">' +
-        this._tool('dbExport', 'exportDb', 'export', false) +
-        this._tool('dbImport', 'importDb', 'import', false) +
-        this._tool('dbDeduplicate', 'settingsCleanDuplicates', 'dedup', false) +
-        this._tool('dbClearThumbs', 'settingsClearCache', 'clearThumbs', true) +
-        this._tool('dbClearTags', 'settingsCleanTagCache', 'clearTags', true) +
-        this._tool('dbClearFiles', 'settingsCleanDb', 'clearFiles', true) +
-        this._tool('dbRegenThumbs', 'settingsRegenThumbnails', 'regenThumbs', false) +
-        this._tool('dbRegenMissing', 'settingsRegenMissing', 'regenMissing', false) +
-        this._tool('dbClearAll', 'settingsCleanAll', 'clearAll', true) +
+        this._tool('exportDb', 'exportDb', 'export', false) +
+        this._tool('dbImport', 'dbImport', 'import', false) +
+        this._tool('settingsCleanDuplicates', 'settingsCleanDuplicates', 'dedup', false) +
+        this._tool('cleanThumbCache', 'settingsClearCache', 'clearThumbs', true) +
+        this._tool('settingsCleanTagCache', 'settingsCleanTagCache', 'clearTags', true) +
+        this._tool('settingsCleanDb', 'settingsCleanDb', 'clearFiles', true) +
+        this._tool('regenAllThumbs', 'settingsRegenThumbnails', 'regenThumbs', false) +
+        this._tool('genMissingThumbs', 'settingsRegenMissing', 'regenMissing', false) +
+        this._tool('settingsCleanAll', 'settingsCleanAll', 'clearAll', true) +
         '</div></div>' +
+        // Folders card
+        '<div class="admin-card">' +
+        '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="sectionFolders">' + _t('sectionFolders') + '</span></span></div>' +
+        '<div class="admin-card-desc"><span data-i18n="settingsMediaPath">' + _t('settingsMediaPath') + '</span></div>' +
+        '<div class="admin-field"><input class="admin-field-input" id="admMediaDirFolders" value="' + _esc(s.media_dir || '') + '" readonly style="background:var(--surface2);cursor:default"></div>' +
+        '<div class="admin-field"><input class="admin-field-input" id="admMediaDir" value="' + _esc(s.media_dir || '') + '" placeholder="/path/to/media"></div>' +
+        '<div style="display:flex;gap:8px;margin-top:8px;margin-bottom:16px">' +
+        '<button class="btn" onclick="AdminDashboard._pickFolder()"><span data-i18n="settingsSystemDialog">' + _t('settingsSystemDialog') + '</span></button>' +
+        '<button class="btn btn-primary" onclick="AdminDashboard._scanFolder()"><span data-i18n="settingsScan">' + _t('settingsScan') + '</span></button>' +
+        '</div>' +
+        '<div class="admin-field-row">' +
+        '<div class="admin-field"><label class="admin-field-label"><span data-i18n="adminGalleryDir">' + _t('adminGalleryDir') + '</span></label><input class="admin-field-input" id="galleryDir" value="' + _esc(s.gallery_dir || 'Gallery') + '" placeholder="Gallery"></div>' +
+        '<div class="admin-field"><label class="admin-field-label"><span data-i18n="adminComicsDir">' + _t('adminComicsDir') + '</span></label><input class="admin-field-input" id="comicsDir" value="' + _esc(s.comics_dir || 'Comics') + '" placeholder="Comics"></div>' +
+        '</div>' +
+        '<button class="btn btn-primary" onclick="AdminDashboard._saveFolderSettings()" style="margin-top:8px"><span data-i18n="settingsSaveStart">' + _t('settingsSaveStart') + '</span></button>' +
+        '</div>' +
         '<div class="admin-card" id="adminProgressCard" style="display:none">' +
         '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="settingsRunning">' + _t('settingsRunning') + '</span></span>' +
-        '<button class="btn btn-small btn-danger" id="adminCancelRegenBtn" style="display:none" onclick="AdminDashboard._cancelRegen()"><span data-i18n="settingsCancel">' + _t('settingsCancel') + '</span></button>' +
+        '<button class="btn btn-small btn-danger" id="adminCancelRegenBtn" style="display:none" onclick="AdminDashboard._cancelRegen()"><span data-i18n="cancel">' + _t('cancel') + '</span></button>' +
         '</div>' +
         '<div class="progress-bar-wrap" style="background:var(--surface2);border-radius:8px;height:8px;overflow:hidden;margin:8px 0">' +
         '<div id="adminProgressBar" style="height:100%;width:0%;background:var(--accent);border-radius:8px;transition:width .3s"></div></div>' +
@@ -176,7 +202,7 @@ var AdminDashboard = (function() {
     }
   };
 
-  // ─── API KEYS ───
+  // ─── API KEYS & BACKENDS ───
   _sections['api-keys'] = {
     _settings: null,
     _cred: null,
@@ -191,28 +217,69 @@ var AdminDashboard = (function() {
         self._settings = results[0];
         self._cred = results[1];
         self._renderForm(body);
-      }).catch(function(e) {
-        body.innerHTML = '<div class="admin-loading" style="color:var(--danger)"><span data-i18n="settingsError">' + _t('settingsError') + '</span>: ' + e.message + '</div>';
-      });
+      }).catch(function(e) { _errorFallback(body, e); });
     },
 
     _renderForm: function(body) {
       var s = this._settings;
+      var cred = s.credentials || {};
+      var r34 = cred.rule34 || {};
+      var dan = cred.danbooru || {};
+      var fb = s.fetch_backend || {};
+      var backendLabels = {
+        api_raw: _t('backendApiRaw'),
+        gallerydl: _t('backendGallerydl'),
+      };
+      var sites = [
+        {id:'rule34', nameKey:'siteRule34', icon:'rule34',
+          creds:[{id:'uid', label:'UID'}, {id:'key', label:'API Key'}],
+          vals:{uid: r34.uid || '', key: r34.key || ''},
+          backends:['api_raw','gallerydl']},
+        {id:'danbooru', nameKey:'siteDanbooru', icon:'danbooru',
+          creds:[{id:'login', label:'Login'}, {id:'key', label:'API Key'}],
+          vals:{login: dan.login || '', key: dan.key || ''},
+          backends:['api_raw','gallerydl']},
+        {id:'nhentai', nameKey:'siteNhentai', icon:'nhentai',
+          creds:[{id:'key', label:'API Key'}],
+          vals:{key: (s.credentials?.nhentai?.key || '')},
+          backends:['api_raw','gallerydl']},
+        {id:'kemono', nameKey:'siteKemono', icon:'kemono',
+          creds:[], backends:['gallerydl']},
+        {id:'coomer', nameKey:'siteCoomer', icon:'coomer',
+          creds:[], backends:['gallerydl']},
+      ];
       var html =
         '<div class="admin-card">' +
         '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="navApiKeys">' + _t('navApiKeys') + '</span></span></div>' +
-        '<div class="admin-card-desc"><span data-i18n="settingsApiCreds">' + _t('settingsApiCreds') + '</span></div>' +
-        '<div class="admin-field-row">' +
-        '<div class="admin-field"><label class="admin-field-label"><span data-i18n="settingsR34Uid">' + _t('settingsR34Uid') + '</span></label><input class="admin-field-input" id="admR34Uid" value="' + _esc(s.r34_uid || '') + '" placeholder="User ID"></div>' +
-        '<div class="admin-field"><label class="admin-field-label"><span data-i18n="settingsR34Key">' + _t('settingsR34Key') + '</span></label><input class="admin-field-input" id="admR34Key" value="' + _esc(s.r34_key || '') + '" placeholder="API Key"></div>' +
-        '</div>' +
-        '<div class="admin-field-row">' +
-        '<div class="admin-field"><label class="admin-field-label"><span data-i18n="settingsDanLogin">' + _t('settingsDanLogin') + '</span></label><input class="admin-field-input" id="admDanLogin" value="' + _esc(s.dan_login || '') + '" placeholder="Login"></div>' +
-        '<div class="admin-field"><label class="admin-field-label"><span data-i18n="settingsDanKey">' + _t('settingsDanKey') + '</span></label><input class="admin-field-input" id="admDanKey" value="' + _esc(s.dan_key || '') + '" placeholder="API Key"></div>' +
-        '</div>' +
-        '<button class="btn btn-primary" onclick="AdminDashboard._saveApiKeys()" style="margin-top:8px"><span data-i18n="settingsSaveStart">' + _t('settingsSaveStart') + '</span></button>' +
+        '<div class="admin-card-desc"><span data-i18n="settingsApiCreds">' + _t('settingsApiCreds') + '</span></div>';
+      sites.forEach(function(site) {
+        var currentBackend = fb[site.id] || site.backends[0];
+        html += '<div class="backend-row" style="flex-direction:column;align-items:stretch">' +
+          '<div class="backend-site">' +
+          '<span class="backend-icon" id="admIcon' + site.id + '"></span>' +
+          '<span style="font-weight:600"><span data-i18n="' + site.nameKey + '">' + _t(site.nameKey) + '</span></span>' +
+          '</div>';
+        if (site.creds.length > 0) {
+          html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+          site.creds.forEach(function(k) {
+            html += '<div class="admin-field" style="flex:1;min-width:120px"><label class="admin-field-label">' + k.label + '</label>' +
+              '<input class="admin-field-input" id="adm' + site.id + k.id + '" value="' + _esc(site.vals[k.id] || '') + '" placeholder="' + k.label + '"></div>';
+          });
+          html += '</div>';
+        } else if (site.note) {
+          html += '<div style="font-size:13px;color:var(--text2);padding:2px 0">' + site.note + '</div>';
+        }
+        html += '<div style="display:flex;align-items:center;gap:8px">' +
+          '<span style="font-size:13px;color:var(--text2);white-space:nowrap">Backend:</span>' +
+          '<select class="admin-field-input backend-select" data-site="' + site.id + '">';
+        site.backends.forEach(function(b) {
+          html += '<option value="' + b + '"' + (currentBackend === b ? ' selected' : '') + '>' + (backendLabels[b] || b) + '</option>';
+        });
+        html += '</select></div></div>';
+      });
+      html +=
+        '<button class="btn btn-primary" onclick="AdminDashboard._saveApiKeys()" style="margin-top:12px"><span data-i18n="settingsSaveStart">' + _t('settingsSaveStart') + '</span></button>' +
         '</div>';
-
       html += '<div class="admin-card">' +
         '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="sectionCredential">' + _t('sectionCredential') + '</span></span></div>' +
         '<div class="admin-card-desc"><span data-i18n="credBackendDesc">' + _t('credBackendDesc') + '</span></div>';
@@ -222,7 +289,7 @@ var AdminDashboard = (function() {
         var isActive = (name === active) || (name === 'KeyringStore' && active === 'KeyringStore');
         var labelKey = name === 'KeyringStore' ? 'credKeyring' : 'credPlainText';
         var descKey = name === 'KeyringStore' ? 'secKeyring' : 'secPlainText';
-        html += '<div class="cred-option' + (isActive ? ' active' : '') + '" onclick="AdminDashboard._selectBackend(\'' + name + '\', this)">' +
+        html += '<div class="cred-option' + (isActive ? ' active' : '') + '" onclick="AdminDashboard._saveCredBackend(\'' + name + '\', this)">' +
           '<input type="radio" name="credBackend" value="' + name + '"' + (isActive ? ' checked' : '') + '>' +
           '<div class="cred-option-info">' +
           '<div class="cred-option-title"><span data-i18n="' + labelKey + '">' + _t(labelKey) + '</span></div>' +
@@ -230,18 +297,25 @@ var AdminDashboard = (function() {
       });
       html += '<div id="credStatus" style="font-size:12px;color:var(--text2);margin-top:8px">' +
         '<span data-i18n="credStatus">' + _t('credStatus') + '</span>: <strong>' + active + '</strong></div></div>';
-
-      html += '<div class="admin-card">' +
-        '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="contentMedia">' + _t('contentMedia') + '</span></span></div>' +
-        '<div class="admin-card-desc"><span data-i18n="settingsMediaPath">' + _t('settingsMediaPath') + '</span></div>' +
-        '<div class="admin-field"><input class="admin-field-input" id="admMediaDir" value="' + _esc(s.media_dir || '') + '" placeholder="/path/to/media"></div>' +
-        '<div style="display:flex;gap:8px;margin-top:8px">' +
-        '<button class="btn" onclick="AdminDashboard._pickFolder()"><span data-i18n="settingsSystemDialog">' + _t('settingsSystemDialog') + '</span></button>' +
-        '<button class="btn btn-primary" onclick="AdminDashboard._scanFolder()"><span data-i18n="settingsScan">' + _t('settingsScan') + '</span></button>' +
-        '</div></div>';
       body.innerHTML = html;
+      sites.forEach(function(site) {
+        var iconEl = document.getElementById('admIcon' + site.id);
+        if (iconEl && window.SiteIcons) {
+          var img = window.SiteIcons.getIconImg(site.id, 16);
+          if (img) iconEl.innerHTML = img;
+        }
+      });
     }
   };
+
+  // ─── FOLDERS (redirect to Database — folded into Database section) ───
+  _sections.folders = {
+    render: function(body) {
+      loadSection('database');
+    }
+  };
+
+
 
   /* ─── USER ACTIONS ─── */
 
@@ -339,7 +413,7 @@ var AdminDashboard = (function() {
     var confirmKey = '';
     var apiPath = '';
     switch (action) {
-      case 'export': apiPath = '/api/export_db'; break;
+      case 'export': return _exportDb();
       case 'import': return _importDb();
       case 'dedup': confirmKey = 'secConfirmDedup'; apiPath = '/api/deduplicate'; break;
       case 'clearThumbs': confirmKey = 'secConfirmClearThumb'; apiPath = '/api/clear_thumb_cache'; break;
@@ -501,6 +575,10 @@ var AdminDashboard = (function() {
     }, 1000);
   }
 
+  function _exportDb() {
+    window.open('/api/export_db', '_blank');
+  }
+
   function _importDb() {
     _modal(
       '<div class="admin-modal-title"><span data-i18n="dbImport">' + _t('dbImport') + '</span></div>' +
@@ -524,18 +602,24 @@ var AdminDashboard = (function() {
   /* ─── API KEYS ACTIONS ─── */
 
   function _saveApiKeys() {
+    function _val(id) { return (document.getElementById(id) || {}).value || ''; }
     var data = {
-      r34_uid: document.getElementById('admR34Uid').value.trim(),
-      r34_key: document.getElementById('admR34Key').value.trim(),
-      dan_login: document.getElementById('admDanLogin').value.trim(),
-      dan_key: document.getElementById('admDanKey').value.trim()
+      credentials: {
+        rule34: { uid: _val('admrule34uid'), key: _val('admrule34key') },
+        danbooru: { login: _val('admdanboorulogin'), key: _val('admdanboorukey') },
+        nhentai: { key: _val('admnhentaikey') }
+      }
     };
-    _api('/api/settings', {method:'POST', body:data}).then(function() {
-      _toast(_t('settingsSaveStart') + ' — OK', 'success');
-    }).catch(function(e) { _toast(e.message, 'error'); });
+    var selects = document.querySelectorAll('.backend-select');
+    var fetch_backend = {};
+    selects.forEach(function(sel) {
+      fetch_backend[sel.dataset.site] = sel.value;
+    });
+    data.fetch_backend = fetch_backend;
+    _saveSettings(data);
   }
 
-  function _selectBackend(name, el) {
+  function _saveCredBackend(name, el) {
     document.querySelectorAll('.cred-option').forEach(function(o) { o.classList.remove('active'); });
     el.classList.add('active');
     el.querySelector('input[type="radio"]').checked = true;
@@ -544,6 +628,17 @@ var AdminDashboard = (function() {
       if (st) st.innerHTML = _t('credStatus') + ': <strong>' + (d.current || name) + '</strong>';
       _toast(_t('settingsSaveStart') + ' — OK', 'success');
     }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  /* ─── FOLDER ACTIONS ─── */
+
+  function _saveFolderSettings() {
+    var data = {
+      media_dir: document.getElementById('admMediaDir').value.trim(),
+      gallery_dir: document.getElementById('galleryDir').value.trim(),
+      comics_dir: document.getElementById('comicsDir').value.trim(),
+    };
+    _saveSettings(data);
   }
 
   function _pickFolder() {
@@ -569,6 +664,16 @@ var AdminDashboard = (function() {
   function _esc(s) {
     if (typeof s !== 'string') return '';
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function _saveSettings(data, msg) {
+    _api('/api/settings', {method:'POST', body:data}).then(function() {
+      _toast((msg || _t('settingsSaveStart')) + ' — OK', 'success');
+    }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  function _errorFallback(body, e) {
+    body.innerHTML = '<div class="admin-loading" style="color:var(--danger)"><span data-i18n="settingsError">' + _t('settingsError') + '</span>: ' + e.message + '</div>';
   }
 
   var _selfId = null;
@@ -612,9 +717,10 @@ var AdminDashboard = (function() {
     _dbAction: _dbAction,
     _execDbAction: _execDbAction,
     _saveApiKeys: _saveApiKeys,
-    _selectBackend: _selectBackend,
+    _saveCredBackend: _saveCredBackend,
     _pickFolder: _pickFolder,
     _scanFolder: _scanFolder,
+    _saveFolderSettings: _saveFolderSettings,
     _closeModal: _closeModal,
     _togglePw: _togglePw
   };

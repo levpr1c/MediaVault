@@ -7,7 +7,7 @@
     <aside>
       <div class="aside-header">
         <h3><span data-i18n="navFiles">{{ _('navFiles') }}</span> <span id="fileCount"></span></h3>
-        <div class="tf-desktop-hide" style="display:flex;gap:3px">
+        <div class="tf-desktop-hide">
           <button class="btn btn-sm" id="tfSortDateBtn" onclick="TagfetchManual.toggleDateSort()" data-i18n="sortByName" data-i18n-title="sortByNameTitle">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-4 4 4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h10"/><path d="M20 17H10"/></svg>
             <span data-i18n="sortByName">By name</span>
@@ -53,7 +53,7 @@
       <div class="modal-dialog">
         <div class="modal-header"><h3 data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</h3><button class="btn btn-sm btn-icon" onclick="closeSaveAllModal()">✕</button></div>
         <div class="modal-body" id="saveAllBody"><div class="loading" data-i18n="tfScanning">{{ _('tfScanning') }}</div></div>
-        <div class="modal-footer"><span id="saveAllStats" style="flex:1;font-size:13px;color:var(--text2)"></span><button class="btn" onclick="closeSaveAllModal()" data-i18n="cancel">{{ _('cancel') }}</button><button class="btn btn-success" onclick="executeSaveAll()" id="saveAllExecBtn" disabled data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button></div>
+        <div class="modal-footer"><span id="saveAllStats" class="tf-save-stats"></span><button class="btn" onclick="closeSaveAllModal()" data-i18n="cancel">{{ _('cancel') }}</button><button class="btn btn-success" onclick="executeSaveAll()" id="saveAllExecBtn" disabled data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button></div>
       </div>
     </div>
   </div>

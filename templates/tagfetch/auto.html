@@ -11,20 +11,20 @@
         <button class="btn" onclick="cancelAutoScan()" id="cancelAutoBtn" style="display:none" data-i18n="cancel">{{ _('cancel') }}</button>
         <button class="btn btn-success" onclick="saveAndCancelAuto()" id="saveCancelAutoBtn" style="display:none" data-i18n="tfSaveEarly">{{ _('tfSaveEarly') }}</button>
         {% endif %}
-        <span id="autoStats" style="font-size:13px;color:var(--text2)" data-i18n="tfReady">{{ _('tfReady') }}</span>
-        <button class="btn btn-sm" onclick="TagfetchAuto.toggleAutoScroll()" id="autoScrollBtn" style="font-size:12px" data-i18n="tfScrollOn">{{ _('tfScrollOn') }}</button>
+        <span id="autoStats" class="tf-stats" data-i18n="tfReady">{{ _('tfReady') }}</span>
+        <button class="btn btn-sm" onclick="TagfetchAuto.toggleAutoScroll()" id="autoScrollBtn" data-i18n="tfScrollOn">{{ _('tfScrollOn') }}</button>
       </div>
       {% if session.get('role') == 'admin' %}
       <div id="autoActionsTop" class="auto-actions-top" style="display:none">
         <button class="btn btn-success" onclick="saveAllAutoResults()" id="autoSaveAllBtnTop" data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button>
-        <span id="autoSaveStatsTop" style="font-size:13px;color:var(--text2)"></span>
+        <span id="autoSaveStatsTop" class="tf-save-stats"></span>
       </div>
       {% endif %}
       <div id="autoGrid" class="auto-grid"></div>
       {% if session.get('role') == 'admin' %}
       <div id="autoActions" class="auto-actions" style="display:none">
         <button class="btn btn-success" onclick="saveAllAutoResults()" id="autoSaveAllBtn" data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button>
-        <span id="autoSaveStats" style="font-size:13px;color:var(--text2)"></span>
+        <span id="autoSaveStats" class="tf-save-stats"></span>
       </div>
       {% endif %}
     </div>

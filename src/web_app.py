@@ -13,6 +13,7 @@ from PIL import Image
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import credential_store
+from backends import fetch_tags, get_backend
 
 # ── Логирование ──
 LOG = logging.getLogger('mediavault')
@@ -643,7 +644,7 @@ def load_settings():
         with open(SETTINGS_FILE) as f:
             s = json.load(f)
     except Exception:
-        s = {'media_dir': '', 'theme': 'dark', 'effects': True, 'three_bg': True, 'cache_buster': 0, 'startup_scan_count': 0, 'startup_scan_dir': ''}
+        s = {'media_dir': '', 'theme': 'dark', 'effects': True, 'three_bg': True, 'cache_buster': 0, 'startup_scan_count': 0, 'startup_scan_dir': '', 'fetch_backend': {}}
     # replenish api keys from credential store
     if _credential_store:
         for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key'):
@@ -913,7 +914,7 @@ def _ensure_categories(dan_result):
             continue
         db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)", [cat_name, cat_colors[cat_name]])
         for tag in tags:
-            db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source) VALUES (?, ?, 'danbooru')", [tag, cat_name])
+            db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source, last_updated) VALUES (?, ?, 'danbooru', ?)", [tag, cat_name, int(time.time())])
     _ensure_common_meta(db)
     db.commit()
     db.close()
@@ -925,7 +926,7 @@ def _ensure_common_meta(db):
     if not meta_exists:
         db.execute("INSERT INTO tag_categories (name, color) VALUES ('meta', '#999999')")
     for tag in _COMMON_META_TAGS:
-        db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source) VALUES (?, ?, 'auto')", [tag, 'meta'])
+        db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source, last_updated) VALUES (?, ?, 'auto', ?)", [tag, 'meta', int(time.time())])
 
 # Эвристика категорий для тегов Rule34 — префиксы с двоеточием
 _R34_CAT_PREFIXES = {
@@ -970,7 +971,7 @@ def _ensure_r34_categories(r34_tags):
         for tag in r34_tags:
             cat = _categorize_r34_tag(tag)
             db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)", [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
-            db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source) VALUES (?, ?, 'rule34')", [tag, cat])
+            db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source, last_updated) VALUES (?, ?, 'rule34', ?)", [tag, cat, int(time.time())])
         db.commit()
         db.close()
     except Exception:
@@ -1111,6 +1112,19 @@ def _ensure_db_schema():
             db.execute("ALTER TABLE files ADD COLUMN folder_type TEXT DEFAULT 'gallery'")
         except Exception:
             pass  # колонка уже существует
+        # Миграция 3.4: site_id, last_updated, data в tag_category_members
+        try:
+            db.execute("ALTER TABLE tag_category_members ADD COLUMN site_id TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            db.execute("ALTER TABLE tag_category_members ADD COLUMN last_updated INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            db.execute("ALTER TABLE tag_category_members ADD COLUMN data TEXT DEFAULT '{}'")
+        except Exception:
+            pass
         db.commit()
         db.close()
     except Exception:
@@ -1586,7 +1600,7 @@ def api_settings():
         return jsonify({'error': 'no data'}), 400
     s = load_settings()
     old_media_dir = s.get('media_dir', '')
-    for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key', 'media_dir', 'theme', 'three_bg'):
+    for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key', 'media_dir', 'theme', 'three_bg', 'fetch_backend'):
         if k in data:
             s[k] = os.path.expanduser(data[k]) if k == 'media_dir' else data[k]
     save_settings(s)
@@ -2533,13 +2547,13 @@ def api_categories():
             elif action == 'assign_tag':
                 existing = db.execute("SELECT source FROM tag_category_members WHERE tag_name = ?", [data['tag']]).fetchone()
                 source = existing[0] if existing else data.get('source', 'manual')
-                db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source) VALUES (?, ?, ?)", [data['tag'], data['category'], source])
+                db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source, last_updated) VALUES (?, ?, ?, ?)", [data['tag'], data['category'], source, int(time.time())])
             elif action == 'add_tag':
                 tag_name = data.get('tag_name') or data.get('tag')
                 cat_name = data.get('cat_name') or data.get('category')
                 existing = db.execute("SELECT source FROM tag_category_members WHERE tag_name = ?", [tag_name]).fetchone()
                 source = existing[0] if existing else data.get('source', 'manual')
-                db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source) VALUES (?, ?, ?)", [tag_name, cat_name, source])
+                db.execute("INSERT OR IGNORE INTO tag_category_members (tag_name, category, source, last_updated) VALUES (?, ?, ?, ?)", [tag_name, cat_name, source, int(time.time())])
             elif action == 'remove_tag':
                 db.execute("DELETE FROM tag_category_members WHERE tag_name = ?", [data['tag']])
             elif action == 'rename':

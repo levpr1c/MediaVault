@@ -405,3 +405,140 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 - [x] 6.8 Выбор gallery_dl → поиск/fetch через gallery-dl
 - [x] 6.9 Сравнение результатов: raw_api vs gallery_dl
 - [x] 6.10 gallery-dl как дефолтный бэкенд для NHentai/Kemono/Coomer, raw_api — legacy/fallback
+
+---
+
+## 16. Сессия 17.06.2026 — Comics-tags, header refactor, content-search, comics picker
+
+### 16.1 Страница Comics Tags (`/content-mgmt/comics-tags`)
+
+**Новый роут + новый JS модуль для drag-to-tag комиксов.**
+
+| Компонент | Файл | Назначение |
+|-----------|------|-----------|
+| Route | `web_app.py` строка 1680 | `comics_tags_page()`, `@admin_required` |
+| JS module | `static/content/comics-tags.js` (171 строка) | ES module: левая панель категорий + правая (грид комиксов, drag-to-tag) |
+| Section router | `static/content/main.js` | Добавлена секция `comicsTags`, path detection для `/content-mgmt/comics-tags` |
+| Template | `templates/content-mgmt/tags.html` | Использует существующий шаблон с `page='content-mgmt/comics-tags'` |
+
+**Testing:**
+- [ ] `/content-mgmt/comics-tags` доступен и загружается без ошибок
+- [ ] Левая панель показывает категории тегов
+- [ ] Теги можно перетаскивать на карточки комиксов
+- [ ] Drag-to-tag работает (тег добавляется к комиксу)
+- [ ] Секция определяется по URL в `main.js`
+
+### 16.2 CM Header Refactor
+
+**Все группы хедера CM используют expandable dropdowns.**
+
+| Изменение | Детали |
+|-----------|--------|
+| `CMHeader.toggle(event, id)` | Поддержка множественных dropdowns — закрываются другие при открытии нового |
+| Content-search | Теперь использует CM header (условие: `request.path == '/content-search'`) |
+| Desktop groups | 4: TAGFETCH | TAGS | COMICS | SEARCH |
+
+**Key files:** `templates/base.html`, CM header JS
+
+**Testing:**
+- [ ] CM header имеет 4 раскрывающиеся группы
+- [ ] Клик по TAGS открывает тэг-пад, закрывает другие
+- [ ] Content-search показывает CM header
+- [ ] Mobile drawer содержит навигационные группы
+
+### 16.3 Content-search Fixes
+
+**Исправления в `static/content/content-search.js`:**
+
+| Фикс | Описание |
+|------|---------|
+| Lightbox try-catch | `new Lightbox(...)` обёрнут в try-catch для предотвращения падений |
+| HTTP error check | Добавлена `res.ok` проверка перед парсингом JSON |
+| Shared guard | Проверка `window.Shared` перед вызовом `Shared.applyI18n()` |
+
+**Testing:**
+- [ ] Content-search работает без ошибок в консоли
+- [ ] Сломанный ответ API не вызывает исключение
+- [ ] Shared.applyI18n() не падает если Shared не определён
+- [ ] Header использует CM header
+
+### 16.4 Home Page CM Card
+
+**4 вертикальные секции: TAGFETCH | TAGS | COMICS | SEARCH.**
+
+| Изменение | Детали |
+|-----------|--------|
+| Layout | 4 колонки side-by-side, каждая с заголовком + стек кнопок |
+| Franchise | Удалена из хедера (редирект на content-search) |
+| NHentai | Перенесён в секцию SEARCH |
+| Comics Tags | Добавлена кнопка в секцию COMICS |
+
+**Key files:** `templates/home.html`
+
+**Testing:**
+- [ ] Home page CM card показывает 4 колонки
+- [ ] Каждая колонка имеет заголовок + кнопки
+- [ ] Кнопка Comic Tags → `/content-mgmt/comics-tags`
+- [ ] NHentai кнопка → `/content-search?site=nhentai`
+
+### 16.5 Comics Picker Improvements
+
+**Улучшения модала ComicsPicker:**
+
+| Изменение | Было | Стало |
+|-----------|------|-------|
+| Modal size | 1380×920px | 2100px с preview (1.5×) |
+| Grid layout | CSS columns (top→bottom) | Flexbox wrap (left→right), 6 columns |
+| Preview transition | — | `cubic-bezier` transition, `width` вместо `flex-basis` |
+| Mobile columns | — | 3 columns |
+
+**Key files:** `static/shared/comics/comics.js`, `static/css/content.css`
+
+**Testing:**
+- [ ] Модал ComicsPicker шире (2100px с preview)
+- [ ] Grid — left→right порядок, 6 колонок
+- [ ] Preview панель анимируется плавно
+- [ ] На мобильных — 3 колонки
+
+### 16.6 Counter Bug Fix
+
+**Исправление счётчика пагинации в `files.js`:**
+
+- `_currentPage = 1` добавлен в `filesRender()` — сброс счётчика на первый файл при загрузке секции
+
+**Key file:** `static/content/files.js`
+
+**Testing:**
+- [ ] При загрузке раздела Files счётчик пагинации показывает 1
+- [ ] Переключение между секциями не ломает счётчик
+
+### 16.7 Новые i18n ключи
+
+| Ключ | en | ru |
+|------|----|----|
+| `cmSectionTagfetch` | Tagfetch | Tagfetch |
+| `cmSectionTags` | Tags | Теги |
+| `cmSectionComics` | Comics | Комиксы |
+| `cmSectionSearch` | Search | Поиск |
+| `comicsTags` | Comics Tags | Теги комиксов |
+
+Добавлены в LOCALE обоих языков (`web_app.py`) и JS i18n (`shared/utils.js`).
+
+---
+
+## Итоговая сводка (обновлённая)
+
+| # | Фича | Строк кода | Файлов |
+|---|------|-----------|--------|
+| 1 | Backend system (2 бэкенда) | 589 | 3 |
+| 2 | Backend Selection UI | ~60 | 1 (admin.js) |
+| 3 | Site Icons | 30 + SVG | 6 |
+| 4 | Folder System | ~50 | 2 |
+| 5 | Browser Cache | ~30 | 2 |
+| 6 | UPSERT | ~10 | 1 |
+| 7 | Kemono URL | ~30 | 2 |
+| 8 | Comics Tags page | 171 (JS) | 3 (route + JS + main.js section) |
+| 9 | Content-search | 259 (JS) | 5 (route + JS + template + CSS + header) |
+| 10 | Comics Picker | ~30 (CSS) | 2 (comics.js + content.css) |
+
+---

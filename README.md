@@ -42,6 +42,7 @@ Optional — `python3-keyring` for storing API keys in system keychain (GNOME Ke
 | **💡 Lightbox** | Fullscreen viewer with zoom, navigation, tag editor |
 | **📚 Comics** | Create collections, read in Scroll (webtoon) or Lightbox mode |
 | **🏷️ Tags** | Danbooru-style categories with colors, auto-tags (photo/video/animated/sound), aspect-ratio tags |
+| **🎴 Comics Tags** | Drag-and-drop tags from categories onto comic cards |
 | **👥 Users** | Admin (full access) and user (read-only) roles |
 | **🌙 Theme** | Dark/light, switches without page reload |
 | **🌐 i18n** | English + Russian, switches on the fly |

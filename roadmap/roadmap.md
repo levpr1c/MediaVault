@@ -42,8 +42,11 @@ spec: |
 - [x] 3.4 Интеграция Kemono/Coomer (GalleryDlBackend)
 - [x] 3.5 Кнопка Comics Fetch на home → NHentai search
 - [x] 3.7 Kemono URL validation (mirror list, regex .su -> .cr/.cv/.party/.so/.us/.co)
-- [ ] 3.6 Франчайз-поиск (по тегу: Danbooru + R34 + NHentai) — использовать search_tags() dispatch
+- [x] 3.6 Франчайз-поиск (по тегу: Danbooru + R34 + NHentai) — распараллеливание search_tags()
   → merged into Feature 8
+- [x] 3.8 Страница `/content-mgmt/comics-tags` — drag-and-drop тегов на карточки комиксов
+- [x] 3.9 Content-search: общий CM header + обработка ошибок (res.ok, Shared.applyI18n guard)
+- [x] 3.10 Comics Picker: flexbox сетка (left→right), 6 колонок, 2100px с preview
 
 ### Feature 4: API рефакторинг (per-site credentials — DONE)
 - [x] 4.1 Per-site credentials — миграция глобальных ключей в per-site формат

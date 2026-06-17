@@ -281,6 +281,8 @@ Content: `.settings-tab-content { display: none; }` / `.settings-tab-content.act
 .cm-hdr-btn.active { color: var(--accent); background: rgba(100,181,246,.1); }
 ```
 
+**CM Header Dropdowns:** All CM groups (TAGFETCH, TAGS, COMICS, SEARCH) are expandable dropdowns implemented in `content/cm-header.js`. Click a group header to toggle its links open/closed. Multiple dropdowns can be open simultaneously.
+
 **Tagfetch Tabs** (`.tf-tab` — `tagfetch.css:48-50`)
 Same visual style as `.mv-tab`.
 
@@ -513,7 +515,7 @@ aside { width: 260px; flex-shrink: 0; background: var(--surface);
 
 **Comics Modal** (`#comicsModalOverlay` — `content.css:250-299`)
 - Similar to tagfetch modal but `flex-direction: row`, `padding: 30px`
-- `.comic-modal` — `flex: 1; max-width: 1100px; max-height: 90vh`
+- `.comic-modal` — `flex: 1; max-width: 1380px; max-height: 90vh`
 - `.comic-modal-header` / `.comic-modal-body` / `.comic-modal-footer`
 - Preview sidebar: `#comicPreviewOverlay` — `width: 0 → 640px` when `.preview-open`
 
@@ -658,13 +660,14 @@ Centered at bottom, `left: 50%; transform: translateX(-50%)`. Error/success vari
 
 - `#comicsModalOverlay` — fullscreen overlay with blur backdrop
 - `.comic-modal` — two-column layout (file picker + optional preview)
-- `#cpageGrid` — masonry grid of file thumbnails, `column-width: 150px`
+- `#cpageGrid` — flexbox wrap grid of file thumbnails, left-to-right order, 6 columns
 - `.cpage-item` — file thumbnail, `border: 2px solid transparent`, `.selected` → accent border
 - `.cpage-item.cover` — gold border (`#ffd700`)
 - `.cpage-star` — cover indicator star, gold
-- `#comicPreviewOverlay` — right panel, `width: 0 → 640px` transition
-- `.comic-preview-content` — masonry grid of selected pages, `column-width: 140px`
+- `#comicPreviewOverlay` — right panel, `width: 0 → 1400px` transition
+- `.comic-preview-content` — flexbox wrap grid of selected pages, left-to-right order
 - `.preview-page` — draggable, with `page-num` badge and `preview-remove` button (shows on hover)
+- Modal dimensions: 1380×920px, expands to 2100px with preview
 
 ### 6.17 Folder Browser (Tagfetch)
 

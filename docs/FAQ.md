@@ -172,6 +172,9 @@ curl -X POST http://localhost:5050/api/regenerate_thumbnails
 3. Файлы скачиваются в `media_dir/Downloads/kemono/`
 Поддерживаются зеркала: `.su`, `.cr`, `.cv`, `.party`, `.so`, `.us`, `.co` для kemono и coomer.
 
+### ❓ Как работать с Comics Tags (теги для комиксов)?
+Страница `/content-mgmt/comics-tags` позволяет перетаскивать теги прямо на карточки комиксов. Слева — категории тегов (artist, character, copyright, general) с цветами, справа — карточки комиксов. Перетащи тег на комикс — он привяжется. Поддерживаются теги с Rule34, Danbooru и NHentai. Доступна только администраторам.
+
 ### ❓ Как искать теги на NHentai?
 Через страницу поиска `/nhentai-search` (кнопка «Comics Fetch» на главной) или через API: `GET /api/nhentai/search?q=query`. Использует `GalleryDlBackend` (gallery-dl) для поиска и получения данных.
 

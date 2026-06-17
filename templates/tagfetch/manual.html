@@ -2,60 +2,98 @@
 {% block hdr_search %}{% endblock %}
 {% block hdr_drawer %}{% endblock %}
 {% block content %}
-<div id="tagfetchView" class="view{% if page == 'tagfetch' %} active{% endif %}">
-  <div class="tf-page active" data-tf="manual">
-    <aside>
-      <div class="aside-header">
-        <h3><span data-i18n="navFiles">{{ _('navFiles') }}</span> <span id="fileCount"></span></h3>
-        <div class="tf-desktop-hide">
-          <button class="btn btn-sm" id="tfSortDateBtn" onclick="TagfetchManual.toggleDateSort()" data-i18n="sortByName" data-i18n-title="sortByNameTitle">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-4 4 4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h10"/><path d="M20 17H10"/></svg>
-            <span data-i18n="sortByName">By name</span>
-          </button>
-          <button class="btn btn-sm" onclick="loadBrowser(getCurrentBrowsePath())" title="{{ _('tfRefresh') }}" data-i18n-title="tfRefresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+<div id="contentView">
+  <main class="cm-main">
+    <div class="tf-page active" data-tf="manual">
+      <div class="shared-toolbar" id="mtToolbar">
+        <span class="cm-files-tb-label" data-i18n="navFiles">{{ _('navFiles') }}</span>
+        <span id="fileCount" class="cm-files-count"></span>
+        <span style="flex:1;min-width:8px"></span>
+        <button class="btn btn-xs" onclick="ManualTagfetch.toggleDateSort()" id="tfSortDateBtn" data-i18n="sortByName">{{ _('sortByName') }}</button>
+        <div class="cm-files-tb-sep"></div>
+        <button class="btn btn-xs filter-btn active" data-filter="all" onclick="ManualTagfetch.setFilter('all')" data-i18n="tfFilterAll">{{ _('tfFilterAll') }}</button>
+        <button class="btn btn-xs filter-btn" data-filter="no_tags" onclick="ManualTagfetch.setFilter('no_tags')" data-i18n="tfFilterNoTags">{{ _('tfFilterNoTags') }}</button>
+        <button class="btn btn-xs filter-btn" data-filter="found" onclick="ManualTagfetch.setFilter('found')" data-i18n="tfFilterFound">{{ _('tfFilterFound') }}</button>
+        <button class="btn btn-xs filter-btn" data-filter="not_found" onclick="ManualTagfetch.setFilter('not_found')" data-i18n="tfFilterNotFound">{{ _('tfFilterNotFound') }}</button>
+        <button class="btn btn-xs filter-btn" data-filter="db" onclick="ManualTagfetch.setFilter('db')" data-i18n="tfFilterInDb">{{ _('tfFilterInDb') }}</button>
+        <div class="cm-files-tb-sep"></div>
+        <button class="btn btn-primary btn-xs" onclick="ManualTagfetch.fetchAllFiles()" id="fetchAllBtn" data-i18n="tfFetchAll">{{ _('tfFetchAll') }}</button>
+        <button class="btn btn-success btn-xs" onclick="ManualTagfetch.openSaveAllModal()" id="saveAllBtnHeader" data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button>
+        <button class="btn btn-xs hidden" onclick="ManualTagfetch.cancelFetchAll()" id="cancelFetchAllBtn" data-i18n="cancel">{{ _('cancel') }}</button>
+      </div>
+
+      <div class="cm-files-body">
+        <div class="shared-tag-panel" id="mtBrowserPanel">
+          <div class="cm-files-left-search">
+            <input type="text" class="cm-tag-search-input" placeholder="{{ _('tfFilterFiles') if _('tfFilterFiles') else 'Filter files...' }}" oninput="ManualTagfetch.filterFiles(this.value)" id="mtFileSearch">
+          </div>
+          <div class="cm-files-left-content">
+            <div id="browseBreadcrumb"></div>
+            <div id="browseBrowser"></div>
+          </div>
+        </div>
+
+        <div class="cm-files-right">
+          <div class="cm-files-right-scroll">
+            <div id="fileInfo"></div>
+
+            <div class="mt-preview-row">
+              <div class="mt-preview-panel">
+                <div class="mt-preview-hdr" data-i18n="tfLocal">{{ _('tfLocal') }}</div>
+                <div id="localPreview" class="mt-preview-body"><span class="mt-preview-placeholder" data-i18n="tfNoFile">{{ _('tfNoFile') }}</span></div>
+              </div>
+              <div class="mt-preview-panel">
+                <div class="mt-preview-hdr">Rule34</div>
+                <div id="r34Preview" class="mt-preview-body"><span class="mt-preview-placeholder" data-i18n="tfNotFetched">{{ _('tfNotFetched') }}</span></div>
+              </div>
+              <div class="mt-preview-panel">
+                <div class="mt-preview-hdr">Danbooru</div>
+                <div id="danPreview" class="mt-preview-body"><span class="mt-preview-placeholder" data-i18n="tfNotFetched">{{ _('tfNotFetched') }}</span></div>
+              </div>
+            </div>
+
+            {% if session.get('role') == 'admin' %}
+            <div class="mt-action-bar">
+              <button class="btn btn-primary" onclick="ManualTagfetch.fetchTags()" id="fetchBtn" data-i18n="tfFetchTags">{{ _('tfFetchTags') }}</button>
+              <button class="btn" onclick="ManualTagfetch.clearCurrentCache()" id="clearBtn" data-i18n="tfClearCache">{{ _('tfClearCache') }}</button>
+              <div id="actions"></div>
+            </div>
+            {% endif %}
+
+            <div class="mt-tag-panels">
+              <div class="mt-tag-panel">
+                <div class="mt-tag-panel-hdr">Rule34 <span id="r34Count" class="mt-tag-count"></span></div>
+                <div id="r34Tags" class="mt-tag-body"></div>
+              </div>
+              <div class="mt-tag-panel">
+                <div class="mt-tag-panel-hdr">Danbooru <span id="danCount" class="mt-tag-count"></span></div>
+                <div id="danTags" class="mt-tag-body"></div>
+              </div>
+            </div>
+
+            <div id="currentTags" class="mt-current-tags"></div>
+            <div id="fetchAllResults" class="hidden mt-fetch-results"></div>
+          </div>
         </div>
       </div>
-      <div class="breadcrumb" id="browseBreadcrumb"></div>
-      <div class="filter-bar" id="filterBar">
-        <button class="btn btn-xs filter-btn active" data-filter="all" onclick="setFilter('all')" data-i18n="tfFilterAll">{{ _('tfFilterAll') }}</button>
-        <button class="btn btn-xs filter-btn" data-filter="no_tags" onclick="setFilter('no_tags')" data-i18n="tfFilterNoTags">{{ _('tfFilterNoTags') }}</button>
-        <button class="btn btn-xs filter-btn" data-filter="found" onclick="setFilter('found')" data-i18n="tfFilterFound">{{ _('tfFilterFound') }}</button>
-        <button class="btn btn-xs filter-btn" data-filter="not_found" onclick="setFilter('not_found')" data-i18n="tfFilterNotFound">{{ _('tfFilterNotFound') }}</button>
-        <button class="btn btn-xs filter-btn" data-filter="db" onclick="setFilter('db')" data-i18n="tfFilterInDb">{{ _('tfFilterInDb') }}</button>
-      </div>
-      <div class="path-browser" id="browseBrowser"></div>
-      <div id="fetchAllResults" class="fetch-results hidden"></div>
-    </aside>
-    <main>
-      <div id="fileInfo" data-i18n="tfSelectFile">{{ _('tfSelectFile') }}</div>
-      <div class="preview-row">
-        <div class="preview-panel"><h3 data-i18n="tfLocal">{{ _('tfLocal') }}</h3><div class="preview-box" id="localPreview"><div class="placeholder"><span class="big" data-i18n="tfNoFile">{{ _('tfNoFile') }}</span></div></div></div>
-        <div class="preview-panel"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Rule34</h3><div class="preview-box" id="r34Preview"><div class="placeholder"><span class="big" data-i18n="tfNotFetched">{{ _('tfNotFetched') }}</span></div></div></div>
-        <div class="preview-panel"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Danbooru</h3><div class="preview-box" id="danPreview"><div class="placeholder"><span class="big" data-i18n="tfNotFetched">{{ _('tfNotFetched') }}</span></div></div></div>
-      </div>
-      {% if session.get('role') == 'admin' %}
-      <div class="action-bar">
-        <button class="btn btn-primary" onclick="fetchTags()" id="fetchBtn" data-i18n="tfFetchTags">{{ _('tfFetchTags') }}</button>
-        <button class="btn" onclick="fetchAllFiles()" id="fetchAllBtn" data-i18n="tfFetchAll">{{ _('tfFetchAll') }}</button>
-        <button class="btn hidden" onclick="cancelFetchAll()" id="cancelFetchAllBtn" data-i18n="cancel">{{ _('cancel') }}</button>
-        <button class="btn" onclick="clearCurrentCache()" id="clearBtn" data-i18n="tfClearCache">{{ _('tfClearCache') }}</button>
-        <button class="btn btn-success" onclick="openSaveAllModal()" id="saveAllBtnHeader" data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button>
-      </div>
-      {% endif %}
-      <div class="panels">
-        <div class="panel"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Rule34 <span id="r34Count"></span></h3><div class="tag-colors" id="r34Tags"></div></div>
-        <div class="panel"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Danbooru <span id="danCount"></span></h3><div class="tag-colors" id="danTags"></div></div>
-      </div>
-      <div class="actions" id="actions"></div>
-      <div class="current-tags" id="currentTags"></div>
-    </main>
+    </div>
+
     <div class="modal-overlay" id="saveAllModal">
       <div class="modal-dialog">
-        <div class="modal-header"><h3 data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</h3><button class="btn btn-sm btn-icon" onclick="closeSaveAllModal()">✕</button></div>
-        <div class="modal-body" id="saveAllBody"><div class="loading" data-i18n="tfScanning">{{ _('tfScanning') }}</div></div>
-        <div class="modal-footer"><span id="saveAllStats" class="tf-save-stats"></span><button class="btn" onclick="closeSaveAllModal()" data-i18n="cancel">{{ _('cancel') }}</button><button class="btn btn-success" onclick="executeSaveAll()" id="saveAllExecBtn" disabled data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button></div>
+        <div class="modal-header">
+          <h3 data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</h3>
+          <button class="btn btn-sm btn-icon" onclick="ManualTagfetch.closeSaveAllModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="saveAllBody">
+          <div class="loading" data-i18n="tfScanning">{{ _('tfScanning') }}</div>
+        </div>
+        <div class="modal-footer">
+          <span id="saveAllStats" class="tf-save-stats"></span>
+          <button class="btn" onclick="ManualTagfetch.closeSaveAllModal()" data-i18n="cancel">{{ _('cancel') }}</button>
+          <button class="btn btn-success" onclick="ManualTagfetch.executeSaveAll()" id="saveAllExecBtn" disabled data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button>
+        </div>
       </div>
     </div>
-  </div>
+  </main>
 </div>
 {% endblock %}

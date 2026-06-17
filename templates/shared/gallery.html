@@ -37,7 +37,7 @@
     </aside>
     <main id="mvMain">
       <div class="mv-page{% if subview == 'gallery' %} active{% endif %}" data-mv="gallery">
-        <div id="galleryToolbar">
+        <div id="galleryToolbar" class="shared-toolbar">
           <button class="tool-btn tool-btn-icon" id="sidebarToggle" title="{{ _('mvToggleSidebar') }}" data-i18n-title="mvToggleSidebar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
@@ -69,7 +69,7 @@
             </button>
           </div>
         </div>
-        <div id="gallery">
+        <div id="gallery" class="shared-grid">
           <div class="gallery-empty">
             <h2 data-i18n="mvNoFiles">{{ _('mvNoFiles') }}</h2>
             <p data-i18n="mvNoFilesDesc">{{ _('mvNoFilesDesc') }}</p>

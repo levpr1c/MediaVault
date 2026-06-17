@@ -106,7 +106,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);transition:b
 
 /* ─── MOBILE DRAWER (HEADER DROPDOWN) ─── */
 .mv-drawer{overflow:hidden;max-height:0;transition:max-height .35s ease;background:var(--surface);border-bottom:1px solid var(--border)}
-.mv-drawer.open{max-height:300px}
+.mv-drawer.open{max-height:500px}
 .mv-drawer-body{padding:8px 12px 12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .mv-drawer-row{display:flex;gap:6px;flex-wrap:wrap}
 .mv-drawer-row .tool-btn{font-size:12px;padding:7px 12px;gap:6px}
@@ -139,6 +139,22 @@ header h1{font-size:18px;font-weight:600;margin-right:auto;white-space:nowrap;fo
 .nav-item:hover{color:var(--text);background:var(--surface2)}
 .nav-item.active{color:var(--accent);background:var(--accent-glow)}
 .header-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+
+/* ─── НАВИГАЦИЯ (HDR-GROUPS) ─── */
+.hdr-tabs{display:flex;align-items:center;gap:4px}
+.hdr-group{display:flex;align-items:center;gap:2px}
+.hdr-group-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-right:2px;white-space:nowrap;cursor:default;user-select:none}
+.hdr-group-sep{width:1px;height:20px;background:var(--border);flex-shrink:0;margin:0 6px}
+.hdr-link{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;font-size:12px;font-weight:600;color:var(--text2);text-decoration:none;border-radius:8px;transition:all var(--transition);white-space:nowrap;line-height:1;font-family:var(--font-btn);cursor:pointer}
+.hdr-link:hover{background:var(--surface2);color:var(--text)}
+.hdr-link.active{color:var(--accent);background:var(--accent-glow)}
+
+
+.mv-drawer-nav{display:flex;flex-direction:column;gap:8px;width:100%}
+.mv-drawer-group{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.mv-drawer-group .hdr-group-label{font-size:9px;margin-right:6px}
+.mv-drawer-group .hdr-link{padding:5px 8px;font-size:11px}
+.mv-drawer-sep{width:100%;border:none;border-top:1px solid var(--border);margin:4px 0}
 
 /* ─── КНОПКИ ─── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--transition);white-space:nowrap;font-family:var(--font-btn);line-height:1.4;text-decoration:none;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -211,12 +227,14 @@ html{scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
 }
 
 /* ─── РАЗНОЕ (MISC) ─── */
-.tag-chip{display:inline-block;padding:2px 6px;border-radius:4px;margin:1px;font-size:12px;font-weight:500;transition:background .15s,color .15s}
+.tag-chip{display:inline-block;padding:2px 6px;border-radius:4px;margin:1px;font-size:12px;font-weight:500;background:var(--chip-bg);color:var(--chip-text);white-space:nowrap;transition:background .15s,color .15s}
 .tag-chip:hover{background:var(--surface3);color:var(--text)}
 .fetch-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
 .loading{text-align:center;padding:40px;color:var(--text2);font-size:14px}
 .hidden{display:none!important}
 .status-text{font-size:12px;color:var(--text2);margin:4px 0 8px;min-height:16px}
+.video-badge{position:absolute;bottom:6px;right:6px;font-size:18px;z-index:var(--z-dropdown);filter:drop-shadow(0 1px 3px var(--shadow));pointer-events:none}
+.admin-loading{text-align:center;padding:60px 20px;color:var(--text2);font-size:15px}
 .form-desc{font-size:12px;color:var(--text2);margin:-4px 0 12px;line-height:1.4}
 .user-table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0}
 .user-table th,.user-table td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)}
@@ -254,4 +272,32 @@ html{scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
 [data-no-effects] .shared-lightbox .lightbox-toolbar {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* ─── SHARED GRID (masonry/gallery base) ─── */
+.shared-grid {
+  column-width: var(--thumb-size, 200px);
+  column-gap: 8px;
+}
+
+/* ─── SHARED TOOLBAR ─── */
+.shared-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0 0 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ─── SHARED TAG PANEL (categories sidebar) ─── */
+.shared-tag-panel {
+  width: 260px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
 }

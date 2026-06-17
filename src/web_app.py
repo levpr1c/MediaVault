@@ -156,7 +156,6 @@ LOCALE = {
     'en': {
         'adminSettings': 'Administration & Settings',
         'adminDesc': 'Configure settings and manage access',
-        'tfRefresh': 'Refresh',
         'tfFilterAll': 'All',
         'tfFilterNoTags': 'Untagged',
         'tfFilterFound': 'Found',
@@ -251,12 +250,26 @@ LOCALE = {
         'mvComics': 'Comics',
         'mvDesc': 'Browse and explore your media library',
         'homeComicsFetch': 'Comics Fetch',
-        'franchiseError': 'Search failed',
-        'franchiseNoResults': 'No results found',
-        'franchiseResults': 'Results',
-        'franchiseSearch': 'Franchise Search',
-        'franchiseSearchBtn': 'Search',
-        'franchiseSearchPlaceholder': 'Search all sites by tag…',
+        'homeSearchFiles': 'Search Files',
+        'homeSearchComics': 'Search Comics',
+        'navMediaVault': 'MediaVault',
+        'navSearch': 'Search',
+        'navSearchR34Dan': 'R34/Dan',
+        'navContent': 'Content',
+        'navEditor': 'Editor',
+        'navAdmin': 'Admin',
+        'navGroups': 'Groups',
+        'contentSearch': 'Content Search',
+        'contentSearchPlaceholder': 'Search all sites by tag…',
+        'contentSearchBtn': 'Search',
+        'contentSearchTabAll': 'All',
+        'contentSearchTabR34Dan': 'R34+Dan',
+        'contentSearchTabNHentai': 'NHentai',
+        'contentSearchNoResults': 'No results found',
+        'contentSearchError': 'Search failed',
+        'contentSearchTags': 'Tags',
+        'contentSearchId': 'ID',
+        'contentSearchSource': 'Source',
         # ── Home page ──
         'cmHeader': 'CONTENT MANAGEMENT',
         'cmDesc': 'Manage tags, categories, and comics',
@@ -264,6 +277,11 @@ LOCALE = {
         'autoFetch': 'Auto',
         'manualFetch': 'Manual',
         'comicsEditor': 'Comics Editor',
+        'comicsTags': 'Comics Tags',
+        'cmSectionTagfetch': 'TAGFETCH',
+        'cmSectionTags': 'TAGS',
+        'cmSectionComics': 'COMICS',
+        'cmSectionSearch': 'SEARCH',
         'tags': 'TAGS',
 
         'sortByName': 'By name',
@@ -278,6 +296,7 @@ LOCALE = {
         'cancel': 'Cancel',
         'comicNamePlaceholder': 'Comic title',
         'searchFiles': 'Search files…',
+        'searchComics': 'Search comics…',
         'switchViewMode': 'Switch view mode',
         'prevPage': 'Previous',
         'nextPage': 'Next',
@@ -323,7 +342,6 @@ LOCALE = {
         'secPlainText': 'Stored in settings file',
         'adminGalleryDir': 'Gallery folder',
         'adminComicsDir': 'Comics folder',
-        'navFolders': 'Folders',
         'sectionFolders': 'Folder Settings',
         'backendApiRaw': 'API Raw',
         'backendGallerydl': 'Gallery-DL (universal)',
@@ -366,12 +384,12 @@ LOCALE = {
         'settingsCleanAll': 'Clean All',
         'similarTo': 'Similar to',
         'similarBtn': 'Similar',
+        'allFiles': 'All files',
         'noResults': 'No results',
     },
     'ru': {
         'adminSettings': 'Администрирование и настройки',
         'adminDesc': 'Настройки и управление доступом',
-        'tfRefresh': 'Обновить',
         'tfFilterAll': 'Все',
         'tfFilterNoTags': 'Без тегов',
         'tfFilterFound': 'Найдено',
@@ -465,12 +483,26 @@ LOCALE = {
         'mvComics': 'Комиксы',
         'mvDesc': 'Просмотр и управление медиатекой',
         'homeComicsFetch': 'Поиск комиксов',
-        'franchiseError': 'Ошибка поиска',
-        'franchiseNoResults': 'Ничего не найдено',
-        'franchiseResults': 'Результаты',
-        'franchiseSearch': 'Поиск по всем сайтам',
-        'franchiseSearchBtn': 'Найти',
-        'franchiseSearchPlaceholder': 'Найти тег на всех сайтах…',
+        'homeSearchFiles': 'Поиск файлов',
+        'homeSearchComics': 'Поиск комиксов',
+        'navMediaVault': 'MediaVault',
+        'navSearch': 'Поиск',
+        'navSearchR34Dan': 'R34/Dan',
+        'navContent': 'Контент',
+        'navEditor': 'Редактор',
+        'navAdmin': 'Админ',
+        'navGroups': 'Группы',
+        'contentSearch': 'Поиск контента',
+        'contentSearchPlaceholder': 'Поиск на всех сайтах по тегу…',
+        'contentSearchBtn': 'Найти',
+        'contentSearchTabAll': 'Все',
+        'contentSearchTabR34Dan': 'R34+Dan',
+        'contentSearchTabNHentai': 'NHentai',
+        'contentSearchNoResults': 'Ничего не найдено',
+        'contentSearchError': 'Ошибка поиска',
+        'contentSearchTags': 'Теги',
+        'contentSearchId': 'ID',
+        'contentSearchSource': 'Источник',
         # ── Home page ──
         'cmHeader': 'УПРАВЛЕНИЕ КОНТЕНТОМ',
         'cmDesc': 'Управление тегами, категориями и комиксами',
@@ -478,6 +510,11 @@ LOCALE = {
         'autoFetch': 'Авто',
         'manualFetch': 'Ручной',
         'comicsEditor': 'Редактор Комиксов',
+        'comicsTags': 'Теги комиксов',
+        'cmSectionTagfetch': 'ПОИСК ТЕГОВ',
+        'cmSectionTags': 'ТЕГИ',
+        'cmSectionComics': 'КОМИКСЫ',
+        'cmSectionSearch': 'ПОИСК',
         'tags': 'ТЕГИ',
         'sortByName': 'По имени',
         'sortByNewest': 'Сначала новые',
@@ -490,6 +527,7 @@ LOCALE = {
         'unsavedConfirm': 'У вас есть несохранённые изменения. Продолжить?',
         'comicNamePlaceholder': 'Название комикса',
         'searchFiles': 'Поиск файлов…',
+        'searchComics': 'Поиск комиксов…',
         'switchViewMode': 'Переключить режим',
         'prevPage': 'Предыдущая',
         'nextPage': 'Следующая',
@@ -537,7 +575,6 @@ LOCALE = {
         'secPlainText': 'Хранится в файле настроек',
         'adminGalleryDir': 'Папка галереи',
         'adminComicsDir': 'Папка комиксов',
-        'navFolders': 'Папки',
         'sectionFolders': 'Настройки папок',
         'backendApiRaw': 'API Raw',
         'backendGallerydl': 'Gallery-DL (универсальный)',
@@ -580,6 +617,7 @@ LOCALE = {
         'settingsCleanAll': 'Очистить всё',
         'similarTo': 'Похоже на',
         'similarBtn': 'Похожие',
+        'allFiles': 'Все файлы',
         'noResults': 'Нет результатов',
     },
 }
@@ -1634,56 +1672,98 @@ def content_mgmt_comics_edit():
 @app.route('/nhentai-search')
 @admin_required
 def nhentai_search_page():
-    """NHentai search interface."""
+    """Redirect to new content search with NHentai tab."""
+    return redirect('/content-search?site=nhentai')
+
+@app.route('/content-mgmt/comics-tags')
+@admin_required
+def comics_tags_page():
+    """Comics grid + tag panel drag-to-tag."""
     s = load_settings()
-    return render_template('nhentai_search.html', page='nhentai-search', s=s)
+    return render_template('content-mgmt/tags.html', page='content-mgmt/comics-tags', s=s)
 
 @app.route('/franchise-search')
 @admin_required
 def franchise_search_page():
-    """Parallel search across all sites."""
-    _s = load_settings()
+    """Redirect to new content search."""
+    return redirect('/content-search')
+
+@app.route('/content-search')
+@admin_required
+def content_search_page():
+    """New unified search page (R34, Danbooru, NHentai)."""
+    s = load_settings()
+    return render_template('content-search.html', page='content-search', s=s)
+
+@app.route('/api/content-search')
+@admin_required
+@api_error_handler
+def api_content_search():
+    """API: parallel search across selected sites."""
     q = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+    sites_param = request.args.get('sites', 'r34,dan,nhentai')
+    if not q:
+        return jsonify({'error': 'no query'}), 400
+    from backends import search_tags
+    import concurrent.futures
+    site_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai'}
+    sites = [site_map[s] for s in sites_param.split(',') if s in site_map]
     results = {}
-    backends_used = {}
-    if q:
-        from backends import search_tags
-        import concurrent.futures
-        sites = ['rule34', 'danbooru', 'nhentai']
-        # Determine which backend is used for each site (for debug display)
-        fb_cfg = _s.get('fetch_backend', {})
-        _def_bk = {'rule34': 'api_raw', 'danbooru': 'api_raw', 'nhentai': 'gallerydl'}
-        backends_used = {site: fb_cfg.get(site) or _def_bk[site] for site in sites}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as exc:
-            fut = {site: exc.submit(search_tags, site, q, 1, _s) for site in sites}
-            for site in sites:
-                try:
-                    results[site] = fut[site].result(timeout=30)
-                except Exception:
-                    results[site] = {'results': [], 'total': 0}
-    return render_template('franchise_search.html', page='franchise-search', s=_s, q=q, results=results, backends_used=backends_used)
+    total = 0
+    log_debug('[ContentSearch API] query="%s" sites=%s page=%d', q, sites, page)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(sites)) as exc:
+        fut = {s: exc.submit(search_tags, s, q, page, load_settings()) for s in sites}
+        for s in sites:
+            try:
+                results[s] = fut[s].result(timeout=30)
+                n = len(results[s].get('results', []))
+                total += results[s].get('total', n)
+                log_debug('[ContentSearch API] %s: %d results', s, n)
+            except Exception as e:
+                results[s] = {'results': [], 'total': 0}
+                log_debug_red('[ContentSearch API] %s ERROR: %s', s, e)
+    log_debug('[ContentSearch API] done: query="%s" total=%d', q, total)
+    return jsonify({'results': results, 'total': total})
 
 @app.route('/api/franchise/search')
 @admin_required
 @api_error_handler
 def api_franchise_search():
-    """API endpoint for franchise search."""
+    """Legacy alias: delegates to content search API."""
     q = request.args.get('q', '').strip()
     page = request.args.get('page', 1, type=int)
     if not q:
         return jsonify({'error': 'no query'}), 400
-    from backends import search_tags
-    import concurrent.futures
-    sites = ['rule34', 'danbooru', 'nhentai']
-    results = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as exc:
-        fut = {s: exc.submit(search_tags, s, q, page, load_settings()) for s in sites}
-        for s in sites:
-            try:
-                results[s] = fut[s].result(timeout=30)
-            except Exception:
-                results[s] = {'results': [], 'total': 0}
-    return jsonify(results)
+    from flask import Response as Resp
+    resp = Resp()
+    resp.headers['Location'] = f'/api/content-search?q={urllib.parse.quote(q)}&page={page}'
+    resp.status_code = 308
+    return resp
+
+@app.route('/api/tags/autocomplete')
+@admin_required
+@api_error_handler
+def api_tags_autocomplete():
+    """Autocomplete: search tags in local DB."""
+    q = request.args.get('q', '').strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+    db = _db_conn()
+    try:
+        rows = db.execute(
+            'SELECT DISTINCT tags FROM files WHERE tags IS NOT NULL AND tags != ""'
+        ).fetchall()
+        all_tags = set()
+        for (tags_str,) in rows:
+            for t in tags_str.split(','):
+                t = t.strip()
+                if t and q.lower() in t.lower():
+                    all_tags.add(t)
+        sorted_tags = sorted(all_tags)[:20]
+        return jsonify(sorted_tags)
+    finally:
+        db.close()
 
 @app.route('/similar')
 @api_error_handler
@@ -1755,7 +1835,13 @@ def api_nhentai_search():
     if not query:
         return jsonify({'error': 'no query'}), 400
     from backends import search_tags
+    log_debug('[NHentai API] search: query="%s" page=%d', query, page)
     result = search_tags('nhentai', query, page, load_settings())
+    n = len(result.get('results', []))
+    total = result.get('total', 0)
+    log_debug('[NHentai API] search: %d results, %d total for query="%s"', n, total, query)
+    if result.get('error'):
+        log_debug_red('[NHentai API] search ERROR: %s', result['error'])
     return jsonify(result)
 
 @app.route('/api/kemono/mirrors')
@@ -3814,6 +3900,79 @@ def api_comics_update():
         return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Добавление тега к странице комикса с указанием source (r34/dan/nhentai).
+# Синтаксис: POST /api/comics/pages/tag  {"path": "...", "tag": "tag_name", "source": "r34|dan|nhentai"}
+@app.route('/api/comics/pages/tag', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_comics_pages_tag():
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'no data'}), 400
+    path = data.get('path', '')
+    tag = data.get('tag', '').strip()
+    source = data.get('source', '')
+    if not path or not tag or not source:
+        return jsonify({'error': 'bad params'}), 400
+    if source not in ('r34', 'dan', 'nhentai'):
+        return jsonify({'error': 'invalid source'}), 400
+
+    source_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai'}
+    cat_source = source_map[source]
+    rel = os.path.relpath(path, settings.get('media_dir', '/'))
+    if rel.startswith('..'):
+        return jsonify({'error': 'invalid_path'}), 400
+
+    db = _db_conn()
+    try:
+        # 1. Add tag to file's tags
+        row = db.execute('SELECT id, tags FROM files WHERE path = ?', [rel]).fetchone()
+        if row:
+            fid, existing_tags = row
+            tag_set = set(t.strip() for t in (existing_tags or '').split(',') if t.strip())
+            tag_set.add(tag)
+            db.execute('UPDATE files SET tags = ? WHERE id = ?', [','.join(sorted(tag_set)), fid])
+        else:
+            filepath = _safe_media_path(rel)
+            if not filepath or not os.path.exists(filepath):
+                return jsonify({'error': 'file not found'}), 404
+            ext = os.path.splitext(filepath)[1].lower()
+            ftype = _get_file_type(ext)
+            stat = os.stat(filepath)
+            width, height = 0, 0
+            if ftype == 'image':
+                width, height = _get_image_dimensions(filepath)
+            db.execute(
+                'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+                [rel, os.path.basename(rel), ftype, stat.st_size, int(stat.st_mtime), tag, width, height, int(time.time())]
+            )
+
+        # 2. Add tag to category system with correct source (NOT 'manual')
+        cat = 'general'
+        if source == 'r34':
+            cat = _categorize_r34_tag(tag)
+        db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
+                   [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
+        db.execute("""
+            INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(tag_name) DO UPDATE SET
+                category = excluded.category,
+                source = excluded.source,
+                last_updated = excluded.last_updated
+        """, [tag, cat, cat_source, int(time.time())])
+
+        # 3. Mark found in scan_results
+        _ensure_scan_results_table()
+        _mark_tags_found(rel)
+
+        db.commit()
+        return jsonify({'ok': True, 'tag': tag})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
 
 # ── Entry point ───────────────────────────────
 

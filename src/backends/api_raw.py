@@ -49,15 +49,16 @@ class ApiRawBackend:
                     data = r.json()
                     if data:
                         p = data[0]
+                        fu = p.get('file_url', '')
                         return {'tags': p.get('tag_string', '').split(),
                                 'tag_general': p.get('tag_string_general', '').split(),
                                 'tag_artist': p.get('tag_string_artist', '').split(),
                                 'tag_character': p.get('tag_string_character', '').split(),
                                 'tag_copyright': p.get('tag_string_copyright', '').split(),
                                 'tag_meta': p.get('tag_string_meta', '').split(),
-                                'file_url': p.get('file_url', ''),
-                                'large_file_url': p.get('large_file_url', '') or p.get('file_url', ''),
-                                'preview_file_url': p.get('preview_file_url', '')}
+                                'file_url': fu,
+                                'large_file_url': p.get('large_file_url', '') or fu,
+                                'preview_file_url': p.get('preview_file_url', '') or fu.replace('/original/', '/preview/')}
             except Exception:
                 if attempt < 2:
                     time.sleep(1)
@@ -178,12 +179,13 @@ class ApiRawBackend:
                     return {'results': [], 'total': 0}
                 results = []
                 for p in posts:
+                    fu = p.get('file_url', '')
                     results.append({
                         'id': str(p.get('id', '')),
                         'tags': p.get('tag_string', '').split(),
-                        'file_url': p.get('file_url', ''),
-                        'preview_url': p.get('preview_url', ''),
-                        'large_file_url': p.get('large_file_url', ''),
+                        'file_url': fu,
+                        'preview_url': p.get('preview_url', '') or fu.replace('/original/', '/preview/'),
+                        'large_file_url': p.get('large_file_url', '') or fu,
                         'width': p.get('image_width', 0),
                         'height': p.get('image_height', 0),
                         'source': 'danbooru',

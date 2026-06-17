@@ -2820,3 +2820,381 @@ exception.GalleryDLException (code=1)
 | **Kemono URL** | `GalleryDlBackend.get_mirrors()` + `/api/kemono/mirrors` |
 | **Admin 5 разделов** | Users, Database, API Keys, Folders, Backends |
 | **UPSERT for source** | `INSERT ... ON CONFLICT DO UPDATE SET source=excluded.source` |
+
+
+---
+
+## 25. Architecture Audit (17.06.2026)
+
+### 25.1 Current Search Architecture
+
+Search is implemented via `search_tags()` in `src/backends/__init__.py` (line 32-41). It dispatches per-site based on the `fetch_backend` config setting, falling back to `_DEFAULT_BACKEND`.
+
+**Consumer endpoints:**
+
+| Endpoint | Type | How it calls search |
+|---|---|---|
+| `/franchise-search` (line 1641) | Server-rendered HTML | `search_tags(site, q, 1, _s)` via ThreadPoolExecutor (parallel 3 sites) |
+| `/api/franchise/search` (line 1666) | JSON API | Same as above, returns JSON |
+| `/api/nhentai/search` (line 1750) | JSON API | `search_tags('nhentai', query, page, settings)` -- single site |
+
+**Backend implementations of `.search()`:**
+
+- **`ApiRawBackend.search()`** (line 121-129, `api_raw.py`): Dispatches to `_search_rule34()`, `_search_danbooru()`, `_search_nhentai()` each calling their respective raw HTTP APIs directly.
+- **`GalleryDlBackend.search()`** (line 166-174, `gallerydl.py`): Uses gallery-dl Python API for Danbooru/NHentai; falls back to raw JSON API for Rule34 (because gallery-dl needs API keys for R34 v2 search).
+
+**Return format** (standardized across both backends):
+
+```
+{
+    'results': [
+        {
+            'id': str,           # post ID
+            'tags': [...],       # flat list of tag strings
+            'file_url': str,     # full-size image URL
+            'preview_url': str,  # thumbnail URL
+            'source': str,       # 'rule34' | 'danbooru' | 'nhentai'
+            # Optional fields:
+            'width': int, 'height': int, 'rating': str, 'score': int,
+            'large_file_url': str, 'sample_url': str,
+        }
+    ],
+    'total': int,   # often len(results) -- most sites don't return total count
+}
+```
+
+NHentai search results have a different shape:
+```
+{
+    'id': int|str,
+    'title': str,
+    'mid': str,          # media_id for URL construction
+    'thumbnail': str,    # full thumbnail URL
+    'tags': [...],       # flat tag names
+    'pages': int,        # num_pages
+}
+```
+
+**Key observations:**
+- No pagination metadata standardization (Danbooru returns `b<id>` cursor, R34 returns `pid`, NHentai returns `page`)
+- Total count is approximate (R34 and Danbooru only return `len(results)` not a server-side total)
+- No caching at the backend level -- caching is done per-route in `web_app.py` via `_api_cache` dict
+- No rate-limit handling at the backend level (done per-route via `time.sleep(API_DELAY)`)
+
+---
+
+### 25.2 Current Tagfetch Architecture
+
+Tagfetch is implemented via `fetch_tags()` in `src/backends/__init__.py` (line 23-30). It dispatches per-site the same way as `search_tags()`.
+
+**Consumer endpoints:**
+
+| Endpoint | Type | What it does |
+|---|---|---|
+| `/api/fetch_file` (line 2517) | JSON GET | Manual tagfetch: fetch tags for a single file by relative path |
+| `/api/auto_scan` (line 3060) | SSE stream | Auto tagfetch: walk media_dir, fetch tags for each file, stream progress |
+| `/api/save_file` (line 2845) | JSON POST | Save fetched tags to DB (reads from in-memory API cache) |
+| `/api/save_all_fetched` (line 2974) | JSON POST | Save all cached results (dry_run option available) |
+
+**Backend implementations of `.fetch()`:**
+
+- **`ApiRawBackend.fetch()`** (`api_raw.py` line 13-22): Dispatches to `_fetch_rule34()`, `_fetch_danbooru()`, `_fetch_nhentai()`.
+- **`GalleryDlBackend.fetch()`** (`gallerydl.py` line 64-73): Uses gallery-dl Python API for Danbooru/Rule34; NHentai returns `{}` (handled via `fetch_by_url()` or `fetch_gallery()` instead).
+
+**Return format** (not standardized! -- each site and backend returns different fields):
+
+```
+# Rule34 (both backends):
+{'tags': [...], 'file_url': str, 'preview_url': str}
+
+# Danbooru (both backends):
+{'tags': [...], 'tag_general': [...], 'tag_artist': [...],
+ 'tag_character': [...], 'tag_copyright': [...], 'tag_meta': [...],
+ 'file_url': str, 'large_file_url': str, 'preview_file_url': str}
+
+# NHentai (ApiRawBackend only):
+{'id': int, 'title': str, 'media_id': str, 'tags': [...],
+ 'num_pages': int, 'file_url': str, 'preview_url': str}
+```
+
+**Frontend files involved:**
+
+| File | Role |
+|---|---|
+| `static/tagfetch/api.js` (96 lines) | API client: `TagfetchAPI.browse()`, `.fetchFile()`, `.saveFile()`, `.autoScan()`, `.checkStatus()`, etc. |
+| `static/tagfetch/tagfetch.js` (17 lines) | Tab switching utility |
+| `static/tagfetch/manual/manual.js` (611 lines) | IIFE module: file browser with `loadBrowser()`, `selectFile()`, `fetchTags()`, `fetchAllFiles()`, `saveFile()`, filter/sort, Save All modal |
+| `static/tagfetch/auto/auto.js` (366 lines) | IIFE module: SSE stream reader with `startAutoScan()`, `addAutoCard()`, `saveAllAutoResults()`, hover preview for videos |
+
+**Templates:**
+
+| Template | Extends | Content |
+|---|---|---|
+| `templates/tagfetch/manual.html` (61 lines) | `base.html` | Aside (file browser + filter bar) + Main (preview panels, R34/Dan tags panels, action buttons, Save All modal) |
+| `templates/tagfetch/auto.html` (33 lines) | `base.html` | Auto scan controls + auto-grid for results cards |
+
+**Data flow in manual mode:**
+
+```
+User clicks file -> selectFile() -> load local preview + /api/fileinfo
+User clicks "Fetch Tags" -> fetchTags() -> TagfetchAPI.fetchFile() -> /api/fetch_file
+  -> web_app.py: compute_md5() -> fetch_tags('rule34') + fetch_tags('danbooru')
+  -> store in _api_cache[md5_r34] + _api_cache[md5_dan]
+  -> return combined JSON
+User clicks "Add from Rule34/Danbooru/Both" -> saveFile() -> /api/save_file
+  -> web_app.py: read from _api_cache, merge with DB, UPSERT into files table
+```
+
+**Data flow in auto mode:**
+
+```
+User clicks "Start Auto Scan" -> startAutoScan() -> TagfetchAPI.autoScan() -> POST /api/auto_scan
+  -> web_app.py: walk media_dir (or use provided paths)
+  -> For each file: skip logic (DB has_tags, already_scanned, no_tags_found)
+  -> compute_md5() -> fetch_tags('rule34') + fetch_tags('danbooru') (with content-MD5 fallback)
+  -> _ensure_categories() + _ensure_r34_categories()
+  -> yield SSE event with full result data (tags, urls, categories, colors)
+  -> auto.js: parse SSE, addAutoCard() to grid, count stats
+User clicks "Save All" -> saveAllAutoResults() -> /api/save_all_fetched
+```
+
+**Skip logic in auto_scan (lines 3097-3120):**
+1. File not found on disk -> skip
+2. Already in DB with `_has_non_meta_tags()` -> skip
+3. Previously checked via `_was_tags_not_found()` -> skip
+4. Already in `auto_scan` table -> skip
+
+**MD5 resolution strategy (duplicated in both `api_fetch_file` and `api_auto_scan`):**
+1. Check `md5_cache` dict first
+2. Try filename-based MD5 (`_md5_from_filename()` -- extracts from filename like `1234567.jpg`)
+3. If filename MD5 fails -> compute content MD5 (`compute_md5(filepath)`)
+4. Cache in `md5_cache[rel_path]`
+5. **Content-MD5 fallback** (lines 2557-2574, 3139-3166): If filename MD5 found tags on only one site, try content MD5 for the other site, and vice versa
+
+---
+
+### 25.3 Comparison: search_tags() vs fetch_tags()
+
+| Aspect | `search_tags()` | `fetch_tags()` |
+|---|---|---|
+| **Purpose** | Find posts by tag query | Find post by MD5 hash |
+| **Consumer** | Franchise search, NHentai search | Manual tagfetch, Auto tagfetch |
+| **Input** | `(site, query, page, settings)` | `(site, md5, settings)` |
+| **Output** | `{'results': [...], 'total': int}` | Site-specific dict (see above) |
+| **Sites** | rule34, danbooru, nhentai | rule34, danbooru, nhentai (+ kemono via gallery-dl) |
+| **Caching** | None at backend level | None at backend level (web_app.py caches per-md5) |
+| **Backend dispatch** | Same `fetch_backend` config | Same `fetch_backend` config |
+| **Error handling** | `{'results': [], 'total': 0}` on failure | `{'tags': [], 'file_url': '', 'preview_url': ''}` on failure |
+| **Missing backend.search** | Falls back to `{'results': [], 'total': 0}` | N/A |
+
+**What they share:**
+- Same dispatch mechanism (`BACKENDS` registry + `fetch_backend` config + `_DEFAULT_BACKEND`)
+- Same backend classes (`ApiRawBackend`, `GalleryDlBackend`)
+- Both return dicts with consistent top-level keys
+- Both handle the same 3 primary sites (rule34, danbooru, nhentai)
+
+**What prevents unification:**
+1. **Different return shapes** -- `fetch()` returns categorized tags (Danbooru: `tag_artist`, `tag_character`, etc.), `search()` returns a flat list of results
+2. **Different calling conventions** -- `fetch()` is MD5-based, `search()` is query+page-based
+3. **Different post-processing** -- `fetch()` triggers `_ensure_categories()` and `_mark_tags_found()`, `search()` just returns data
+4. **Different consumers** -- `fetch()` feeds into save pipeline, `search()` feeds into browse/view pipeline
+
+---
+
+### 25.4 External API Documentation Summary
+
+#### 25.4.1 Danbooru API (`api_raw.py` + `gallerydl.py`)
+
+| Property | Value |
+|---|---|
+| **Base URL** | `https://danbooru.donmai.us` |
+| **Fetch endpoint** | `GET /posts.json?tags=md5:{md5}&limit=1` |
+| **Search endpoint** | `GET /posts.json?tags={query}&limit=100&page={page}` |
+| **Auth** | HTTP Basic Auth (`login:api_key`) or URL params (`login=`+`api_key=`) |
+| **Response format** | JSON array of post objects |
+| **Pagination** | `page=N` (1-indexed) or `page=b{id}` (cursor-based), max 200 per page |
+| **Rate limits** | 10 req/s global read, 1-4 req/s write depending on user level |
+| **Key fields** | `id`, `file_url`, `large_file_url`, `preview_file_url`, `tag_string`, `tag_string_general`, `tag_string_artist`, `tag_string_character`, `tag_string_copyright`, `tag_string_meta`, `image_width`, `image_height`, `rating`, `score`, `md5` |
+| **User-Agent** | Required -- identify your app |
+| **Docs** | `https://danbooru.donmai.us/wiki_pages/help:api` |
+
+#### 25.4.2 Rule34 API (`api_raw.py` + `gallerydl.py`)
+
+| Property | Value |
+|---|---|
+| **Base URL** | `https://api.rule34.xxx` |
+| **Fetch endpoint** | `GET /index.php?page=dapi&s=post&q=index&json=1&limit=1&tags=md5:{md5}&user_id={uid}&api_key={key}` |
+| **Search endpoint** | `GET /index.php?page=dapi&s=post&q=index&json=1&tags={query}&limit=100&pid={page-1}&user_id={uid}&api_key={key}` |
+| **Auth** | Required: `user_id` + `api_key` (URL params) |
+| **Response format** | JSON array of post objects |
+| **Pagination** | `pid=N` (0-indexed), `limit=100` max |
+| **Rate limits** | Unknown -- undocumented |
+| **Key fields** | `id`, `file_url`, `preview_url`, `sample_url`, `tags` (single string), `width`, `height`, `md5` |
+| **Notes** | API keys are required even for basic search. No categorized tags -- all tags are one flat string. |
+
+#### 25.4.3 NHentai API (`api_raw.py` + `gallerydl.py`)
+
+| Property | Value |
+|---|---|
+| **Base URL** | `https://nhentai.net/api/v2` |
+| **Fetch endpoint** | `GET /galleries/{gallery_id}` |
+| **Search endpoint** | `GET /search?query={query}&page={page}&sort=popular` |
+| **Auth** | `Authorization: Key {api_key}` header |
+| **Response format** | JSON object (single gallery) or `{result: [...], total: N, num_pages: N, per_page: N}` |
+| **Pagination** | `page=N` (1-indexed), `per_page=25` (search) |
+| **Rate limits** | Authenticated: generous; Anonymous: stricter. `429` = backoff signal. |
+| **Key fields** | `id`, `media_id`, `title.english`, `title.japanese`, `tags[{id, type, name, count}]`, `num_pages`, `num_favorites`, `upload_date` |
+| **CDN** | Don't hardcode subdomains -- use `GET /cdn` to get server list |
+| **User-Agent** | Required -- set descriptive UA |
+| **Docs** | `https://nhentai.net/api/v2/docs` (Swagger UI) |
+
+---
+
+### 25.5 Recommended Refactoring for Unification
+
+#### 25.5.1 Shared MD5 Resolution
+
+The MD5 resolution logic (filename MD5 -> content MD5 -> fallback retry) is duplicated in both `api_fetch_file()` (lines 2528-2574) and `api_auto_scan()` (lines 3122-3166). Extract into a shared function in `backends/__init__.py`:
+
+```python
+def resolve_md5(rel_path, settings, md5_cache=None):
+    \"\"\"Resolve MD5 for a file: try filename-based hash first, then content hash.
+    Returns (md5, is_content_md5) tuple. Uses optional md5_cache dict.\"\"\"
+```
+
+#### 25.5.2 Standardized Return Format
+
+Both backends should normalize their fetch() output to a standard format:
+
+```python
+# Standard fetch() return format:
+{
+    'tags': [...],           # flat list of all tags
+    'categories': {           # categorized tags (Danbooru-native, R34 heuristic)
+        'artist': [...],
+        'character': [...],
+        'copyright': [...],
+        'general': [...],
+        'meta': [...],
+    },
+    'file_url': str,
+    'preview_url': str,
+    'large_file_url': str,   # optional
+    'source': str,            # site name
+}
+```
+
+#### 25.5.3 Move Tag Categorization into Backends
+
+Currently `_ensure_categories()` (line 935) and `_ensure_r34_categories()` (line 1010) live in `web_app.py`. They should move into the respective backend modules so that:
+
+- `ApiRawBackend.fetch()` returns already-categorized tags
+- `GalleryDlBackend.fetch()` returns already-categorized tags
+- `web_app.py` only needs to persist them
+
+This would eliminate the separate category-ensure call in `api_auto_scan()` (lines 3172-3175) and `api_save_all_fetched()` (lines 3043-3046).
+
+#### 25.5.4 Backend-Level Caching
+
+Add caching at the `backends/__init__.py` level rather than requiring each route to manage `_api_cache`:
+
+```python
+# In backends/__init__.py
+_API_CACHE = {}  # key: f'{site}_{md5}' or f'{site}_{query}_{page}'
+
+def fetch_tags(site, md5, settings, use_cache=True):
+    cache_key = f'{site}_{md5}'
+    if use_cache and cache_key in _API_CACHE:
+        return _API_CACHE[cache_key]
+    result = _do_fetch(site, md5, settings)
+    if use_cache:
+        _API_CACHE[cache_key] = result
+    return result
+```
+
+This would simplify `api_fetch_file()` -- it would no longer need to manage `api_cache` lookups and stores manually.
+
+#### 25.5.5 Pagination Metadata Standardization
+
+For `search_tags()`, add a `pagination` key to the return format:
+
+```python
+{
+    'results': [...],
+    'total': int,           # best-effort total
+    'pagination': {
+        'page': int,
+        'per_page': int,
+        'has_next': bool,
+        'next_cursor': str,  # for Danbooru b<id> style
+    }
+}
+```
+
+#### 25.5.6 GalleryDlBackend NHentai Fetch
+
+`GalleryDlBackend.fetch('nhentai', md5, settings)` currently returns `{}` (line 72) because NHentai doesn't expose MD5. Consider:
+- Removing NHentai from fetch() and handling it exclusively via gallery ID lookup
+- Or adding a `fetch_by_gallery_id()` method that NHentai-specific routes can call
+
+#### 25.5.7 Unified Error Handling
+
+Both backends use different empty-return values on error:
+- `ApiRawBackend`: `{'tags': [], 'file_url': '', 'preview_url': ''}` and `{'results': [], 'total': 0}`
+- `GalleryDlBackend`: `{}` on fetch error and `{'results': [], 'total': 0}` on search error
+
+Standardize to always return the same shape (even on error) to eliminate the `isinstance` checks in `web_app.py` (e.g., lines 2588-2589).
+
+---
+
+### 25.6 Data Flow Diagram: Search vs Tagfetch
+
+```
+flowchart TD
+    subgraph Search[Search]
+        FS[Franchise Search] -->|search_tags| DISPATCH_S
+        NS[NHentai Search] -->|search_tags| DISPATCH_S
+        DISPATCH_S[backends/__init__.py] -->|config| BACKEND_S
+        BACKEND_S -->|ApiRawBackend| RAW_S[Direct HTTP]
+        BACKEND_S -->|GalleryDlBackend| GD_S[gallery-dl API]
+        RAW_S -->|rule34| R34_API
+        RAW_S -->|danbooru| DAN_API
+        RAW_S -->|nhentai| NH_API
+        GD_S -->|danbooru| GD_DAN
+        GD_S -->|rule34| GD_R34
+        GD_S -->|nhentai| GD_NH
+    end
+
+    subgraph Tagfetch[Tagfetch - fetch by MD5]
+        TF_MAN[fetch_file] -->|fetch_tags| DISPATCH_T
+        TF_AUTO[auto_scan SSE] -->|fetch_tags| DISPATCH_T
+        DISPATCH_T[backends/__init__.py] -->|config| BACKEND_T
+        BACKEND_T -->|ApiRawBackend| RAW_T
+        BACKEND_T -->|GalleryDlBackend| GD_T
+        RAW_T --> R34_FETCH
+        RAW_T --> DAN_FETCH
+        RAW_T --> NH_FETCH
+        GD_T --> GD_DAN_FETCH
+        GD_T --> GD_R34_FETCH
+    end
+
+    subgraph Save[Save to DB]
+        TF_MAN --> SAVE[api_save_file]
+        TF_AUTO --> SAVE2[api_save_all_fetched]
+        SAVE --> DB[(SQLite)]
+        SAVE2 --> DB
+        SAVE --> CAT[_ensure_categories]
+        SAVE2 --> CAT
+    end
+```
+
+**Key differences:**
+
+| Dimension | Search | Tagfetch |
+|---|---|---|
+| **Lookup key** | Tag query string + page | MD5 hash (filename or content) |
+| **Output shape** | Uniform: `{results, total}` | Site-specific: different keys per backend |
+| **Consumers** | Browse UI, franchise search | Save-to-DB pipeline |
+| **Categorization** | None (raw tags) | `_ensure_categories()` after fetch |
+| **Caching** | No backend cache | Per-MD5 in `_api_cache` |
+| **Parallelism** | ThreadPoolExecutor in franchise | Sequential in auto_scan (per-file) |

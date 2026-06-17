@@ -3,6 +3,7 @@
 {% block head_extra %}
 <link rel="stylesheet" href="/static/css/admin.css?v=9">
 <link rel="stylesheet" href="/static/css/settings.css?v=2">
+<script src="/static/shared/icons.js"></script>
 {% endblock %}
 {% block hdr_brand %}{{ _('settings') }}{% endblock %}
 {% block hdr_tabs %}
@@ -163,20 +164,17 @@
               <div id="stBackendList">
                 {% set fb = s.get('fetch_backend', {}) %}
                 {% for site_id, site_key, backends in [('rule34','siteRule34',['api_raw','gallerydl']),('danbooru','siteDanbooru',['api_raw','gallerydl']),('nhentai','siteNhentai',['api_raw','gallerydl']),('kemono','siteKemono',['gallerydl']),('coomer','siteCoomer',['gallerydl'])] %}
-                <div class="backend-row" style="flex-direction:column;align-items:stretch">
-                  <div class="backend-site">
-                    <span class="backend-icon" id="stIcon{{ site_id }}"></span>
-                    <span style="font-weight:600"><span data-i18n="{{ site_key }}">{{ _(site_key) }}</span></span>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span style="font-size:13px;color:var(--text2);white-space:nowrap">Backend:</span>
-                    <select class="admin-field-input backend-select" data-site="{{ site_id }}">
-                      {% for b in backends %}
-                      {% set cur = fb.get(site_id, 'gallerydl' if site_id in ('kemono','coomer','nhentai') else 'api_raw') %}
-                      <option value="{{ b }}" {{ 'selected' if cur == b }}>{{ _( 'backendGallerydl' if b == 'gallerydl' else 'backendApiRaw' ) }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
+                <div class="backend-row">
+                  <span class="backend-icon" id="stIcon{{ site_id }}">{% if site_id == 'rule34' %}<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#ee3344"/><text x="12" y="16" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#fff">34</text></svg>{% elif site_id == 'danbooru' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M5 3h7c3 0 8 1 8 9s-5 9-8 9H5V3zm4 4v10h3c2 0 4-1 4-5s-2-5-4-5H9z" fill="#BA9570" stroke="#000" stroke-width="2" stroke-linejoin="round"/></svg>{% elif site_id == 'nhentai' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 4v16h4v-8l6 8h4V4h-4v8l-6-8H4z" fill="#ED2754"/></svg>{% elif site_id == 'kemono' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M10 3l-6 4v2l2 1v3l2 3v4h8v-4l2-3v-3l2-1V7l-6-4h-4zm-2 7l1 2-1 2-1-2 1-2zm8 0l1 2-1 2-1-2 1-2z" fill="#E6702F"/></svg>{% elif site_id == 'coomer' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M10 3l-6 4v2l2 1v3l2 3v4h8v-4l2-3v-3l2-1V7l-6-4h-4zm-2 8l1 2-1 2-1-2 1-2zm8 0l1 2-1 2-1-2 1-2z" fill="#3B82F6"/></svg>{% endif %}</span>
+                  <span style="font-weight:600;flex-shrink:0"><span data-i18n="{{ site_key }}">{{ _(site_key) }}</span></span>
+                  <span style="flex:1;min-width:8px"></span>
+                  <span style="font-size:13px;color:var(--text2);white-space:nowrap">Backend:</span>
+                  <select class="admin-field-input backend-select" data-site="{{ site_id }}">
+                    {% for b in backends %}
+                    {% set cur = fb.get(site_id, 'gallerydl' if site_id in ('kemono','coomer','nhentai') else 'api_raw') %}
+                    <option value="{{ b }}" {{ 'selected' if cur == b }}>{{ _( 'backendGallerydl' if b == 'gallerydl' else 'backendApiRaw' ) }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
                 {% endfor %}
               </div>

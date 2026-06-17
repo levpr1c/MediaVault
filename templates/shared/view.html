@@ -153,7 +153,7 @@ var _pages = {{ pages|tojson|safe }};
 var _mode = 'scroll';
 var _currentPage = 0;
 var _hideTimer = null;
-var _programmaticScroll = false;
+var _programmaticScroll = false, _scrollTimeout = null, _pageObserver = null;
 function showUI() {
   var pc = document.getElementById('pageCounter');
   pc.classList.remove('hidden');
@@ -229,7 +229,8 @@ function switchToPage(idx) {
     if (el) {
       _programmaticScroll = true;
       el.scrollIntoView({behavior: 'smooth', block: 'start'});
-      setTimeout(function() { _programmaticScroll = false; }, 500);
+      clearTimeout(_scrollTimeout);
+      _scrollTimeout = setTimeout(function() { _programmaticScroll = false; }, 1000);
     }
   }
   updateCounter();
@@ -241,12 +242,14 @@ function toggleMode() {
     _mode = 'lightbox';
     scrollView.style.display = 'none';
     lightboxView.classList.add('open');
+    if (_pageObserver) _pageObserver.disconnect();
     switchToPage(_currentPage);
     document.getElementById('toggleModeBtn').classList.add('active');
   } else {
     _mode = 'scroll';
     scrollView.style.display = 'block';
     lightboxView.classList.remove('open');
+    _setupPageObserver();
     document.getElementById('toggleModeBtn').classList.remove('active');
   }
   showUI();
@@ -276,6 +279,31 @@ function _findCurrentPage() {
   }
   return bestIdx;
 }
+function _setupPageObserver() {
+  if (_pageObserver) _pageObserver.disconnect();
+  var wraps = document.querySelectorAll('#scrollView .page-wrap');
+  if (!wraps.length || typeof IntersectionObserver === 'undefined') return;
+  _pageObserver = new IntersectionObserver(function(entries) {
+    if (_mode !== 'scroll' || _programmaticScroll) return;
+    var best = null, bestRatio = 0;
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].intersectionRatio > bestRatio) {
+        bestRatio = entries[i].intersectionRatio;
+        best = entries[i];
+      }
+    }
+    if (best && bestRatio > 0) {
+      var idx = parseInt(best.target.id.replace('page-', ''), 10);
+      if (!isNaN(idx) && idx !== _currentPage) {
+        _currentPage = idx;
+        updateCounter();
+      }
+    }
+  }, {threshold: 0});
+  for (var i = 0; i < wraps.length; i++) {
+    _pageObserver.observe(wraps[i]);
+  }
+}
 window.addEventListener('scroll', function() {
   if (_mode !== 'scroll') return;
   showUI();
@@ -291,7 +319,9 @@ window.addEventListener('scroll', function() {
   });
 }, {passive: true});
 window.addEventListener('scrollend', function() {
-  if (_mode !== 'scroll' || _programmaticScroll) return;
+  if (_mode !== 'scroll') return;
+  _programmaticScroll = false;
+  clearTimeout(_scrollTimeout);
   var idx = _findCurrentPage();
   if (idx !== _currentPage) {
     _currentPage = idx;
@@ -317,6 +347,7 @@ document.addEventListener('touchend', function(e) {
 }, {passive: true});
 document.addEventListener('mousemove', showUI);
 buildPages();
+_setupPageObserver();
 buildDots();
 switchToPage(0);
 {% if preview %}

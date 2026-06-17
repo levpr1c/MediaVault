@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" data-theme="{{ s.theme }}" data-three-bg="{{ '1' if s.get('three_bg', True) else '0' }}"{% if not s.get('effects', True) %} data-no-effects{% endif %}>
+<head>
+{% from 'shared/macros.html' import theme_buttons with context %}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}MEDIAVAULT{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.ico">
+<link rel="preload" as="font" type="font/woff2" href="/static/fonts/Unbounded-latin.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/static/fonts/Unbounded-cyrillic.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/static/fonts/Unbounded-cyrillic-ext.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/static/fonts/ibmplexsans-latin.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/static/fonts/ibmplexsans-cyrillic.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/static/fonts/ibmplexsans-cyrillic-ext.woff2" crossorigin>
+<link rel="stylesheet" href="/static/css/shared.css?v=10">
+<link rel="stylesheet" href="/static/css/tagfetch.css?v=10">
+<link rel="stylesheet" href="/static/css/mediavault.css?v=10">
+{% block head_extra %}{% endblock %}
+{% if request.path.startswith('/content-mgmt/') %}
+<link rel="stylesheet" href="/static/css/content.css?v=10">
+{% endif %}
+</head>
+<body>
+{% block body_start %}{% endblock %}
+<script>
+var CONFIG = {
+  mediaDir: {{ (s.media_dir if s is defined else '')|tojson }},
+  mediaDirExists: {{ 'true' if media_dir_exists is defined and media_dir_exists else 'false' }},
+  mediaDirEmpty: {{ 'true' if media_dir_empty is defined and media_dir_empty else 'false' }},
+  page: '{{ page|default('') }}',
+  subview: '{{ subview if subview is defined else 'manual' }}',
+  theme: {{ s.theme|tojson }},
+  cacheBuster: {{ s.cache_buster|default(0)|tojson }},
+  isAdmin: {{ 'true' if session.get('role') == 'admin' else 'false' }}
+};
+</script>
+<script src="/static/shared/utils.js"></script>
+<script src="/static/shared/api.js"></script>
+<div id="app">
+{% block header %}
+{% set is_cm = request.path.startswith('/content-mgmt/') %}
+{% if page and page != 'home' %}
+<div id="appHeader"{% if is_cm %} data-cm-header{% endif %}>
+  <div class="hdr-desktop">
+    <h1 class="mv-mh-brand">{% block hdr_brand %}{% if is_cm %}CONTENT-MGMT{% else %}MEDIAVAULT{% endif %}{% endblock %}</h1>
+    <nav class="hdr-tabs">{% block hdr_tabs %}
+      {% if is_cm %}
+      <button class="hdr-cm-btn" id="cmMenuBtn" title="Menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="hdr-cm-menu" id="cmMenu">
+      {% endif %}
+      <div class="hdr-group">
+        <span class="hdr-group-label" data-i18n="navMediaVault">MediaVault</span>
+        <a href="/mediavault/gallery" class="hdr-link{% if request.path == '/mediavault/gallery' or request.path == '/mediavault/view' %} active{% endif %}" data-i18n="mvGallery">Gallery</a>
+        <a href="/mediavault/comics" class="hdr-link{% if request.path == '/mediavault/comics' or '/comics/view' in request.path %} active{% endif %}" data-i18n="mvComics">Comics</a>
+      </div>
+      <div class="hdr-group-sep"></div>
+      <div class="hdr-group">
+        <span class="hdr-group-label" data-i18n="navSearch">Search</span>
+        <a href="/content-search" class="hdr-link{% if request.path == '/content-search' %} active{% endif %}" data-i18n="navSearchR34Dan">R34/Dan</a>
+        <a href="/content-search?site=nhentai" class="hdr-link{% if request.path == '/content-search' %} active{% endif %}">NHentai</a>
+      </div>
+      <div class="hdr-group-sep"></div>
+      <div class="hdr-group">
+        <span class="hdr-group-label" data-i18n="navContent">Content</span>
+        <a href="/content-mgmt/tags-auto" class="hdr-link{% if 'tags-auto' in request.path %} active{% endif %}" data-i18n="autoFetch">Auto</a>
+        <a href="/content-mgmt/tags-manual" class="hdr-link{% if 'tags-manual' in request.path %} active{% endif %}" data-i18n="manualFetch">Manual</a>
+        <a href="/content-mgmt/tags-manage" class="hdr-link{% if 'tags-manage' in request.path %} active{% endif %}" data-i18n="mvManageTags">Manage</a>
+        <a href="/content-mgmt/tags-group" class="hdr-link{% if 'tags-group' in request.path %} active{% endif %}" data-i18n="navGroups">Groups</a>
+        <a href="/content-mgmt/comics-edit" class="hdr-link{% if 'comics-edit' in request.path %} active{% endif %}" data-i18n="navEditor">Editor</a>
+      </div>
+      <div class="hdr-group-sep"></div>
+      <div class="hdr-group">
+        <a href="/settings" class="hdr-link{% if request.path == '/settings' %} active{% endif %}" data-i18n="settings">Settings</a>
+        <a href="/admin" class="hdr-link{% if request.path == '/admin' %} active{% endif %}" data-i18n="navAdmin">Admin</a>
+      </div>
+      {% if is_cm %}
+      </div>
+      {% endif %}
+    {% endblock %}</nav>
+      <nav class="hdr-nav">{% block hdr_nav_desktop %}{% endblock %}</nav>
+    <div class="hdr-spacer"></div>
+    <div class="hdr-actions">{% block hdr_actions %}
+      {{ theme_buttons() }}
+      <a href="/" class="mv-mh-icon" title="Home">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </a>
+    {% endblock %}</div>
+  </div>
+  <div class="hdr-mobile">
+    <div class="mv-mh-row1">
+      <span class="mv-mh-brand">{{ self.hdr_brand() }}</span>
+      <nav class="hdr-nav">{% block hdr_nav %}
+        <a href="/mediavault/gallery" class="mv-mh-icon" title="Gallery">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+        </a>
+        <a href="/mediavault/comics" class="mv-mh-icon" title="Comics">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </a>
+      {% endblock %}</nav>
+      <div class="mv-mh-spacer"></div>
+      <div class="hdr-actions">{{ self.hdr_actions() }}</div>
+    </div>
+    <div class="mv-mh-row2">{% block hdr_search %}
+      <button class="mv-mh-icon mv-mh-menu-btn" id="mobileMenuBtn" title="Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="mv-mh-search">
+        <svg class="mv-mh-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="searchInputMobile" placeholder="{{ _('mvSearchPlaceholder') }}" data-i18n-placeholder="mvSearchPlaceholder">
+      </div>
+    {% endblock %}</div>
+  </div>
+  <div class="mv-drawer" id="mobileDrawer">{% block hdr_drawer %}
+    <div class="mv-drawer-body">
+      <div class="mv-drawer-nav">
+        <div class="mv-drawer-group">
+          <span class="hdr-group-label" data-i18n="navMediaVault">MediaVault</span>
+          <a href="/mediavault/gallery" class="hdr-link" data-i18n="mvGallery">Gallery</a>
+          <a href="/mediavault/comics" class="hdr-link" data-i18n="mvComics">Comics</a>
+        </div>
+        <div class="mv-drawer-group">
+          <span class="hdr-group-label" data-i18n="navSearch">Search</span>
+          <a href="/content-search" class="hdr-link" data-i18n="navSearchR34Dan">R34/Dan</a>
+          <a href="/content-search?site=nhentai" class="hdr-link">NHentai</a>
+        </div>
+        <div class="mv-drawer-group">
+          <span class="hdr-group-label" data-i18n="navContent">Content</span>
+          <a href="/content-mgmt/tags-auto" class="hdr-link" data-i18n="autoFetch">Auto</a>
+          <a href="/content-mgmt/tags-manual" class="hdr-link" data-i18n="manualFetch">Manual</a>
+          <a href="/content-mgmt/tags-manage" class="hdr-link" data-i18n="mvManageTags">Manage</a>
+          <a href="/content-mgmt/tags-group" class="hdr-link" data-i18n="navGroups">Groups</a>
+          <a href="/content-mgmt/comics-edit" class="hdr-link" data-i18n="navEditor">Editor</a>
+        </div>
+        <div class="mv-drawer-group">
+          <a href="/settings" class="hdr-link" data-i18n="settings">Settings</a>
+          <a href="/admin" class="hdr-link" data-i18n="navAdmin">Admin</a>
+        </div>
+      </div>
+      <hr class="mv-drawer-sep">
+      <div class="mv-drawer-row" id="drawerLayout">
+        <button class="tool-btn tool-btn-icon active" data-layout="columns" title="Masonry">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </button>
+        <button class="tool-btn tool-btn-icon" data-layout="fixed" title="Grid">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+        </button>
+        <button class="tool-btn tool-btn-icon" data-layout="scroll" title="List">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="4" rx="1"/><rect x="5" y="10" width="14" height="4" rx="1"/><rect x="5" y="16" width="14" height="4" rx="1"/></svg>
+        </button>
+      </div>
+      <div class="mv-drawer-row" id="drawerSort">
+        <button class="tool-btn" id="drawerSortBtn" onclick="MediaVaultGallery.toggleDateSort()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-4 4 4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h10"/><path d="M20 17H10"/></svg>
+          <span data-i18n="sortByName">By name</span>
+        </button>
+      </div>
+      <div class="mv-drawer-row" id="drawerPageSize">
+        <span class="mv-drawer-label" style="line-height:28px" data-i18n="mvPageSize">Page:</span>
+        <button class="tool-btn" data-pagesize="0" data-i18n="tfFilterAll">All</button>
+        <button class="tool-btn" data-pagesize="30">30</button>
+        <button class="tool-btn" data-pagesize="60">60</button>
+        <button class="tool-btn" data-pagesize="90">90</button>
+      </div>
+      <div class="mv-drawer-row" id="drawerFilter">
+        <button class="tool-btn" id="drawerFetchedBtn" onclick="MediaVaultGallery.toggleFetchedOnly()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span data-i18n="navTags">Tagged</span>
+        </button>
+      </div>
+    </div>
+  {% endblock %}</div>
+</div>
+{% endif %}
+{% endblock %}
+<div id="content">
+{% block content %}{% endblock %}
+</div>
+</div>
+{% block scripts %}
+<script src="/static/tagfetch/api.js"></script>
+<script src="/static/tagfetch/manual/manual-v2.js"></script>
+<script src="/static/tagfetch/auto/auto.js"></script>
+
+<script src="/static/tagfetch/tagfetch.js"></script>
+<script src="/static/mediavault/api.js"></script>
+<script src="/static/mediavault/utils.js"></script>
+<script src="/static/shared/gallery/tags.js"></script>
+<script src="/static/shared/gallery/gallery.js"></script>
+<script src="/static/shared/lightbox.js?v=2"></script>
+<script src="/static/shared/gallery/lightbox.js?v=2"></script>
+<script src="/static/shared/comics/comics.js?v=2"></script>
+<script src="/static/mediavault/db.js"></script>
+<script src="/static/mediavault/mediavault.js"></script>
+<script src="/static/shared/init.js"></script>
+{% endblock %}
+</body>
+</html>

@@ -7,9 +7,8 @@
 :root{--lb-panel-w:300px;--thumb-col-width:220px;--grid-cols:4}
 
 /* ─── ЕДИНЫЙ РЕСПОНСИВ-ХЕДДЕР (DESKTOP + MOBILE) — без inline, без !important ─── */
-#appHeader{flex-shrink:0}
+#appHeader{flex-shrink:0;position:relative;z-index:100}
 .hdr-desktop{display:flex;align-items:center;gap:12px;padding:6px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
-.hdr-tabs{display:flex;gap:2px}
 .hdr-spacer{flex:1;min-width:4px}
 .hdr-actions{display:flex;flex-direction:row;justify-content:flex-end;align-items:center;gap:6px;flex-shrink:0}
 .hdr-nav{display:flex;gap:2px}
@@ -51,7 +50,7 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .sidebar-actions{display:flex;flex-direction:column}
 
 /* ─── ПАНЕЛЬ ИНСТРУМЕНТОВ ГАЛЕРЕИ ─── */
-#galleryToolbar{display:flex;align-items:center;gap:8px;padding:0 0 12px 0;border-bottom:1px solid var(--border);margin-bottom:12px}
+#galleryToolbar{border-bottom:1px solid var(--border);margin-bottom:12px}
 #galleryToolbar .toolbar-group{flex:1;justify-content:center}
 .toolbar-group{display:flex;align-items:center;gap:4px}
 .toolbar-group-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -63,7 +62,7 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .toolbar-sep{width:1px;height:22px;background:var(--border);flex-shrink:0;margin:0 10px}
 
 /* ─── ГАЛЕРЕЯ ─── */
-#gallery{column-width:var(--thumb-col-width,220px);column-gap:8px;flex:1;align-content:flex-start}
+#gallery{column-width:var(--thumb-col-width,220px);flex:1;align-content:flex-start}
 #gallery.few-items{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;column-width:auto}
 #gallery.few-items .gallery-item{width:var(--thumb-col-width,220px);margin-bottom:0}
 .gallery-empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text2)}
@@ -84,9 +83,9 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .gallery-info{padding:8px 10px}
 .gallery-name{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
 .gallery-tags{display:flex;flex-wrap:wrap;gap:3px}
-.tag-chip{font-size:12px;padding:2px 6px;background:var(--chip-bg);color:var(--chip-text);border-radius:4px;white-space:nowrap;display:inline-block;margin:1px}
+
 .gallery-spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;position:absolute}
-.video-badge{position:absolute;bottom:6px;right:6px;font-size:18px;z-index:var(--z-dropdown);filter:drop-shadow(0 1px 3px var(--shadow))}
+
 
 /* ─── ПАГИНАЦИЯ ─── */
 #galleryPagination{display:flex;justify-content:center;align-items:center;gap:8px}
@@ -175,8 +174,7 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 #sidebarToggle{transition:transform .25s cubic-bezier(.4,0,.2,1)}
 #sidebarToggle.rotated{transform:rotate(180deg)}
 
-@keyframes fadeSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-@keyframes spin{to{transform:rotate(360deg)}}
+
 
 /* ═══════════════════════════════════════ МОБИЛЬНАЯ ВЁРСТКА (<768px) — переопределения PC ═══════════════════════════════════════ */
 @media(max-width:768px){

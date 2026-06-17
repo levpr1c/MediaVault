@@ -15,6 +15,7 @@ let _popTags = []
 let _lbInstance = null
 
 export function filesRender(body) {
+  _currentPage = 1
   _ac = new AbortController()
   const s = _ac.signal
   body.innerHTML = `<div class="admin-loading"><span class="fetch-spinner"></span> ${_t('loading')}</div>`
@@ -105,7 +106,7 @@ function _buildToolbar() {
   const pages = [0, 30, 60, 90]
   const pageLabels = { 0: _t('tfFilterAll'), 30: '30', 60: '60', 90: '90' }
 
-  return `<div class="cm-files-toolbar">` +
+  return `<div class="cm-files-toolbar shared-toolbar">` +
     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text2)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>` +
     `<input id="cmFilesSearch" class="cm-files-toolbar-search" placeholder="${_t('searchFiles')}...">` +
     `<span class="cm-files-count" id="cmFilesCount">${_filteredFiles.length}</span>` +
@@ -123,7 +124,7 @@ function _buildToolbar() {
 }
 
 function _buildLeftPanel() {
-  return `<div class="cm-files-left">` +
+  return `<div class="cm-files-left shared-tag-panel">` +
     `<div class="cm-files-left-search">` +
       `<input id="cmFilesTagSearchQ" class="cm-tag-search-input" placeholder="${_t('tagSearchPlaceholder')}">` +
     `</div>` +
@@ -174,7 +175,7 @@ function _renderLeftTags(searchQ) {
 function _buildRightPanel() {
   return `<div class="cm-files-right">` +
     `<div class="cm-files-right-scroll">` +
-      `<div class="cm-files-gallery" id="cmFilesGallery">` +
+      `<div class="cm-files-gallery shared-grid" id="cmFilesGallery">` +
       `</div>` +
     `</div>` +
     `<div class="cm-files-pagination" id="cmFilesPagination">` +

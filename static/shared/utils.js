@@ -81,7 +81,6 @@ var _i18nData = {
   en: {
 
     // Tagfetch
-    tfRefresh: 'Refresh',
     tfFilterAll: 'All',
     tfFilterNoTags: 'Untagged',
     tfFilterFound: 'Found',
@@ -158,6 +157,8 @@ var _i18nData = {
     mvComics: 'Comics',
     mvDesc: 'Browse and explore your media library',
     homeComicsFetch: 'Comics Fetch',
+    homeSearchFiles: 'Search Files',
+    homeSearchComics: 'Search Comics',
     sortByName: 'By name',
     sortByNewest: 'Newest',
     sortByOldest: 'Oldest',
@@ -174,6 +175,15 @@ var _i18nData = {
     mvCatModalNoTags: 'No tags',
     mvCatModalNoCats: 'No categories yet',
     mvCatModalFailed: 'Failed to load',
+
+    // Navigation
+    navMediaVault: 'MediaVault',
+    navSearch: 'Search',
+    navSearchR34Dan: 'R34/Dan',
+    navContent: 'Content',
+    navEditor: 'Editor',
+    navAdmin: 'Admin',
+    navGroups: 'Groups',
 
     // General
     welcome: 'Welcome to MediaVault',
@@ -239,7 +249,6 @@ var _i18nData = {
     secPlainText: 'Stored in settings file',
     adminGalleryDir: 'Gallery folder',
     adminComicsDir: 'Comics folder',
-    navFolders: 'Folders',
     sectionFolders: 'Folder Settings',
     settingsMediaPath: 'Media directory',
     settingsScan: 'Scan',
@@ -262,6 +271,7 @@ var _i18nData = {
     createComic: 'Create Comic',
     unsavedConfirm: 'You have unsaved changes. Continue?',
     searchFiles: 'Search files',
+    searchComics: 'Search comics',
     mediaDirEmpty: 'Media directory is empty',
     filesCountShort: 'files',
     added: "Added",
@@ -295,6 +305,11 @@ var _i18nData = {
     cmDesc: "Manage tags, categories, and comics",
     cmHeader: "CONTENT MANAGEMENT",
     comicsEditor: "Comics Editor",
+    comicsTags: "Comics Tags",
+    cmSectionTagfetch: "TAGFETCH",
+    cmSectionTags: "TAGS",
+    cmSectionComics: "COMICS",
+    cmSectionSearch: "SEARCH",
     exportDb: "Export DB",
     genMissingThumbs: "Generate Missing",
     manualFetch: "Manual",
@@ -305,7 +320,21 @@ var _i18nData = {
     settingsCleanTagCache: "Clean Tag Cache",
     similarTo: "Similar to",
     similarBtn: "Similar",
+    allFiles: "All files",
     noResults: "No results",
+
+    // Content Search
+    contentSearch: "Content Search",
+    contentSearchPlaceholder: "Search all sites by tag…",
+    contentSearchBtn: "Search",
+    contentSearchTabAll: "All",
+    contentSearchTabR34Dan: "R34+Dan",
+    contentSearchTabNHentai: "NHentai",
+    contentSearchNoResults: "No results found",
+    contentSearchError: "Search failed",
+    contentSearchTags: "Tags",
+    contentSearchId: "ID",
+    contentSearchSource: "Source",
     tagfetch: "TAGFETCH",
     tags: "TAGS",
 
@@ -321,7 +350,6 @@ var _i18nData = {
   ru: {
 
     // Tagfetch
-    tfRefresh: 'Обновить',
     tfFilterAll: 'Все',
     tfFilterNoTags: 'Без тегов',
     tfFilterFound: 'Найдено',
@@ -393,6 +421,8 @@ var _i18nData = {
     mvComics: 'Комиксы',
     mvDesc: 'Просмотр и управление медиатекой',
     homeComicsFetch: 'Поиск комиксов',
+    homeSearchFiles: 'Поиск файлов',
+    homeSearchComics: 'Поиск комиксов',
     mvGroupColors: 'Цвет групп',
     mvPageSize: 'Стр:',
     mvNoFiles: 'Файлы не загружены',
@@ -473,7 +503,6 @@ var _i18nData = {
     secPlainText: 'Хранится в файле настроек',
     adminGalleryDir: 'Папка галереи',
     adminComicsDir: 'Папка комиксов',
-    navFolders: 'Папки',
     sectionFolders: 'Настройки папок',
     settingsMediaPath: 'Папка с медиа',
     settingsScan: 'Сканировать',
@@ -496,6 +525,7 @@ var _i18nData = {
     createComic: 'Создать комикс',
     unsavedConfirm: 'Есть несохранённые изменения. Продолжить?',
     searchFiles: 'Поиск файлов',
+    searchComics: 'Поиск комиксов',
     mediaDirEmpty: 'Папка с медиа пуста',
     filesCountShort: 'файлов',
     added: "Добавлен",
@@ -523,12 +553,26 @@ var _i18nData = {
     themeToggle: "Сменить тему",
     uncategorized: "Без категории",
 
+    // Navigation
+    navMediaVault: 'MediaVault',
+    navSearch: 'Поиск',
+    navSearchR34Dan: 'R34/Dan',
+    navContent: 'Контент',
+    navEditor: 'Редактор',
+    navAdmin: 'Админ',
+    navGroups: 'Группы',
+
     // Content Management
     autoFetch: "Авто",
     cleanThumbCache: "Очистить кэш превью",
     cmDesc: "Управление тегами, категориями и комиксами",
     cmHeader: "УПРАВЛЕНИЕ КОНТЕНТОМ",
     comicsEditor: "Редактор Комиксов",
+    comicsTags: "Теги комиксов",
+    cmSectionTagfetch: "ПОИСК ТЕГОВ",
+    cmSectionTags: "ТЕГИ",
+    cmSectionComics: "КОМИКСЫ",
+    cmSectionSearch: "ПОИСК",
     exportDb: "Экспорт БД",
     genMissingThumbs: "Сгенерировать недостающие",
     manualFetch: "Ручной",
@@ -539,7 +583,21 @@ var _i18nData = {
     settingsCleanTagCache: "Очистить кэш тегов",
     similarTo: "Похоже на",
     similarBtn: "Похожие",
+    allFiles: "Все файлы",
     noResults: "Нет результатов",
+
+    // Content Search
+    contentSearch: "Поиск контента",
+    contentSearchPlaceholder: "Поиск на всех сайтах по тегу…",
+    contentSearchBtn: "Найти",
+    contentSearchTabAll: "Все",
+    contentSearchTabR34Dan: "R34+Dan",
+    contentSearchTabNHentai: "NHentai",
+    contentSearchNoResults: "Ничего не найдено",
+    contentSearchError: "Ошибка поиска",
+    contentSearchTags: "Теги",
+    contentSearchId: "ID",
+    contentSearchSource: "Источник",
     tagfetch: "ПОИСК ТЕГОВ",
     tags: "ТЕГИ",
 

@@ -234,8 +234,10 @@ class GalleryDlBackend:
         try:
             from gallery_dl.extractor import find
             tags_q = requests.utils.quote(query)
+            print(f'[NHentai Debug] search: query="{query}" page={page}', file=sys.stderr)
             extr = find(f'https://nhentai.net/search/?q={tags_q}')
             if not extr:
+                print(f'[NHentai Debug] search: extractor not found for query="{query}"', file=sys.stderr)
                 return {'results': [], 'total': 0}
 
             # gallery-dl NHentai search only returns gallery_id, not full metadata
@@ -244,29 +246,40 @@ class GalleryDlBackend:
                 gid = data.get('gallery_id')
                 if gid and gid not in gallery_ids:
                     gallery_ids.append(gid)
+            print(f'[NHentai Debug] search: found {len(gallery_ids)} gallery IDs for query="{query}"', file=sys.stderr)
             if not gallery_ids:
+                print(f'[NHentai Debug] search: no gallery IDs for query="{query}"', file=sys.stderr)
                 return {'results': [], 'total': 0}
 
             per_page = 25
             start = (page - 1) * per_page
             page_ids = gallery_ids[start:start + per_page]
+            print(f'[NHentai Debug] search: page {page} → IDs {page_ids}', file=sys.stderr)
 
             results = []
             for gid in page_ids:
                 meta = self.fetch_gallery(gid)
                 if meta:
-                    results.append({
+                    entry = {
                         'id': meta.get('id'),
                         'title': meta.get('title_en') or meta.get('title', ''),
                         'mid': meta.get('media_id'),
                         'thumbnail': f"https://t.nhentai.net/galleries/{meta.get('media_id')}/thumb.jpg",
                         'tags': list(meta.get('tags', [])),
                         'pages': meta.get('num_pages', 0),
-                    })
+                    }
+                    print(f'[NHentai Debug]   gallery id={entry["id"]} title="{entry["title"]}" '
+                          f'pages={entry["pages"]} tags={len(entry["tags"])} '
+                          f'thumbnail={entry["thumbnail"]}', file=sys.stderr)
+                    results.append(entry)
+                else:
+                    print(f'[NHentai Debug]   gallery id={gid} fetch failed (no metadata)', file=sys.stderr)
+            print(f'[NHentai Debug] search: returning {len(results)} results for query="{query}"', file=sys.stderr)
             return {'results': results, 'total': len(gallery_ids)}
         except Exception as e:
-            import sys
-            print(f'GalleryDlBackend: nhentai search error: {e}', file=sys.stderr)
+            import traceback
+            print(f'[NHentai Debug] search ERROR: {e}', file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
         return {'results': [], 'total': 0}
 
     # ── Legacy: Kemono/Coomer via CLI ─────────────────────────────

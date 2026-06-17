@@ -17,6 +17,7 @@
 .hm-warning svg{flex-shrink:0}
 .hm-account{position:relative}
 .hm-topbar-btn{display:flex;align-items:center;justify-content:center;background:rgba(25,25,40,0.8);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:6px;cursor:pointer;color:var(--text2);transition:all .2s ease;min-width:34px;height:34px;font-family:var(--font-btn)}
+.hm-topbar-btn svg{opacity:0.9;display:block}
 .hm-topbar-btn:hover{background:rgba(255,255,255,0.15);color:#fff;transform:scale(1.05)}
 .hm-account-dropdown{position:absolute;top:calc(100% + 4px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:150px;display:none;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 .hm-account-dropdown.open{display:block}
@@ -28,7 +29,7 @@
 .hm-blocks{display:flex;gap:16px;justify-content:center;align-items:stretch;width:100%;max-width:1200px}
 .hm-block{flex:1;min-width:280px;max-width:420px;background:rgba(25,25,40,0.8);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:2px solid rgba(255,255,255,0.07);border-radius:18px;padding:24px;transition:all .25s ease;display:flex;flex-direction:column}
 .hm-block[data-block="admin"]{flex:1.3;max-width:480px}
-.hm-block[data-block="mv"]{flex:1.3;max-width:480px}
+.hm-block[data-block="mv"]{flex:0.8}
 .hm-block[data-block="mv"]:hover{border-color:#6366f1;box-shadow:0 8px 28px rgba(99,102,241,.18)}
 .hm-block[data-block="cm"]:hover{border-color:#f59e0b;box-shadow:0 8px 28px rgba(245,158,11,.18)}
 .hm-block[data-block="admin"]:hover{border-color:#34d399;box-shadow:0 8px 28px rgba(52,211,153,.18)}
@@ -51,16 +52,11 @@
 .hm-block-grid--centered{justify-content:center}
 .hm-block-desc{margin-top:auto;font-size:12px;color:var(--text2);text-align:center;line-height:1.4;padding-top:16px;letter-spacing:.3px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
 
-/* CM block — 3 columns */
-.hm-block--cm{flex:1.5;max-width:620px}
-.hm-block[data-block="mv"] .hm-block-btn,
-.hm-block[data-block="admin"] .hm-block-btn{padding:16px 14px}
-.hm-cm-cols{display:flex;gap:10px;align-items:stretch}
-.hm-cm-col{flex:1;display:flex;flex-direction:column;gap:8px}
-.hm-cm-col-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:0 4px;text-align:center}
-.hm-cm-col .hm-block-btn{justify-content:center;padding:10px 8px;font-size:12px;font-weight:600;gap:6px}
-.hm-cm-col-center{flex:1;display:flex;flex-direction:column;gap:8px;padding-top:38px}
-.hm-cm-col-center .hm-block-btn{justify-content:center}
+/* CM block — 4 sections */
+.hm-block[data-block="cm"]{flex:2;max-width:700px}
+.hm-block[data-block="cm"] .hm-block-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:8px;transition:all .2s ease;font-family:var(--font-btn)}
+.hm-block[data-block="cm"] .hm-block-btn:hover{background:#f59e0b;color:#fff;border-color:#f59e0b;transform:translateY(-1px);box-shadow:0 4px 14px rgba(245,158,11,.35)}
+.hm-cm-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);text-align:center;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;font-family:var(--font-heading)}
 
 [data-theme="light"] .hm-topbar-btn{background:rgba(255,255,255,0.9);border-color:rgba(0,0,0,0.08)}
 [data-theme="light"] .hm-topbar-btn:hover{background:rgba(0,0,0,0.06)}
@@ -75,18 +71,12 @@
 @media(max-width:900px){
   .hm-blocks{flex-wrap:wrap}
   .hm-block{min-width:260px;max-width:none;flex:1 1 280px}
-  .hm-block--cm{flex:1 1 320px;max-width:none}
-  .hm-cm-cols{flex-direction:column}
-  .hm-cm-col-center{padding-top:0}
-  .hm-cm-col-center .hm-block-btn{min-height:44px;padding:10px}
+  .hm-block[data-block="cm"]{flex:1 1 320px;max-width:none}
 }
 @media(max-width:650px){
   .hm-blocks{flex-direction:column;align-items:center}
   .hm-block{width:100%;max-width:360px}
-  .hm-block--cm{max-width:360px}
-  .hm-cm-cols{flex-direction:column}
-  .hm-cm-col-center{padding-top:0}
-  .hm-cm-col-center .hm-block-btn{min-height:44px;padding:10px}
+  .hm-block[data-block="cm"]{max-width:360px}
   .hm-title{font-size:20px}
 }
 </style>
@@ -97,7 +87,7 @@
   {{ theme_buttons(cls='hm-topbar-btn') }}
   <div class="hm-account">
     <button class="hm-topbar-btn" id="accountBtn" onclick="toggleAccountDropdown()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="12" r="4"/></svg>
     </button>
     <div class="hm-account-dropdown" id="accountDropdown">
       <div class="hm-account-dd-user">{{ username }}</div>
@@ -139,45 +129,67 @@
 
     {# CONTENT MANAGEMENT — admin only #}
     {% if session.role == 'admin' %}
-    <div class="hm-block hm-block--cm" data-block="cm">
+    <div class="hm-block" data-block="cm">
       <div class="hm-block-head">
         <div class="hm-block-icon hm-block-icon--cm">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
         </div>
         <div class="hm-block-title" data-i18n="cmHeader">{{ _('cmHeader') }}</div>
       </div>
-      <div class="hm-cm-cols">
-        <div class="hm-cm-col">
-          <div class="hm-cm-col-label" data-i18n="tagfetch">{{ _('tagfetch') }}</div>
-          <a href="/content-mgmt/tags-auto" class="hm-block-btn">
-            <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
-            <span data-i18n="autoFetch">{{ _('autoFetch') }}</span>
-          </a>
-          <a href="/content-mgmt/tags-manual" class="hm-block-btn">
-            <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
-            <span data-i18n="manualFetch">{{ _('manualFetch') }}</span>
-          </a>
-        </div>
-        <div class="hm-cm-col-center">
-          <a href="/content-mgmt/comics-edit" class="hm-block-btn">
-            <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
-            <span data-i18n="comicsEditor">{{ _('comicsEditor') }}</span>
-          </a>
-          <a href="/nhentai-search" class="hm-block-btn">
-            <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
-            <span data-i18n="homeComicsFetch">{{ _('homeComicsFetch') }}</span>
-          </a>
-        </div>
-        <div class="hm-cm-col">
-          <div class="hm-cm-col-label" data-i18n="tags">{{ _('tags') }}</div>
-          <a href="/content-mgmt/tags-manage" class="hm-block-btn">
-            <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
-            <span data-i18n="mvManageTags">{{ _('mvManageTags') }}</span>
-          </a>
-          <a href="/content-mgmt/tags-group" class="hm-block-btn">
-            <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
-            <span data-i18n="mvCategorized">{{ _('mvCategorized') }}</span>
-          </a>
+      <div class="hm-block-grid">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div>
+            <div class="hm-cm-section-title" data-i18n="cmSectionTagfetch">{{ _('cmSectionTagfetch') }}</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <a href="/content-mgmt/tags-auto" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+                <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                <span data-i18n="autoFetch">{{ _('autoFetch') }}</span>
+              </a>
+              <a href="/content-mgmt/tags-manual" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+                <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+                <span data-i18n="manualFetch">{{ _('manualFetch') }}</span>
+              </a>
+            </div>
+          </div>
+          <div>
+            <div class="hm-cm-section-title" data-i18n="cmSectionTags">{{ _('cmSectionTags') }}</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <a href="/content-mgmt/tags-manage" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+                <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+                <span data-i18n="mvManageTags">{{ _('mvManageTags') }}</span>
+              </a>
+              <a href="/content-mgmt/tags-group" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+                <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+                <span data-i18n="mvCategorized">{{ _('mvCategorized') }}</span>
+              </a>
+            </div>
+          </div>
+          <div>
+            <div class="hm-cm-section-title" data-i18n="cmSectionComics">{{ _('cmSectionComics') }}</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <a href="/content-mgmt/comics-edit" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+                <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+                <span data-i18n="comicsEditor">{{ _('comicsEditor') }}</span>
+              </a>
+              <a href="/content-mgmt/comics-tags" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+                <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+                <span data-i18n="comicsTags">Comics Tags</span>
+              </a>
+            </div>
+          </div>
+          <div>
+            <div class="hm-cm-section-title" data-i18n="cmSectionSearch">{{ _('cmSectionSearch') }}</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <a href="/content-search" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+                <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+                <span data-i18n="homeSearchFiles">Поиск</span>
+              </a>
+              <a href="/nhentai-search" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+                <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><circle cx="11" cy="11" r="5"/><path d="m15 15-3-3"/></svg></div>
+                <span>NHentai</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
       <div class="hm-block-desc" data-i18n="cmDesc">{{ _('cmDesc') }}</div>

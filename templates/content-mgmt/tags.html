@@ -7,30 +7,19 @@
 {% endblock %}
 {% block hdr_drawer %}{% endblock %}
 {% block content %}
-
 <div id="contentView">
   <main class="cm-main">
-    {% if tab == 'groups' %}
-    <div style="display:flex;align-items:center;margin-bottom:20px">
-      <h2 class="cm-page-title" style="margin-bottom:0" data-i18n="mvCategorized">{{ _('mvCategorized') }}</h2>
-    </div>
-    {% else %}
-    <div style="display:flex;align-items:center;margin-bottom:20px">
-      <h2 class="cm-page-title" style="margin-bottom:0" data-i18n="mvGallery">{{ _('mvGallery') }}</h2>
-    </div>
-    {% endif %}
-    <div id="cmContentBody">
+    <div class="cm-page-header">
       {% if tab == 'groups' %}
-      <div id="cmTagGroupsView">
-        <div class="admin-loading">
-          <span class="fetch-spinner"></span> <span data-i18n="loading">{{ _('loading') }}</span>
-        </div>
-      </div>
+      <h2 class="cm-page-title" data-i18n="mvCategorized">{{ _('mvCategorized') }}</h2>
       {% else %}
+      <h2 class="cm-page-title" data-i18n="mvGallery">{{ _('mvGallery') }}</h2>
+      {% endif %}
+    </div>
+    <div id="cmContentBody">
       <div class="admin-loading">
         <span class="fetch-spinner"></span> <span data-i18n="loading">{{ _('loading') }}</span>
       </div>
-      {% endif %}
     </div>
   </main>
 </div>

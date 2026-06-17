@@ -87,7 +87,7 @@
   if (page === 'tagfetch') {
     var subview = window.CONFIG && CONFIG.subview || 'manual';
     if (subview === 'manual') {
-      TagfetchManual.init();
+      ManualTagfetch.init();
     }
   } else if (page === 'mediavault') {
     MediaVault.init();

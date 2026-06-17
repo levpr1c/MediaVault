@@ -29,7 +29,7 @@ export function tagsDestroy() {
 function _buildHTML() {
   let html =
     `<div id="cmTags" class="cm-tags">` +
-      `<div class="cm-tags-toolbar">` +
+      `<div class="cm-tags-toolbar shared-toolbar">` +
         `<input id="cmTagsSearch" class="cm-tags-search-input" placeholder="${_t('tagSearchPlaceholder')}">` +
         `<div class="cm-tags-toolbar-right">` +
           `<input type="color" id="cmNewCatColor" class="cm-tags-color" value="#64b5f6">` +

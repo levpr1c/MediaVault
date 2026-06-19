@@ -514,6 +514,9 @@ var SettingsApp = (function() {
   };
 })();
 
+document.addEventListener('DOMContentLoaded', function() {
+  SettingsApp.checkMount();
+});
 document.addEventListener('languageChanged', function() {
   SettingsApp.loadDbTools();
 });

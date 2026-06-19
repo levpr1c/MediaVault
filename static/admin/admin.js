@@ -669,16 +669,21 @@ var AdminDashboard = (function() {
   var _mountTimer = null;
 
   function _checkMount() {
-    var statusEl = document.getElementById('admMountStatus');
-    if (!statusEl) return;
     _api('/api/content-search/mount-check', {method:'GET'}).then(function(d) {
-      if (!d.mounted || d.empty) {
-        statusEl.innerHTML = '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + _t('settingsMountFail') + '</span>';
-      } else {
-        statusEl.innerHTML = '<span class="mount-dot mount-dot-green"></span><span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>';
-      }
+      var ok = d.mounted && !d.empty;
+      var html = ok
+        ? '<span class="mount-dot mount-dot-green"></span><span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>'
+        : '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + _t('settingsMountFail') + '</span>';
+      var cardEl = document.getElementById('admMountStatus');
+      if (cardEl) cardEl.innerHTML = html;
+      var headEl = document.getElementById('admMountIndicator');
+      if (headEl) headEl.innerHTML = html;
     }).catch(function(e) {
-      statusEl.innerHTML = '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + e.message + '</span>';
+      var msg = '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + e.message + '</span>';
+      var cardEl = document.getElementById('admMountStatus');
+      if (cardEl) cardEl.innerHTML = msg;
+      var headEl = document.getElementById('admMountIndicator');
+      if (headEl) headEl.innerHTML = msg;
     });
   }
 
@@ -747,6 +752,7 @@ var AdminDashboard = (function() {
   function init() {
     _selfId = parseInt(document.getElementById('adminView').dataset.selfId || '0', 10);
     loadSection('users');
+    _startMountWatch();
   }
 
   return {

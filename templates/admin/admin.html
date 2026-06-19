@@ -28,10 +28,11 @@
 {% block content %}
 <div id="adminView" data-self-id="{{ self_id or 0 }}">
   <main class="admin-main">
-    <div style="display:flex;align-items:center;margin-bottom:20px">
+    <div style="display:flex;align-items:center;margin-bottom:20px;justify-content:space-between">
       <h2 class="admin-page-title" style="margin-bottom:0" id="adminPageTitle">
         <span data-i18n="navUsers">{{ _('navUsers') }}</span>
       </h2>
+      <div id="admMountIndicator" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)"></div>
     </div>
     <div class="admin-content-body" id="adminContentBody">
       <div class="admin-loading">

@@ -266,6 +266,7 @@ LOCALE = {
         'settingsDownloadsDir': 'Downloads folder',
         'settingsCreateFolders': 'Create folders',
         'settingsCreateFoldersDone': 'Folders created',
+        'settingsFoldersExist': 'Already exist',
         'settingsMountOk': 'Storage is ready',
         'settingsMountFail': 'Storage is empty or not mounted',
         # ── Home page ──
@@ -496,6 +497,7 @@ LOCALE = {
         'settingsDownloadsDir': 'Папка загрузок',
         'settingsCreateFolders': 'Создать папки',
         'settingsCreateFoldersDone': 'Папки созданы',
+        'settingsFoldersExist': 'Уже существуют',
         'settingsMountOk': 'Накопитель в порядке',
         'settingsMountFail': 'Накопитель не подключён или пуст',
         # ── Home page ──
@@ -1804,15 +1806,19 @@ def api_content_search_create_folders():
     if not os.path.isdir(media_dir):
         return jsonify({'error': 'media_dir does not exist'}), 400
     created = []
+    existing = []
     for sub in [settings.get('gallery_dir', 'Gallery'), settings.get('comics_dir', 'Comics'), settings.get('downloads_dir', 'Downloads')]:
         path = os.path.join(media_dir, sub)
         try:
-            os.makedirs(path, exist_ok=True)
-            created.append(sub)
+            if os.path.isdir(path):
+                existing.append(sub)
+            else:
+                os.makedirs(path, exist_ok=True)
+                created.append(sub)
         except Exception as e:
             return jsonify({'error': 'Cannot create ' + sub + ': ' + str(e)}), 500
-    log_info('[ContentSearch] Created folders: %s', ', '.join(created))
-    return jsonify({'ok': True, 'created': created})
+    log_info('[ContentSearch] Folders: created=%s existing=%s', ', '.join(created) or '-', ', '.join(existing) or '-')
+    return jsonify({'ok': True, 'created': created, 'existing': existing})
 
 
 @app.route('/api/franchise/search')

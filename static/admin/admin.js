@@ -682,7 +682,10 @@ var AdminDashboard = (function() {
 
   function _createFolders() {
     _api('/api/content-search/create-folders', {method:'POST'}).then(function(d) {
-      _toast(_t('settingsCreateFoldersDone') + ': ' + (d.created || []).join(', '), 'success');
+      var parts = [];
+      if (d.created && d.created.length) parts.push(_t('settingsCreateFoldersDone') + ': ' + d.created.join(', '));
+      if (d.existing && d.existing.length) parts.push(_t('settingsFoldersExist') + ': ' + d.existing.join(', '));
+      _toast(parts.join('; ') || _t('settingsCreateFoldersDone'), 'success');
       _checkMount();
     }).catch(function(e) {
       _toast(e.message, 'error');

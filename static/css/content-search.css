@@ -61,37 +61,6 @@
   padding-top: 10px;
 }
 
-/* Tabs */
-.cs-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 20px;
-  background: var(--surface2);
-  border-radius: 10px;
-  padding: 4px;
-  max-width: fit-content;
-}
-.cs-tab {
-  padding: 8px 20px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text2);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all .15s;
-}
-.cs-tab:hover {
-  color: var(--text);
-  background: var(--surface);
-}
-.cs-tab.active {
-  background: var(--bg);
-  color: var(--accent);
-  box-shadow: 0 1px 4px rgba(0,0,0,.08);
-}
-
 /* Grid (shared-grid masonry) */
 .shared-grid .cs-card {
   break-inside: avoid;
@@ -137,11 +106,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.cs-card-source {
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: 2px;
 }
 
 /* Skeleton loading */

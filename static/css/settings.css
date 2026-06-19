@@ -70,34 +70,6 @@
   margin-top: 2px;
 }
 
-/* Language */
-.lang-toggle {
-  display: flex;
-  gap: 4px;
-}
-/* Language toggle (legacy, not used in header) */
-.lang-toggle .lang-btn {
-  padding: 8px 20px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text2);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  transition: all .2s;
-  font-family: var(--font-btn);
-}
-.lang-toggle .lang-btn:hover {
-  border-color: var(--accent);
-  color: var(--text);
-}
-.lang-toggle .lang-btn.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
 /* Status */
 .ac-status {
   font-size: 13px;

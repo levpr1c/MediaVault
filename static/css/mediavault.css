@@ -36,24 +36,19 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .sidebar-label{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:6px}
 #searchPanel input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;margin-bottom:10px;transition:background var(--transition),border-color var(--transition),color var(--transition)}
 #searchPanel input:focus{outline:none;border-color:var(--accent)}
-.search-mode{display:flex;gap:4px;margin-bottom:10px}
 .srch-mode{padding:3px 8px;font-size:12px}
 .srch-mode.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .srch-mode.active:hover{background:var(--accent-hover)}
-.thumb-size-mode{display:flex;gap:4px;margin-bottom:0}
 .thumb-size{padding:3px 8px;font-size:12px}
 .thumb-size.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .thumb-size.active:hover{background:var(--accent-hover)}
-.popular-tags-list{display:flex;flex-wrap:wrap;gap:4px}
 .sidebar-section{margin-top:12px}
 .sidebar-action{width:100%;justify-content:flex-start;margin-top:8px;font-size:13px;text-align:center}
-.sidebar-actions{display:flex;flex-direction:column}
 
 /* ─── ПАНЕЛЬ ИНСТРУМЕНТОВ ГАЛЕРЕИ ─── */
 #galleryToolbar{border-bottom:1px solid var(--border);margin-bottom:12px}
 #galleryToolbar .toolbar-group{flex:1;justify-content:center}
 .toolbar-group{display:flex;align-items:center;gap:4px}
-.toolbar-group-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tool-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text2);font-size:13px;cursor:pointer;transition:all var(--transition);line-height:1.4;min-height:32px;font-family:var(--font-btn)}
 .tool-btn:hover{background:var(--surface2);color:var(--text)}
 .tool-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -136,9 +131,6 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 /* ─── CATEGORY MODAL INPUT ─── */
 .cat-modal-input{flex:1}
 
-/* ─── ОБЩЕЕ ДЛЯ МОДАЛОВ ─── */
-.modal-breadcrumb{padding:6px 0;font-size:13px;margin-bottom:4px}
-
 /* ─── КНОПКИ РАСШИРЕНИЯ (язык + тема) ─── */
 .lang-btn,.theme-btn{display:inline-flex;align-items:center;justify-content:center;gap:0;padding:6px;min-width:36px;width:auto;border:none;background:transparent;color:var(--text2);cursor:pointer;border-radius:8px;transition:background .15s,color .15s,gap .3s cubic-bezier(.34,1.56,.64,1);flex-shrink:0;touch-action:manipulation;line-height:1}
 .lang-btn:focus-visible,.theme-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -160,12 +152,7 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .hdr-account{position:relative}
 .hdr-dropdown{position:absolute;top:calc(100% + 4px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;min-width:170px;display:none;box-shadow:0 6px 20px var(--shadow);z-index:var(--z-dropdown)}
 .hdr-dropdown.open{display:block}
-.hdr-dd-user{padding:10px 14px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hdr-dd-link{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:6px;cursor:pointer;color:var(--text);font-size:13px;text-decoration:none;border:none;outline:none;width:100%;text-align:left;background:none;font-family:var(--font-btn);transition:background .15s,color .15s}
-.hdr-dd-link:hover{background:var(--surface2);color:var(--accent)}
-.hdr-dd-link.hdr-dd-logout{color:var(--danger)}
-.hdr-dd-link.hdr-dd-logout:hover{background:var(--surface2);color:#ef4444}
-.hdr-dd-sep{height:1px;background:var(--border);margin:4px 0}
+
 
 /* Focus visible for icon buttons */
 .mv-mh-icon:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -181,14 +168,12 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
   .hdr-mobile{display:block}
   .hdr-desktop{display:none}
   .hdr-dropdown{min-width:160px;right:0;left:auto}
-  .hdr-dropdown .hdr-dd-link{font-size:12px;padding:8px 12px}
   .desktop-only{display:none}
   #mvBottomSection{display:block}
   #sidebarToggle{display:none}
   .thumb-size{display:none}
   #mvBottomLinks{display:flex}
   #galleryToolbar{flex-wrap:wrap;gap:6px;padding-bottom:8px}
-  .toolbar-group-label{font-size:9px}
   .tool-btn{padding:4px 8px;font-size:12px;min-height:28px}
   .tool-btn-icon{padding:4px;min-width:28px}
   .gallery-item{border-radius:6px}
@@ -221,16 +206,6 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .page-num{min-width:28px;height:28px;padding:0;text-align:center;font-size:13px}
 .page-num.active{background:var(--accent);color:#fff;font-weight:600}
 #pagePrev:disabled,#pageNext:disabled{opacity:.3;cursor:default}
-
-/* ═══════════════════════════════════════
-   ЧТЕНИЕ КОМИКСОВ / MANGA VIEWER
-   ═══════════════════════════════════════ */
-
-.comic-reader-page{display:block;width:100%;height:auto;margin:0 auto}
-.comic-scroll-mode{padding:0}
-.comic-scroll-mode img{display:block;width:100%;height:auto;margin:0 auto;max-width:1000px}
-.comic-lightbox-mode{display:flex;position:fixed;top:44px;left:0;right:0;bottom:0;z-index:var(--z-overlay);background:var(--bg);align-items:center;justify-content:center}
-.comic-lightbox-mode img{max-width:100%;max-height:100%;object-fit:contain;display:block}
 
 /* ─── ВКЛАДКИ MEDIAVAULT (Gallery / Comics) ─── */
 .mv-tab{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text2);transition:all var(--transition);user-select:none;border:1px solid transparent;background:transparent;font-family:var(--font-btn);border-radius:8px;line-height:1;letter-spacing:.3px;text-transform:uppercase;text-decoration:none}

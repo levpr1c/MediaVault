@@ -129,16 +129,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);transition:b
 .mv-mh-search input::placeholder{color:var(--text2)}
 /* ─── ШАПКА (HEADER) ─── */
 header{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
-#mvHeaderContent{display:flex;align-items:center;gap:12px;flex:1}
-#defaultHeaderContent{display:flex;align-items:center;gap:16px;flex:1}
 header h1{font-size:18px;font-weight:600;margin-right:auto;white-space:nowrap;font-family:var(--font-heading)}
 .brand{font-size:15px;font-weight:700;letter-spacing:-.3px;color:var(--accent);text-decoration:none;white-space:nowrap;font-family:var(--font-logo)}
 .brand:hover{opacity:.85}
-#mainNav{display:flex;gap:2px;margin-left:4px;flex:1}
 .nav-item{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:13px;font-weight:500;color:var(--text2);text-decoration:none;border-radius:6px;transition:all var(--transition);white-space:nowrap}
 .nav-item:hover{color:var(--text);background:var(--surface2)}
 .nav-item.active{color:var(--accent);background:var(--accent-glow)}
-.header-right{display:flex;align-items:center;gap:8px;margin-left:auto}
 
 /* ─── НАВИГАЦИЯ (HDR-GROUPS) ─── */
 .hdr-tabs{display:flex;align-items:center;gap:4px}
@@ -187,14 +183,11 @@ main{flex:1;padding:20px 24px;overflow-y:auto}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 @keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-4px)}20%,40%,60%,80%{transform:translateX(4px)}}
 
-.shake{animation:shake .4s ease}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 @keyframes btnPress{0%{transform:scale(1)}50%{transform:scale(.95)}100%{transform:scale(1)}}
 @keyframes btnSpin{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(180deg) scale(1.2)}100%{transform:rotate(360deg) scale(1)}}
 
 .btn-spin{animation:btnSpin .5s cubic-bezier(.34,1.56,.64,1)}
-.btn-press{animation:btnPress .2s ease}
-
 /* ─── ПРОКРУТКА (SCROLLBAR) ─── */
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -210,14 +203,12 @@ html{scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
   header{padding:8px 10px;gap:6px}
   header h1{font-size:15px}
   .brand{font-size:13px}
-  #mainNav{gap:0}
   .nav-item{padding:5px 8px;font-size:12px;gap:4px}
   .header-right{gap:4px}
   /* home in templates/home.html */
   #content{flex-direction:column}
   main{padding:12px}
   .btn,.tool-btn,.path-item,.nav-item,.tf-tab,.filter-btn,.srch-mode,.thumb-size,.lightbox-toolbar button{touch-action:manipulation}
-  #homeView .btn:not(.home-lang-btn,.home-theme-btn){position:static!important}
 }
 @media(max-width:480px){
   header{padding:6px 8px;gap:4px}
@@ -232,26 +223,13 @@ html{scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
 .fetch-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
 .loading{text-align:center;padding:40px;color:var(--text2);font-size:14px}
 .hidden{display:none!important}
-.status-text{font-size:12px;color:var(--text2);margin:4px 0 8px;min-height:16px}
 .video-badge{position:absolute;bottom:6px;right:6px;font-size:18px;z-index:var(--z-dropdown);filter:drop-shadow(0 1px 3px var(--shadow));pointer-events:none}
 .admin-loading{text-align:center;padding:60px 20px;color:var(--text2);font-size:15px}
-.form-desc{font-size:12px;color:var(--text2);margin:-4px 0 12px;line-height:1.4}
-.user-table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0}
-.user-table th,.user-table td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)}
-
 /* ─── PASSWORD WRAPPER (глазик) ─── */
 .pw-wrap{position:relative;display:flex;align-items:center}
 .pw-wrap input{width:100%;padding:8px 36px 8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px;outline:none;box-sizing:border-box}
 .pw-wrap input:focus{border-color:var(--accent)}
-.pw-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:var(--text2);display:flex;align-items:center;justify-content:center;border-radius:6px;transition:all .15s}
-.pw-eye:hover{color:var(--text);background:var(--surface)}
-.pw-eye svg{width:18px;height:18px;display:block}
-
 /* ─── RADIO LABEL ─── */
-.radio-label{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s;background:var(--surface)}
-.radio-label:hover{background:var(--surface2);border-color:var(--accent)}
-.radio-label input[type="radio"]{accent-color:var(--accent);margin:0}
-
 /* ─── NO EFFECTS MODE ─── */
 [data-no-effects] *,
 [data-no-effects] *::before,

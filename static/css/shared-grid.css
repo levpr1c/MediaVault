@@ -1,0 +1,68 @@
+/* ═══════════════════════════════════════
+   SharedGrid — masonry/flexbox сетка
+   ═══════════════════════════════════════ */
+
+.shared-grid {
+  column-width: var(--shared-grid-col-width, 200px);
+  column-gap: var(--shared-grid-gap, 8px);
+  contain: layout style;
+  min-height: 60px;
+}
+
+.shared-grid-item {
+  display: inline-block;
+  width: 100%;
+  margin-bottom: var(--shared-grid-gap, 8px);
+  break-inside: avoid;
+  animation: sharedGridFade .25s ease both;
+}
+
+/* ─── Grid (flexbox) layout ─── */
+.shared-grid.shared-grid-fixed {
+  column-width: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shared-grid-gap, 8px);
+  justify-content: center;
+}
+
+.shared-grid.shared-grid-fixed .shared-grid-item {
+  width: var(--shared-grid-col-width, 200px);
+  margin-bottom: 0;
+  display: inline-block;
+}
+
+/* ─── Loading state ─── */
+.shared-grid-loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text2);
+}
+
+.shared-grid-spinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: sharedGridSpin .7s linear infinite;
+}
+
+/* ─── Empty state ─── */
+.shared-grid-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@keyframes sharedGridSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes sharedGridFade {
+  from { opacity: 0; transform: scale(.96); }
+  to { opacity: 1; transform: scale(1); }
+}

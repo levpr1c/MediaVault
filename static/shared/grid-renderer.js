@@ -17,7 +17,7 @@ function hexToRgba(hex, alpha) {
 }
 
 function _cbSuffix() {
-  try { return window._cbSuffix() } catch(e) { return '' }
+  return (window._cbSuffix && window._cbSuffix()) || ''
 }
 
 /* ─── Left tag panel ─── */

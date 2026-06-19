@@ -84,7 +84,8 @@ def log_request(method, path, query, status):
     else:
         log_info_red('%s %s → %d', method, full, status)
 
-# Флаг сканирования — предотвращает конкурентные сканы
+# Флаг сканирования + блокировка — предотвращает конкурентные сканы
+_scan_lock = threading.Lock()
 _scan_in_progress = False
 
 # ── Путь к БД (всегда в скрытой папке) ──
@@ -2716,7 +2717,7 @@ def _quick_scan(force=False):
     Computes width/height for image files during scan (Pillow).
     """
     global _scan_in_progress
-    if _scan_in_progress:
+    if not _scan_lock.acquire(blocking=False):
         log_info('quick_scan: scan already in progress, skipping')
         return (0, 0)
     _scan_in_progress = True
@@ -2790,6 +2791,7 @@ def _quick_scan(force=False):
         log_error('quick_scan error: %s', e)
     finally:
         _scan_in_progress = False
+        _scan_lock.release()
     return (count, errors)
 
 # Ручное сканирование папки (кнопка Scan/Rescan). Запускает _quick_scan(force=True).
@@ -4406,15 +4408,20 @@ def api_comics_pages_tag():
         return jsonify({'error': 'no data'}), 400
     path = data.get('path', '')
     tag = data.get('tag', '').strip()
-    source = data.get('source', '')
-    if not path or not tag or not source:
+    source = data.get('source', '') or ''
+    if not path or not tag:
         return jsonify({'error': 'bad params'}), 400
-    if source not in ('r34', 'dan', 'nhentai'):
+    if source and source not in ('r34', 'dan', 'nhentai', 'manual'):
         return jsonify({'error': 'invalid source'}), 400
 
-    source_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai'}
-    cat_source = source_map[source]
-    rel = os.path.relpath(path, settings.get('media_dir', '/'))
+    source_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'manual': 'manual'}
+    cat_source = source_map.get(source, 'manual') if source else ''
+    # Относительный или абсолютный путь → нормализуем до rel от media_dir
+    media_dir = settings.get('media_dir', '/')
+    if os.path.isabs(path):
+        rel = os.path.relpath(path, media_dir)
+    else:
+        rel = path
     if rel.startswith('..'):
         return jsonify({'error': 'invalid_path'}), 400
 
@@ -4442,20 +4449,21 @@ def api_comics_pages_tag():
                 [rel, os.path.basename(rel), ftype, stat.st_size, int(stat.st_mtime), tag, width, height, int(time.time())]
             )
 
-        # 2. Add tag to category system with correct source (NOT 'manual')
-        cat = 'general'
-        if source == 'r34':
-            cat = _categorize_r34_tag(tag)
-        db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
-                   [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
-        db.execute("""
-            INSERT INTO tag_category_members (tag_name, category, source, last_updated)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(tag_name) DO UPDATE SET
-                category = excluded.category,
-                source = excluded.source,
-                last_updated = excluded.last_updated
-        """, [tag, cat, cat_source, int(time.time())])
+        # 2. Add tag to category system if source is known
+        if source:
+            cat = 'general'
+            if source == 'r34':
+                cat = _categorize_r34_tag(tag)
+            db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
+                       [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
+            db.execute("""
+                INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(tag_name) DO UPDATE SET
+                    category = excluded.category,
+                    source = excluded.source,
+                    last_updated = excluded.last_updated
+            """, [tag, cat, cat_source, int(time.time())])
 
         # 3. Mark found in scan_results
         _ensure_scan_results_table()

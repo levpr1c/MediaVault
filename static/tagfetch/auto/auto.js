@@ -94,11 +94,6 @@ var TagfetchAuto = (function() {
     '</div>';
   }
 
-  // После загрузки картинки — ставим fallback для сломанных
-  function applyCardClass(card) {
-    var img = card.querySelector('img');
-    if (!img || !img.complete) return;
-  }
 
   // Добавление карточки результата автосканирования через SharedGrid
   function addAutoCard(data) {
@@ -106,19 +101,8 @@ var TagfetchAuto = (function() {
     if (!g) return;
     g.addItem(data);
 
-    // Aspect-ratio class после загрузки картинки
     var cards = g._container.querySelectorAll('.auto-card');
     var card = cards[cards.length - 1];
-    if (card) {
-      var img = card.querySelector('img');
-      if (img) {
-        if (img.complete) {
-          applyCardClass(card);
-        } else {
-          img.addEventListener('load', function() { applyCardClass(card); });
-        }
-      }
-    }
 
     if (_autoScroll) {
       var content = g._container.closest('.auto-content');

@@ -37,9 +37,9 @@ export function toast(msg, type) {
   if (old) old.remove()
   const t = document.createElement('div')
   t.className = 'cm-toast' + (type === 'error' ? ' error' : type === 'success' ? ' success' : '')
-  t.textContent = msg
+  if (msg.indexOf('<a ') !== -1) { t.innerHTML = msg } else { t.textContent = msg }
   document.body.appendChild(t)
-  setTimeout(() => t.remove(), 3000)
+  setTimeout(() => t.remove(), 5000)
 }
 
 export function debounce(fn, ms) {

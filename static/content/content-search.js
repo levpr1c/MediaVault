@@ -133,6 +133,20 @@ async function fetchPage(rawQuery, sites, pageNum) {
     var data = await res.json()
     if (_ac.signal.aborted) return
     window._csCatColors = data.cat_colors || {}
+    if (data.nhentai_warning) {
+      var warnEl = document.getElementById('csNhWarning')
+      if (!warnEl) {
+        warnEl = document.createElement('div')
+        warnEl.id = 'csNhWarning'
+        warnEl.style.cssText = 'background:var(--warning,#f59e0b);color:#fff;padding:8px 14px;border-radius:8px;margin-bottom:12px;font-size:13px'
+        grid.parentNode.insertBefore(warnEl, grid)
+      }
+      warnEl.textContent = _t('contentSearchNhWarning')
+      warnEl.style.display = 'block'
+    } else {
+      var warnEl = document.getElementById('csNhWarning')
+      if (warnEl) warnEl.style.display = 'none'
+    }
     if (data.error) {
       grid.innerHTML = '<div class="admin-loading" style="color:var(--danger)">' + _t('contentSearchError') + ': ' + esc(data.error) + '</div>'
       loading.style.display = 'none'
@@ -258,8 +272,12 @@ try {
             toast(msg, 'error');
             return;
           }
-          toast(_t('settingsSaveStart') + ' (' + data.count + ' ' + _t('contentSearchPages') + ')', 'success');
-          console.log('[content-search] Downloaded manga:', data.count, 'pages');
+          var msg = _t('settingsSaveStart') + ' (' + data.count + ' ' + _t('contentSearchPages') + ')';
+          if (data.comics_id) {
+            msg += ' <a href="/comics/view?id=' + data.comics_id + '" style="color:#fff;text-decoration:underline">' + _t('contentSearchViewComics') + '</a>';
+          }
+          toast(msg, 'success');
+          console.log('[content-search] Downloaded manga:', data.count, 'pages', 'comics_id:', data.comics_id);
         });
         return;
       }

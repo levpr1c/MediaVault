@@ -191,7 +191,8 @@ MediaVault/
 │   ├── content/               ← Content Manager ES модули
 │   │   ├── main.js            ← Точка входа (54 строки)
 │   │   ├── tags.js            ← CRUD категорий (236 строк)
-│   │   ├── files.js           ← Файлы, masonry, lightbox (436 строк)
+│   │   ├── tags-manage/
+│   │   │   └── tags-manage.js  ← Файлы, masonry, lightbox (436 строк)
 │   │   ├── comics.js          ← CRUD комиксов (109 строк)
 │   │   └── utils.js           ← Утилиты, делегаты к Shared (51 строка)
 │   └── admin/
@@ -224,7 +225,7 @@ MediaVault/
 | `admin/admin.js` | 727 | AdminDashboard SPA: 5 разделов (Users, Database, API Keys, Folders, Backends) |
 | `shared/comics/comics.js` | 644 | Файловый браузер ComicsPicker (cpGrid, preview, DnD) |
 | `tagfetch/manual/manual.js` | 611 | Ручной режим Tagfetch + файловый браузер |
-| `content/files.js` | 437 | Файлы, masonry, lightbox |
+| `content/tags-manage/tags-manage.js` | 437 | Файлы, masonry, lightbox |
 | `tagfetch/auto/auto.js` | 366 | Авто-режим Tagfetch (SSE) |
 | `content/comics.js` | 339 | CRUD комиксов |
 | `mediavault/mediavault.js` | 293 | Оркестратор: связывает всё, mobile search sync |
@@ -1174,7 +1175,7 @@ window.MediaVaultGallery = MediaVaultGallery;
 ```
 
 **ES-модули (8 файлов):**
-- `content/main.js`, `content/tags.js`, `content/files.js`, `content/comics.js`, `content/comics-tags.js`, `content/content-search.js`, `content/nhentai_search.js`, `content/utils.js` — Content Manager
+- `content/main.js`, `content/tags.js`, `content/tags-manage/tags-manage.js`, `content/comics.js`, `content/comics-tags.js`, `content/content-search.js`, `content/nhentai_search.js`, `content/utils.js` — Content Manager
 - `shared/home-bg.js` — Three.js фон (импортирует `'three'` через importmap)
 - `shared/comics/picker-bridge.js` — мост для ComicsPicker из ES в IIFE
 
@@ -1224,7 +1225,7 @@ ES-модули загружаются через `<script type="module" src="..
 |------|-------|-----------|
 | static/content/main.js | 58 | Entry point (ES module), section router |
 | static/content/tags.js | 236 | Tag categories CRUD |
-| static/content/files.js | 437 | Files, masonry, lightbox |
+| static/content/tags-manage/tags-manage.js | 437 | Files, masonry, lightbox |
 | static/content/comics.js | 339 | Comics CRUD + modal events |
 | static/content/comics-tags.js | 171 | Comics grid + category tags, drag-to-tag |
 | static/content/content-search.js | 259 | Unified search (R34, Danbooru, NHentai) |
@@ -3032,7 +3033,7 @@ if (file._gid && file._mid) {
 - Mobile: 3 columns
 
 #### 24.16.6 Counter bug fix
-- `static/content/files.js` — `_currentPage = 1` reset в `filesRender()` для исправления счётчика пагинации на первом entry
+- `static/content/tags-manage/tags-manage.js` — `_currentPage = 1` reset в `filesRender()` для исправления счётчика пагинации на первом entry
 
 #### 24.16.7 New i18n keys
 | Ключ (en) | Ключ (ru) |

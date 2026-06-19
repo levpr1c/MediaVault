@@ -348,7 +348,7 @@
       "y": 355,
       "width": 145,
       "height": 60,
-      "text": "📝 content/ (CM)\nmain.js | tags.js\nfiles.js | comics.js\nutils.js",
+      "text": "📝 content/ (CM)\nmain.js | tags.js\ntags-manage/tags-manage.js\ncomics.js | utils.js",
       "fontSize": 10,
       "fontFamily": 5,
       "textAlign": "left",

@@ -105,7 +105,7 @@
 | `static/content/nhentai_search.js` | **Agent A** — переработка: loading states, detail view, abort guards |
 | `static/admin/admin.js` | **Agent E** — Folders card moved to Database section, router updated |
 | `static/shared/utils.js` | `_cbSuffix()`, browser cache helpers |
-| `static/content/files.js` | CMS lightbox fix (source=tags) |
+| `static/content/tags-manage/tags-manage.js` | CMS lightbox fix (source=tags) |
 | `static/content/main.js` | Backend dispatch wiring |
 | `static/tagfetch/auto/auto.js` | Redesign: emoji → SVG |
 | `static/tagfetch/manual/manual.js` | Redesign: emoji → SVG |

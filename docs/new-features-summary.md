@@ -502,11 +502,11 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 ### 16.6 Counter Bug Fix
 
-**Исправление счётчика пагинации в `files.js`:**
+**Исправление счётчика пагинации в `tags-manage.js`:**
 
 - `_currentPage = 1` добавлен в `filesRender()` — сброс счётчика на первый файл при загрузке секции
 
-**Key file:** `static/content/files.js`
+**Key file:** `static/content/tags-manage/tags-manage.js`
 
 **Testing:**
 - [ ] При загрузке раздела Files счётчик пагинации показывает 1

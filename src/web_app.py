@@ -265,6 +265,8 @@ LOCALE = {
         'contentSearchStorageEmpty': 'Storage appears empty — your drive may not be mounted',
         'contentSearchDownload': 'Download from {site}',
         'contentSearchPages': 'pages',
+        'contentSearchViewComics': 'View Comics',
+        'contentSearchNhWarning': 'NHentai API key is not configured — search may fail.',
         'settingsDownloadsDir': 'Downloads folder',
         'settingsCreateFolders': 'Create folders',
         'settingsCreateFoldersDone': 'Folders created',
@@ -498,6 +500,8 @@ LOCALE = {
         'contentSearchStorageEmpty': 'Хранилище пустое — возможно, накопитель не подключён',
         'contentSearchDownload': 'Скачать с {site}',
         'contentSearchPages': 'страниц',
+        'contentSearchViewComics': 'Открыть комикс',
+        'contentSearchNhWarning': 'API-ключ NHentai не настроен — поиск может не работать.',
         'settingsDownloadsDir': 'Папка загрузок',
         'settingsCreateFolders': 'Создать папки',
         'settingsCreateFoldersDone': 'Папки созданы',
@@ -1220,6 +1224,15 @@ def _ensure_db_schema():
             db.execute("ALTER TABLE tag_category_members ADD COLUMN data TEXT DEFAULT '{}'")
         except Exception:
             pass
+        # Миграция: добавляем колонки source и source_id в comics
+        try:
+            db.execute("ALTER TABLE comics ADD COLUMN source TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            db.execute("ALTER TABLE comics ADD COLUMN source_id TEXT DEFAULT ''")
+        except Exception:
+            pass
         db.commit()
         db.close()
     except Exception:
@@ -1715,21 +1728,38 @@ def api_content_search():
     total = 0
     log_debug('[ContentSearch API] query="%s" sites=%s page=%d filter_ai=%d', q, sites, page, filter_ai)
     settings = load_settings()
+    # NHentai API key check (for api_raw backend)
+    nh_has_key = bool(settings.get('credentials', {}).get('nhentai', {}).get('key', ''))
+    nh_key_warning = False
+    if 'nhentai' in sites:
+        fb = settings.get('fetch_backend', {})
+        nh_backend = fb.get('nhentai') or 'gallerydl'
+        if nh_backend == 'api_raw' and not nh_has_key:
+            nh_key_warning = True
+            log_warning('[NHentai] api_raw backend selected but no nhentai API key configured')
+        log_debug('[NHentai] key_exists=%s backend=%s', nh_has_key, nh_backend)
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(sites)) as exc:
         fut = {}
         for s in sites:
             site_q = q
             if filter_ai and s == 'rule34':
                 site_q = q + ' -ai_generated -ai -ai_assisted'
+            if s == 'nhentai':
+                log_debug('[NHentai] searching: query="%s" page=%d key_exists=%s', site_q, page, nh_has_key)
             fut[s] = exc.submit(search_tags, s, site_q, page, settings)
         for s in sites:
             try:
                 results[s] = fut[s].result(timeout=30)
                 n = len(results[s].get('results', []))
                 total += results[s].get('total', n)
+                if s == 'nhentai':
+                    log_debug('[NHentai] response: %d results total=%d', n, results[s].get('total', n))
                 log_debug('[ContentSearch API] %s: %d results', s, n)
             except Exception as e:
                 results[s] = {'results': [], 'total': 0}
+                if s == 'nhentai':
+                    log_debug_red('[NHentai] search ERROR: %s', e)
                 log_debug_red('[ContentSearch API] %s ERROR: %s', s, e)
     # Compute tags_by_category for each result
     cat_fields = {
@@ -1784,7 +1814,10 @@ def api_content_search():
                 tags_by_cat['uncategorized'] = uncategorized
             r['tags_by_category'] = tags_by_cat
     log_debug('[ContentSearch API] done: query="%s" total=%d', q, total)
-    return jsonify({'results': results, 'total': total, 'cat_colors': cat_colors})
+    resp = {'results': results, 'total': total, 'cat_colors': cat_colors}
+    if nh_key_warning:
+        resp['nhentai_warning'] = True
+    return jsonify(resp)
 
 @app.route('/api/content-search/download', methods=['GET', 'POST'])
 @auth_required
@@ -2020,7 +2053,34 @@ def api_content_search_download_manga():
         count += 1
 
     log_info('[ContentSearch] Manga downloaded: gid=%s, %d pages, %d errors', gid, count, errors)
-    return jsonify({'ok': True, 'count': count, 'errors': errors, 'dir': target_dir})
+
+    # Auto-add comics entry
+    comics_id = None
+    if count > 0:
+        try:
+            db = _db_conn()
+            cover_rel = os.path.relpath(os.path.join(target_dir, '1.jpg'), media_dir)
+            pages_rel = sorted(
+                os.path.relpath(os.path.join(target_dir, f), media_dir)
+                for f in os.listdir(target_dir)
+                if f.lower().endswith('.jpg') and os.path.isfile(os.path.join(target_dir, f))
+            )
+            pages_rel.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+            comics_title = title or 'NHentai #' + str(gid)
+            c = db.execute('INSERT INTO comics (title, cover_path, source, source_id) VALUES (?, ?, ?, ?)',
+                           [comics_title, cover_rel if os.path.exists(os.path.join(target_dir, '1.jpg')) else (pages_rel[0] if pages_rel else None),
+                            'nhentai', str(gid)])
+            comics_id = c.lastrowid
+            for i, p in enumerate(pages_rel):
+                db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)',
+                           [comics_id, i + 1, p])
+            db.commit()
+            db.close()
+            log_info('[ContentSearch] Comics auto-created: id=%d title="%s" pages=%d', comics_id, comics_title, len(pages_rel))
+        except Exception as e:
+            log_error('[ContentSearch] Comics auto-create failed: %s', e)
+
+    return jsonify({'ok': True, 'count': count, 'errors': errors, 'dir': target_dir, 'comics_id': comics_id})
 
 @app.route('/api/content-search/mount-check')
 @auth_required
@@ -4214,7 +4274,10 @@ def api_comics_add():
         db = _db_conn()
         media_dir = settings.get('media_dir', '')
         cover = data.get('cover_path') or (paths[0] if paths else None)
-        c = db.execute('INSERT INTO comics (title, cover_path) VALUES (?, ?)', [title, cover])
+        source = data.get('source', '')
+        source_id = data.get('source_id', '')
+        c = db.execute('INSERT INTO comics (title, cover_path, source, source_id) VALUES (?, ?, ?, ?)',
+                       [title, cover, source, source_id])
         comic_id = c.lastrowid
         for i, p in enumerate(paths):
             db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)', [comic_id, i+1, p])

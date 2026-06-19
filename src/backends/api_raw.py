@@ -93,6 +93,9 @@ class ApiRawBackend:
     def _search_nhentai(self, query, page, settings):
         """NHentai search via v2 JSON API."""
         api_key = settings.get('credentials', {}).get('nhentai', {}).get('key', '')
+        import logging as _log
+        _log.getLogger('mediavault').debug('[NHentai] api_raw._search_nhentai: key_exists=%s url=https://nhentai.net/api/v2/search query="%s" page=%d',
+                                            bool(api_key), query, page)
         try:
             r = requests.get(
                 'https://nhentai.net/api/v2/search',
@@ -100,6 +103,7 @@ class ApiRawBackend:
                 headers={'Authorization': f'Key {api_key}', 'User-Agent': UA},
                 timeout=20
             )
+            _log.getLogger('mediavault').debug('[NHentai] api_raw._search_nhentai: status=%d', r.status_code)
             if r.status_code != 200:
                 return {'results': [], 'total': 0}
             d = r.json()

@@ -26,14 +26,14 @@ Shared.notify = function(msg, type) {
   var toast = document.createElement('div');
   var bg = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : type === 'warn' ? '#f59e0b' : '#6366f1';
   toast.style.cssText = 'padding:10px 18px;border-radius:8px;background:'+bg+';color:#fff;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.25);animation:fadeSlide .2s ease;pointer-events:auto;max-width:360px';
-  toast.textContent = msg;
+  if (msg.indexOf('<a ') !== -1) { toast.innerHTML = msg; } else { toast.textContent = msg; }
   container.appendChild(toast);
   setTimeout(function() {
     toast.style.transition = 'opacity .3s,transform .3s';
     toast.style.opacity = '0';
     toast.style.transform = 'translateX(40px)';
-    setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
-  }, 3000);
+    setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 5000);
+  }, 5000);
 };
 
 // Переключение тёмной/светлой темы с анимацией кнопки
@@ -330,6 +330,8 @@ var _i18nData = {
     contentSearchStorageEmpty: "Storage appears empty — your drive may not be mounted",
     contentSearchDownload: "Download from {site}",
     contentSearchPages: "pages",
+    contentSearchViewComics: "View Comics",
+    contentSearchNhWarning: "NHentai API key is not configured — search may fail.",
     settingsDownloadsDir: "Downloads folder",
     settingsCreateFolders: "Create folders",
     settingsCreateFoldersDone: "Folders created",
@@ -593,6 +595,8 @@ var _i18nData = {
     contentSearchStorageEmpty: "Хранилище пустое — возможно, накопитель не подключён",
     contentSearchDownload: "Скачать с {site}",
     contentSearchPages: "страниц",
+    contentSearchViewComics: "Открыть комикс",
+    contentSearchNhWarning: "API-ключ NHentai не настроен — поиск может не работать.",
     settingsDownloadsDir: "Папка загрузок",
     settingsCreateFolders: "Создать папки",
     settingsCreateFoldersDone: "Папки созданы",

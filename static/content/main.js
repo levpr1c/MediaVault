@@ -1,6 +1,6 @@
 import { _t, toast } from './utils.js'
 import { tagsRender, tagsDestroy } from './tags.js'
-import { filesRender, filesDestroy, onFileSearch } from './files.js'
+import { filesRender, filesDestroy, onFileSearch } from './tags-manage/tags-manage.js'
 import { comicsRender, comicsDestroy, initModalEvents, ctSelectPage, ctSaveAll } from './comics.js'
 import { comicsTagsRender, comicsTagsDestroy } from './comics-tags.js'
 

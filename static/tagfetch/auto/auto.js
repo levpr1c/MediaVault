@@ -275,7 +275,7 @@ var TagfetchAuto = (function() {
                 var doneMsg = '✅ Done — ' + found + ' found, ' + totalSkipped + ' skipped' + (totalScanned > 0 ? ', ' + totalScanned + ' scanned' : '');
                 if (bs) bs.textContent = doneMsg;
                 releaseControls();
-                if (_autoResults.length) showAutoSave(_autoResults.length);
+                if (_autoResults.length) saveAllAutoResults();
               }
             } catch(e) {}
           });

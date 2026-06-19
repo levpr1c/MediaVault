@@ -64,7 +64,7 @@
 /* Grid (shared-grid masonry) */
 .shared-grid .cs-card {
   break-inside: avoid;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 /* Card */

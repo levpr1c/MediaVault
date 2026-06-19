@@ -241,7 +241,7 @@ function renderSkeletons(n) {
 _csGrid = new SharedGrid(grid, {
   getItemHtml: function(r) { return cardHTML(r) },
   onItemClick: function(item, idx) { showLightbox(_csPageStart + idx) },
-  layout: 'grid',
+  layout: 'masonry',
   loadingHtml: '<div class="shared-grid-loading cs-grid-loading">' + renderSkeletons(12) + '</div>',
   emptyHtml: '<div class="shared-grid-empty">' + _t('mediaDirEmpty') + '</div>'
 })

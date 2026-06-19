@@ -362,6 +362,7 @@ var MediaVaultGallery = (function() {
   function loadThumbnail(el, src) {
     el.dataset.loaded = '1';
     var isVid = el.querySelector('.video-badge');
+    var overlay = el.querySelector('.gallery-overlay-info');
     var img = document.createElement('img');
     img.alt = '';
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
@@ -369,6 +370,7 @@ var MediaVaultGallery = (function() {
       el.innerHTML = '';
       el.appendChild(img);
       if (isVid) el.appendChild(isVid);
+      if (overlay) el.appendChild(overlay);
     };
     img.onerror = function() {
       if (isVid) {
@@ -376,6 +378,7 @@ var MediaVaultGallery = (function() {
       } else {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100px;font-size:32px;background:var(--surface2);color:var(--text2)">💀</div><div style="padding:4px;font-size:10px;text-align:center;color:var(--text2)">not found</div>';
       }
+      if (overlay) el.appendChild(overlay);
     };
     img.src = src;
   }

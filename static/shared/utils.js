@@ -216,6 +216,8 @@ var _i18nData = {
     navApiKeys: 'API Keys',
     navTags: 'Tags',
     navFiles: 'Files',
+    tagsManage: 'Tags Manage',
+    tagsGroup: 'Tags Groups',
     // Account
     accountSettings: 'Account Settings',
     accountChangeUsername: 'Change Username',
@@ -474,6 +476,8 @@ var _i18nData = {
     navApiKeys: 'API ключи',
     navTags: 'Теги',
     navFiles: 'Файлы',
+    tagsManage: 'Управление тегами',
+    tagsGroup: 'Группы тегов',
     // Account
     accountSettings: 'Настройки аккаунта',
     accountChangeUsername: 'Сменить имя',

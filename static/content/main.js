@@ -7,6 +7,7 @@ import { comicsTagsRender, comicsTagsDestroy } from './comics-tags.js'
 const sections = {
   tags: { render: tagsRender, destroy: tagsDestroy },
   files: { render: filesRender, destroy: filesDestroy },
+  tagsGroup: { render: tagsRender, destroy: tagsDestroy },
   comics: { render: comicsRender, destroy: comicsDestroy },
   comicsTags: { render: comicsTagsRender, destroy: comicsTagsDestroy }
 }
@@ -23,7 +24,7 @@ function loadSection(name) {
 
   const titleEl = document.getElementById('cmPageTitle')
   if (titleEl) {
-    const names = { tags: 'contentTags', files: 'navFiles', comics: 'mvComics', comicsTags: 'comicsTags' }
+    const names = { tags: 'contentTags', files: 'tagsManage', comics: 'mvComics', comicsTags: 'comicsTags', tagsGroup: 'tagsGroup' }
     const key = names[name] || name
     titleEl.innerHTML = `<span data-i18n="${key}">${_t(key)}</span>`
   }
@@ -47,7 +48,9 @@ export function init() {
   } else if (path.indexOf('comics-edit') !== -1) {
     loadSection('comics')
   } else if (path.indexOf('tags-manage') !== -1) {
-    loadSection(params.get('tab') === 'groups' ? 'tags' : 'files')
+    loadSection(params.get('tab') === 'groups' ? 'tagsGroup' : 'files')
+  } else if (path.indexOf('tags-group') !== -1) {
+    loadSection('tagsGroup')
   } else {
     loadSection('tags')
   }

@@ -2021,6 +2021,8 @@ def api_content_search_download_manga():
 
     log_info('[ContentSearch] Manga downloaded: gid=%s, %d pages, %d errors', gid, count, errors)
     return jsonify({'ok': True, 'count': count, 'errors': errors, 'dir': target_dir})
+
+@app.route('/api/content-search/mount-check')
 @auth_required
 @api_error_handler
 def api_content_search_mount_check():

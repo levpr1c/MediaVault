@@ -82,6 +82,15 @@ var ManualTagfetch = (function() {
     });
   }
 
+  function filterFiles(query) {
+    var q = query.toLowerCase().trim();
+    document.querySelectorAll('#browseBrowser .path-item[data-path]').forEach(function(el) {
+      var name = (el.querySelector('.pname') || {}).textContent || '';
+      var match = !q || name.toLowerCase().indexOf(q) !== -1;
+      el.style.display = match ? '' : 'none';
+    });
+  }
+
   // ── Sort ──
 
   function toggleDateSort() {
@@ -626,6 +635,7 @@ var ManualTagfetch = (function() {
     closeSaveAllModal: closeSaveAllModal,
     executeSaveAll: executeSaveAll,
     setFilter: setFilter,
+    filterFiles: filterFiles,
     toggleDateSort: toggleDateSort,
     getCurrentBrowsePath: getCurrentBrowsePath,
     renderDbTags: renderDbTags

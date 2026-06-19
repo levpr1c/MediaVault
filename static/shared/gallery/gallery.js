@@ -413,8 +413,10 @@ var MediaVaultGallery = (function() {
       updateBulkBar();
       return;
     }
-    if (idx < 0) return;
-    MediaVaultLightbox.open(idx, _filteredData);
+    // Find index in full filtered data by path (visual order != array index in masonry)
+    var actualIdx = _filteredData.findIndex(function(f) { return f.path === path; });
+    if (actualIdx < 0) return;
+    MediaVaultLightbox.open(actualIdx, _filteredData);
   }
 
   // Подписка на события: hover-превью для видео + клик (scroll mode)

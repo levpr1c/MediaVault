@@ -1,4 +1,4 @@
-import { _t, api, esc, isImageExt, isVideoExt, toast, hexToRgba, debounce } from './utils.js'
+import { _t, api, esc, isImageExt, isVideoExt, toast, hexToRgba, debounce } from '../utils.js'
 
 let _ac = null
 let _allFiles = []

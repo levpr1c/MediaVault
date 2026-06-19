@@ -70,7 +70,7 @@ export function initHomeBg(opts) {
     'float n2=snoise(vec3(p.x*.003-t*.5,p.y*.003+t*.5,t*1.5));',
     'float v=(n1+n2*.5)*.66;v=v*.5+.5;v_value=smoothstep(.15,.85,v);',
     'float size=.5+v_value*12.;',
-    'vec3 bc=mix(vec3(.08),vec3(.95),u_dark);if(u_warning>.5)bc=vec3(1.,.15,.15);',
+    'vec3 bc=mix(vec3(.0),vec3(.95),u_dark);if(u_warning>.5)bc=vec3(1.,.15,.15);',
     'v_color=mix(bc,u_accent,u_hover);',
     'gl_PointSize=size*u_pixel_ratio;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);',
     '}'

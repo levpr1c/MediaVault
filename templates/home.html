@@ -255,9 +255,13 @@ var ACCENT_MAP = {
   admin: new THREE.Color(0x34d399)
 };
 var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-var accColor = new THREE.Color(isDark ? 0.95 : 0.08, isDark ? 0.95 : 0.08, isDark ? 0.95 : 0.08);
+var accColor = new THREE.Color(isDark ? 0.95 : 0.0, isDark ? 0.95 : 0.0, isDark ? 0.95 : 0.0);
 var hoverTarget = 0;
 var hoverBlock = null;
+
+function resetAccColor(dark) {
+  accColor.set(dark ? 0.95 : 0.0, dark ? 0.95 : 0.0, dark ? 0.95 : 0.0);
+}
 
 document.querySelectorAll('.hm-block[data-block]').forEach(function(el){
   el.addEventListener('mouseenter', function(){ hoverBlock = el; });
@@ -296,7 +300,7 @@ initHomeBg({
       var col = ACCENT_MAP[hoverBlock.getAttribute('data-block')] || ACCENT_MAP.mv;
       accColor.lerp(col, 0.08);
     } else {
-      var restCol = new THREE.Color(u.u_dark.value > 0.5 ? 0.95 : 0.08, u.u_dark.value > 0.5 ? 0.95 : 0.08, u.u_dark.value > 0.5 ? 0.95 : 0.08);
+      var restCol = new THREE.Color(u.u_dark.value > 0.5 ? 0.95 : 0.0, u.u_dark.value > 0.5 ? 0.95 : 0.0, u.u_dark.value > 0.5 ? 0.95 : 0.0);
       accColor.lerp(restCol, 0.04);
     }
 
@@ -305,5 +309,12 @@ initHomeBg({
     u.u_warning.value = warnActive ? 1 : 0;
   }
 });
+
+// Reset accColor immediately on theme toggle via MutationObserver
+var _themeObs = new MutationObserver(function() {
+  var dark = document.documentElement.getAttribute('data-theme') !== 'light';
+  resetAccColor(dark);
+});
+_themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 </script>
 {% endblock %}

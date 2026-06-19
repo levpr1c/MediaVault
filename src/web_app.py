@@ -263,6 +263,8 @@ LOCALE = {
         'contentSearchSelectSource': 'Select at least one source',
         'contentSearchAiFilter': 'Hide AI',
         'contentSearchStorageEmpty': 'Storage appears empty — your drive may not be mounted',
+        'contentSearchDownload': 'Download from {site}',
+        'contentSearchPages': 'pages',
         'settingsDownloadsDir': 'Downloads folder',
         'settingsCreateFolders': 'Create folders',
         'settingsCreateFoldersDone': 'Folders created',
@@ -494,6 +496,8 @@ LOCALE = {
         'contentSearchSelectSource': 'Выберите хотя бы один источник',
         'contentSearchAiFilter': 'Без AI',
         'contentSearchStorageEmpty': 'Хранилище пустое — возможно, накопитель не подключён',
+        'contentSearchDownload': 'Скачать с {site}',
+        'contentSearchPages': 'страниц',
         'settingsDownloadsDir': 'Папка загрузок',
         'settingsCreateFolders': 'Создать папки',
         'settingsCreateFoldersDone': 'Папки созданы',
@@ -1700,6 +1704,7 @@ def api_content_search():
     q = request.args.get('q', '').strip()
     page = request.args.get('page', 1, type=int)
     sites_param = request.args.get('sites', 'r34,dan,nhentai')
+    filter_ai = request.args.get('filter_ai', '0') == '1'
     if not q:
         return jsonify({'error': 'no query'}), 400
     from backends import search_tags
@@ -1708,9 +1713,15 @@ def api_content_search():
     sites = [site_map[s] for s in sites_param.split(',') if s in site_map]
     results = {}
     total = 0
-    log_debug('[ContentSearch API] query="%s" sites=%s page=%d', q, sites, page)
+    log_debug('[ContentSearch API] query="%s" sites=%s page=%d filter_ai=%d', q, sites, page, filter_ai)
+    settings = load_settings()
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(sites)) as exc:
-        fut = {s: exc.submit(search_tags, s, q, page, load_settings()) for s in sites}
+        fut = {}
+        for s in sites:
+            site_q = q
+            if filter_ai and s == 'rule34':
+                site_q = q + ' -ai_generated -ai -ai_assisted'
+            fut[s] = exc.submit(search_tags, s, site_q, page, settings)
         for s in sites:
             try:
                 results[s] = fut[s].result(timeout=30)
@@ -1720,16 +1731,80 @@ def api_content_search():
             except Exception as e:
                 results[s] = {'results': [], 'total': 0}
                 log_debug_red('[ContentSearch API] %s ERROR: %s', s, e)
+    # Compute tags_by_category for each result
+    cat_fields = {
+        'tag_artist': 'artist',
+        'tag_character': 'character',
+        'tag_copyright': 'copyright',
+        'tag_general': 'general',
+        'tag_meta': 'meta',
+    }
+    cat_colors = {
+        'artist': '#ff4444',
+        'character': '#44cc44',
+        'copyright': '#4488ff',
+        'general': '#cccccc',
+        'meta': '#999999',
+        'uncategorized': '#666666',
+    }
+    # Load DB categories for merging
+    db_cat_map = {}
+    try:
+        _ensure_db_schema()
+        db = _db_conn()
+        db_rows = db.execute('SELECT tag_name, category FROM tag_category_members').fetchall()
+        color_rows = db.execute('SELECT name, color FROM tag_categories').fetchall()
+        db.close()
+        for tag_name, cat_name in db_rows:
+            db_cat_map[tag_name] = cat_name
+        for cat_name, color in color_rows:
+            cat_colors[cat_name] = color
+    except Exception:
+        pass
+    for site_key, site_data in results.items():
+        items = site_data.get('results', [])
+        for r in items:
+            all_categorized = set()
+            tags_by_cat = {}
+            for field, cat_name in cat_fields.items():
+                tags = r.get(field, [])
+                if tags:
+                    tags_by_cat[cat_name] = tags
+                    for t in tags:
+                        all_categorized.add(t)
+            remaining = [t for t in r.get('tags', []) if t not in all_categorized]
+            uncategorized = []
+            for t in remaining:
+                db_cat = db_cat_map.get(t)
+                if db_cat:
+                    tags_by_cat.setdefault(db_cat, []).append(t)
+                else:
+                    uncategorized.append(t)
+            if uncategorized:
+                tags_by_cat['uncategorized'] = uncategorized
+            r['tags_by_category'] = tags_by_cat
     log_debug('[ContentSearch API] done: query="%s" total=%d', q, total)
-    return jsonify({'results': results, 'total': total})
+    return jsonify({'results': results, 'total': total, 'cat_colors': cat_colors})
 
-@app.route('/api/content-search/download')
+@app.route('/api/content-search/download', methods=['GET', 'POST'])
 @auth_required
 @api_error_handler
 def api_content_search_download():
-    """Download a remote file to the gallery directory."""
-    url = request.args.get('url', '').strip()
-    source = request.args.get('source', '').strip()
+    """Download a remote file to the gallery directory and save tags to DB."""
+    if request.method == 'POST':
+        data = request.get_json()
+        if data is None:
+            return jsonify({'error': 'no data'}), 400
+        url = (data.get('url') or '').strip()
+        source = (data.get('source') or '').strip()
+        tags_str = (data.get('tags') or '').strip()
+        tags_by_category = data.get('tags_by_category') or {}
+    else:
+        url = request.args.get('url', '').strip()
+        source = request.args.get('source', '').strip()
+        tags_str = request.args.get('tags', '').strip()
+        tags_by_category = {}
+
     if not url or not source:
         return jsonify({'error': 'Missing url or source'}), 400
 
@@ -1760,22 +1835,192 @@ def api_content_search_download():
     filename = os.path.basename(filename)
     target_path = os.path.join(target_dir, filename)
 
-    if os.path.exists(target_path):
-        return jsonify({'path': target_path, 'exists': True})
+    was_downloaded = False
+    if not os.path.exists(target_path):
+        try:
+            r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=60, stream=True)
+            r.raise_for_status()
+            with open(target_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            log_info('[ContentSearch] Downloaded: %s -> %s', url, target_path)
+            was_downloaded = True
+        except Exception as e:
+            return jsonify({'error': 'Download failed: ' + str(e)}), 500
 
+    # ── Save file + tags to DB ──
+    rel_path = os.path.relpath(target_path, media_dir)
+    _ensure_db_schema()
+
+    if tags_str:
+        existing = find_file_in_db(rel_path)
+        ext = os.path.splitext(target_path)[1].lower()
+        ftype = _get_file_type(ext)
+        auto_tags = _get_auto_tags(target_path)
+        auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
+        for t in tags_str.split(','):
+            t = t.strip()
+            if t:
+                auto_set.add(t)
+        stat = os.stat(target_path)
+        name = os.path.basename(rel_path)
+        width = height = 0
+        if ftype == 'image':
+            width, height = _get_image_dimensions(target_path)
+        ar_tag = _get_aspect_ratio_tag(width, height) if width and height else ''
+        if ar_tag:
+            auto_set.add(ar_tag)
+        merged = ','.join(sorted(auto_set))
+        first_dir = rel_path.split('/')[0] if '/' in rel_path else ''
+        gd = settings.get('gallery_dir', 'Gallery')
+        cd = settings.get('comics_dir', 'Comics')
+        dd = settings.get('downloads_dir', 'Downloads')
+        folder_type = {gd: 'gallery', cd: 'comics', dd: 'downloads'}.get(first_dir, 'gallery')
+        db = _db_conn()
+        if existing:
+            existing_tags = existing['tags'] or ''
+            existing_set = set(t.strip() for t in existing_tags.split(',') if t.strip())
+            existing_set.update(auto_set)
+            merged = ','.join(sorted(existing_set))
+            db.execute('UPDATE files SET tags=?, width=?, height=?, mtime=? WHERE path=?',
+                       [merged, width or existing.get('width', 0), height or existing.get('height', 0),
+                        int(os.path.getmtime(target_path)), rel_path])
+        else:
+            db.execute(
+                'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                [rel_path, name, ftype, stat.st_size, int(stat.st_mtime), merged, width, height,
+                 int(time.time()), folder_type]
+            )
+        db.commit()
+        db.close()
+        log_info('[ContentSearch] Saved tags for %s: %d tags', rel_path, len(auto_set))
+
+    # ── Save tag categories (Danbooru only) ──
+    if tags_by_category and source.lower() in ('danbooru', 'dan'):
+        dan_result = {}
+        for short_cat, tag_list in tags_by_category.items():
+            if isinstance(tag_list, list):
+                dan_result['tag_' + short_cat] = tag_list
+        _ensure_categories(dan_result)
+
+    return jsonify({'path': target_path, 'exists': not was_downloaded, 'tags_saved': bool(tags_str)})
+
+
+@app.route('/api/content-search/download-manga', methods=['POST'])
+@auth_required
+@api_error_handler
+def api_content_search_download_manga():
+    """Download all pages of an NHentai gallery into a subfolder."""
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'no data'}), 400
+
+    source = (data.get('source') or '').strip()
+    gid = data.get('gid')
+    media_id = data.get('media_id')
+    num_pages = int(data.get('num_pages') or 1)
+    title = (data.get('title') or '').strip()
+    tags_str = (data.get('tags') or '').strip()
+
+    if not gid or not media_id:
+        return jsonify({'error': 'Missing gid or media_id'}), 400
+
+    settings = load_settings()
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'error': 'Media directory not configured'}), 400
+
+    if not os.path.isdir(media_dir) or not os.listdir(media_dir):
+        return jsonify({'error': 'storage_empty', 'message': _('contentSearchStorageEmpty')}), 400
+
+    # Folder: <media_dir>/<downloads_dir>/nhentai/<gid>/
+    dl_dir = settings.get('downloads_dir', 'Downloads')
+    target_dir = os.path.join(media_dir, dl_dir, 'nhentai', str(gid))
     try:
-        r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=60, stream=True)
-        r.raise_for_status()
-        with open(target_path, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
-        log_info('[ContentSearch] Downloaded: %s -> %s', url, target_path)
-        return jsonify({'path': target_path, 'exists': False})
+        os.makedirs(target_dir, exist_ok=True)
     except Exception as e:
-        return jsonify({'error': 'Download failed: ' + str(e)}), 500
+        return jsonify({'error': 'Cannot create directory: ' + str(e)}), 500
 
+    import requests as req_lib
+    import re
 
-@app.route('/api/content-search/mount-check')
+    _ensure_db_schema()
+    gd = settings.get('gallery_dir', 'Gallery')
+    cd = settings.get('comics_dir', 'Comics')
+    dd = settings.get('downloads_dir', 'Downloads')
+
+    log_info('[ContentSearch] Manga start: gid=%s title="%s" pages=%d dir=%s',
+             gid, title or '(no title)', num_pages, target_dir)
+
+    count = 0
+    errors = 0
+    base_url = 'https://i.nhentai.net/galleries/' + str(media_id)
+
+    for n in range(1, num_pages + 1):
+        page_url = base_url + '/' + str(n) + '.jpg'
+        filename = str(n) + '.jpg'
+        target_path = os.path.join(target_dir, filename)
+
+        if os.path.exists(target_path):
+            log_debug('[ContentSearch] manga page %d/%d: already exists', n, num_pages)
+            count += 1
+            continue
+
+        log_info('[ContentSearch] manga page %d/%d: downloading %s', n, num_pages, page_url)
+
+        try:
+            r = req_lib.get(page_url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
+            r.raise_for_status()
+            with open(target_path, 'wb') as f:
+                f.write(r.content)
+        except Exception as e:
+            log_error('[ContentSearch] manga page %d/%d FAILED: %s', n, num_pages, e)
+            errors += 1
+            continue
+
+        # Index in DB with gallery tags
+        rel_path = os.path.relpath(target_path, media_dir)
+        ext = '.jpg'
+        ftype = 'image'
+        auto_tags = _get_auto_tags(target_path)
+        auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
+        for t in tags_str.split(','):
+            t = t.strip()
+            if t:
+                auto_set.add(t)
+        stat = os.stat(target_path)
+        w, h = _get_image_dimensions(target_path)
+        ar_tag = _get_aspect_ratio_tag(w, h) if w and h else ''
+        if ar_tag:
+            auto_set.add(ar_tag)
+        merged = ','.join(sorted(auto_set))
+        first_dir = rel_path.split('/')[0] if '/' in rel_path else ''
+        folder_type = {gd: 'gallery', cd: 'comics', dd: 'downloads'}.get(first_dir, 'gallery')
+
+        log_info('[ContentSearch] manga page %d/%d: OK %dx%d %.1fKB tags=%d',
+                 n, num_pages, w, h, stat.st_size / 1024, len(auto_set))
+
+        existing = find_file_in_db(rel_path)
+        db = _db_conn()
+        if existing:
+            existing_tags = existing['tags'] or ''
+            existing_set = set(t.strip() for t in existing_tags.split(',') if t.strip())
+            existing_set.update(auto_set)
+            merged = ','.join(sorted(existing_set))
+            db.execute('UPDATE files SET tags=?, width=?, height=? WHERE path=?',
+                       [merged, w or existing.get('width', 0), h or existing.get('height', 0), rel_path])
+        else:
+            db.execute(
+                'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                [rel_path, filename, ftype, stat.st_size, int(stat.st_mtime), merged, w, h,
+                 int(time.time()), folder_type]
+            )
+        db.commit()
+        db.close()
+        count += 1
+
+    log_info('[ContentSearch] Manga downloaded: gid=%s, %d pages, %d errors', gid, count, errors)
+    return jsonify({'ok': True, 'count': count, 'errors': errors, 'dir': target_dir})
 @auth_required
 @api_error_handler
 def api_content_search_mount_check():
@@ -2805,6 +3050,12 @@ def api_fetch_file():
                         api_cache[f'{content_md5}_dan'] = dan_result
                         time.sleep(API_DELAY)
 
+    # Save Danbooru categories to DB on fetch (for color-coded display)
+    if isinstance(dan_result, dict) and dan_result.get('tags'):
+        try:
+            _ensure_categories(dan_result)
+        except Exception:
+            pass
     tag_categories = {}
     db_tags = ''
     if os.path.exists(_DB_PATH):

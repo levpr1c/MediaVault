@@ -82,11 +82,11 @@ class GalleryDlBackend:
             for _path, _prefix, data in self._gd_extract(extr, limit=1):
                 return {
                     'tags': data.get('tag_string', '').split(),
-                    'tag_general': [t for t in data.get('tags_general', [])],
-                    'tag_artist': [t for t in data.get('tags_artist', [])],
-                    'tag_character': [t for t in data.get('tags_character', [])],
-                    'tag_copyright': [t for t in data.get('tags_copyright', [])],
-                    'tag_meta': [t for t in data.get('tags_meta', [])],
+                    'tag_general': list(data.get('tags_general') or []),
+                    'tag_artist': list(data.get('tags_artist') or []),
+                    'tag_character': list(data.get('tags_character') or []),
+                    'tag_copyright': list(data.get('tags_copyright') or []),
+                    'tag_meta': list(data.get('tags_meta') or []),
                     'file_url': data.get('file_url', ''),
                     'large_file_url': data.get('large_file_url', '') or data.get('file_url', ''),
                     'preview_file_url': data.get('preview_file_url', ''),
@@ -187,6 +187,11 @@ class GalleryDlBackend:
                 results.append({
                     'id': str(data.get('id', '')),
                     'tags': data.get('tag_string', '').split(),
+                    'tag_artist': list(data.get('tags_artist') or []),
+                    'tag_character': list(data.get('tags_character') or []),
+                    'tag_copyright': list(data.get('tags_copyright') or []),
+                    'tag_general': list(data.get('tags_general') or []),
+                    'tag_meta': list(data.get('tags_meta') or []),
                     'file_url': data.get('file_url', ''),
                     'preview_url': data.get('preview_file_url', '') or data.get('file_url', ''),
                     'large_file_url': data.get('large_file_url', '') or data.get('file_url', ''),

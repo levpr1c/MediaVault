@@ -119,8 +119,7 @@ async function fetchPage(rawQuery, sites, pageNum) {
   loading.style.display = 'block'
   try {
     var filterAi = document.getElementById('csAiFilter') && document.getElementById('csAiFilter').checked
-    var query = filterAi ? rawQuery + ' -ai_generated -ai -ai_assisted' : rawQuery
-    var url = '/api/content-search?q=' + encodeURIComponent(query) + '&sites=' + encodeURIComponent(sites) + '&page=' + pageNum
+    var url = '/api/content-search?q=' + encodeURIComponent(rawQuery) + '&sites=' + encodeURIComponent(sites) + '&page=' + pageNum + (filterAi ? '&filter_ai=1' : '')
     var res = await fetch(url, { signal: _ac.signal })
     if (_ac.signal.aborted) return
     if (!res.ok) {
@@ -133,6 +132,7 @@ async function fetchPage(rawQuery, sites, pageNum) {
     }
     var data = await res.json()
     if (_ac.signal.aborted) return
+    window._csCatColors = data.cat_colors || {}
     if (data.error) {
       grid.innerHTML = '<div class="admin-loading" style="color:var(--danger)">' + _t('contentSearchError') + ': ' + esc(data.error) + '</div>'
       loading.style.display = 'none'
@@ -231,10 +231,50 @@ try {
     mediaUrlFn: function(path) { return path; },
     nameFn: function(item) { return item._displayName || ''; },
     onSaveTags: function(path, tags) { return Promise.resolve({ok: true}) },
+    downloadLabelFn: function(file) {
+      var site = file._sourceSite || 'unknown';
+      return '\u2B07 ' + _t('contentSearchDownload').replace('{site}', site);
+    },
     onDownload: function(file) {
       var src = file._sourceSite || 'unknown';
-      var url = '/api/content-search/download?url=' + encodeURIComponent(file.path) + '&source=' + encodeURIComponent(src);
-      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+
+      // NHentai: download ALL pages of the gallery
+      if (file._gid && file._mid) {
+        var payload = {
+          source: 'nhentai',
+          gid: file._gid,
+          media_id: file._mid,
+          num_pages: file._numPages || 1,
+          title: file._galleryTitle || '',
+          tags: file.tags || '',
+        };
+        fetch('/api/content-search/download-manga', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.error) {
+            var msg = data.message || data.error;
+            toast(msg, 'error');
+            return;
+          }
+          toast(_t('settingsSaveStart') + ' (' + data.count + ' ' + _t('contentSearchPages') + ')', 'success');
+          console.log('[content-search] Downloaded manga:', data.count, 'pages');
+        });
+        return;
+      }
+
+      var payload = {
+        url: file.path,
+        source: src.toLowerCase(),
+        tags: file.tags || '',
+        tags_by_category: file._tagsByCategory || {}
+      };
+      fetch('/api/content-search/download', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.error) {
           var msg = data.message || data.error;
           toast(msg, 'error');
@@ -251,6 +291,28 @@ try {
 }
 
 function showLightbox(index) {
+  // Build tag→category map and category list from all results
+  var tagToCat = {};
+  var catNames = {};
+  var catColors = {};
+  _allResults.forEach(function(r) {
+    var tbc = r.tags_by_category || {};
+    for (var cat in tbc) {
+      catNames[cat] = true;
+      tbc[cat].forEach(function(t) { tagToCat[t] = cat; });
+    }
+  });
+  // Also read cat_colors from last API response
+  if (window._csCatColors) {
+    for (var c in window._csCatColors) { catColors[c] = window._csCatColors[c]; }
+  }
+  var fallbackColors = {artist:'#ff4444',character:'#44cc44',copyright:'#4488ff',general:'#cccccc',meta:'#999999',uncategorized:'#666666'};
+  var catList = Object.keys(catNames).map(function(n) {
+    return {name: n, color: catColors[n] || fallbackColors[n] || '#888'};
+  });
+  csLightbox._getCatListFn = function() { return catList; };
+  csLightbox._getTagCategoryNameFn = function(tag) { return tagToCat[tag] || ''; };
+
   var items = _allResults.map(function(r) {
     var path
     if (r._source === 'nhentai') {
@@ -259,15 +321,23 @@ function showLightbox(index) {
       path = r.file_url || r.sample_url || r.preview_url
     }
     var srcSite = r._source === 'nhentai' ? 'NHentai' : (r._source === 'r34' ? 'Rule34' : (r._source === 'dan' ? 'Danbooru' : r._source))
-    return {
+    var item = {
       path: path,
       name: '',
       _displayName: r._source === 'nhentai' ? (r.title || 'NHentai #' + r.id) : (r._source.toUpperCase() + ' #' + r.id),
       _sourceSite: srcSite,
+      _tagsByCategory: r.tags_by_category || {},
       width: r.width || null,
       height: r.height || null,
       tags: Array.isArray(r.tags) ? r.tags.join(', ') : (r.tags || '')
     }
+    if (r._source === 'nhentai') {
+      item._gid = r.id;
+      item._mid = r.mid;
+      item._numPages = r.pages || 1;
+      item._galleryTitle = r.title || '';
+    }
+    return item
   })
   csLightbox.open(index, items)
 }

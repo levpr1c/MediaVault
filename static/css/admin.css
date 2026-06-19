@@ -416,3 +416,35 @@
   color: var(--text);
   background: var(--surface2);
 }
+
+/* ─── Mount indicator (shared with settings) ─── */
+.mount-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  vertical-align: middle;
+  animation: mountPulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.mount-dot-green { background: #4ade80 }
+.mount-dot-red { background: #f87171 }
+@keyframes mountPulse {
+  0%, 100% { opacity: 1 }
+  50% { opacity: .3 }
+}
+.mount-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.mount-badge.mount-ok {
+  background: color-mix(in srgb, var(--success) 20%, transparent);
+  color: var(--success);
+}
+.mount-badge.mount-fail {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+  color: var(--danger);
+}

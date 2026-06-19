@@ -39,10 +39,13 @@ Optional — `python3-keyring` for storing API keys in system keychain (GNOME Ke
 |---------|-------------|
 | **🔍 Tagfetch** | Find tags on Rule34 & Danbooru via MD5 hash. Manual (single file) and Auto (batch with SSE progress) |
 | **🖼️ Gallery** | Masonry/Grid/List layouts, search by name and tags, filtering |
-| **💡 Lightbox** | Fullscreen viewer with zoom, navigation, tag editor |
+| **💡 Lightbox** | Fullscreen viewer with zoom, navigation, tag editor, color-coded categories, download with site label |
 | **📚 Comics** | Create collections, read in Scroll (webtoon) or Lightbox mode |
 | **🏷️ Tags** | Danbooru-style categories with colors, auto-tags (photo/video/animated/sound), aspect-ratio tags |
 | **🎴 Comics Tags** | Drag-and-drop tags from categories onto comic cards |
+| **🔍 Content Search** | Unified search across Rule34, Danbooru, NHentai with color-coded tag categories, AI filter (R34 only), download with tag indexing |
+| **📥 NHentai Manga Download** | Download entire galleries (all pages) directly to Downloads/nhentai/ with full tag indexing |
+| **💾 Storage mount indicator** | Blinking dot shows mount status in Settings & Admin Panel |
 | **👥 Users** | Admin (full access) and user (read-only) roles |
 | **🌙 Theme** | Dark/light, switches without page reload |
 | **🌐 i18n** | English + Russian, switches on the fly |
@@ -52,20 +55,23 @@ Optional — `python3-keyring` for storing API keys in system keychain (GNOME Ke
 
 | Layer | Technology |
 |-------|-----------|
-| Server | Python / Flask (single file, ~3640 lines) |
+| Server | Python / Flask (single file, ~4460 lines) |
 | Database | SQLite (`~/.local/share/MediaVault/MediaVaultDataBase.db`) |
-| Templates | Jinja2 (13 files) |
-| Frontend | Vanilla JS (25 modules) |
-| Styles | CSS (6 files) |
+| Templates | Jinja2 (18 files) |
+| Frontend | Vanilla JS (30 modules + 2 files backends) |
+| Styles | CSS (7 files) |
 | Thumbnails | AVIF (Pillow for images, FFmpeg for video) |
 
 ## Architecture highlights
 
 - **Decorator order matters**: `@app.route` → `@admin_required` → `@api_error_handler` (wrong order breaks auth)
-- **User/admin separation**: templates use `{% if session.role == 'admin' %}`; backend enforces via `@admin_required` (33 endpoints)
+- **User/admin separation**: templates use `{% if session.role == 'admin' %}`; backend enforces via `@admin_required` (47+ endpoints)
 - **Shared JS utilities**: `Shared.hexToRgba()`, `Shared.parseTags()`, `Shared.getColumnCount()`, `Shared.reorderGalleryDOM()`, `Shared.getVisualOrder()` — single source of truth
 - **Two-level logging**: `log_debug()`/`log_info()`/`log_error()` with ANSI colors + optional file in `--debug` mode
-- **@api_error_handler**: unified error handling on all 53 API endpoints — consistent JSON responses
+- **@api_error_handler**: unified error handling on all 65+ API endpoints — consistent JSON responses
+- **Content Search**: unified API (`/api/content-search`) with `tags_by_category` for color-coded tags in lightbox, AI filter for Rule34 only, download with tag indexing
+- **NHentai manga download**: `POST /api/content-search/download-manga` downloads all pages of a gallery into `Downloads/nhentai/{gid}/` with DB indexing and gallery tags
+- **Lightbox `downloadLabelFn` option**: dynamic download button text showing site name (e.g. "Download from Danbooru")
 
 ## Documentation
 

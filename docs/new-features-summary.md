@@ -574,6 +574,176 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 ---
 
+## 17. Mount Indicator Improvements (19.06.2026)
+
+**Три изменения, связанные с индикатором монтирования хранилища (blinking dot).**
+
+### 17.1 CSS fix: mount styles скопированы в `admin.css`
+
+**Проблема:** стили `.mount-dot`, `.mount-badge`, `@keyframes mountPulse` были только в `settings.css`. Админ-панель загружает `admin.css`, а не `settings.css`, поэтому blinking dot не отображался в `/admin`.
+
+**Фикс:** идентичные стили добавлены в `static/css/admin.css:420-450`.
+
+### 17.2 `admMountStatus` удалён из карточки Folders (admin)
+
+**Что было:** индикатор монтирования дублировался — в хедере админки (`#admMountIndicator`) и внутри карточки Folders (`#admMountStatus`).
+
+**Что стало:** `#admMountStatus` удалён из шаблона секции Folders. Индикатор остаётся только в хедере страницы (`admin.html:35`, рядом с `#adminPageTitle`).
+
+**Key files:**
+- `static/admin/admin.js:673-680` — `_checkMount()` больше не пишет в `#admMountStatus`
+- `templates/admin/admin.html:35` — `#admMountIndicator` в хедере
+
+### 17.3 `#mountStatus` перемещён в card header (settings)
+
+**Что было:** индикатор монтирования в Settings → Appearance → Media Path находился внизу карточки, после кнопок Save/Scan/Create Folders.
+
+**Что стало:** `#mountStatus` перемещён в `admin-card-header` (строка 48 `settings.html`), рядом с заголовком «Media Path».
+
+**Key files:**
+- `templates/settings.html:48` — `#mountStatus` в хедере карточки
+- `static/css/settings.css:126` — удалён `margin-top: 8px` у `.mount-badge` (style tweak для нового расположения)
+
+**Testing:**
+- [ ] `/admin` — blinking dot отображается в хедере (рядом с названием страницы)
+- [ ] `/admin` → Database → Folders — индикатор отсутствует внутри карточки
+- [ ] `/settings` → Appearance → Media Path — индикатор в хедере карточки (слева от заголовка)
+- [ ] Индикатор мигает зелёным (storage mounted) или красным (not mounted)
+- [ ] `GET /api/content-search/mount-check` возвращает корректный статус
+
+---
+
+#---
+
+## 18. Content-Search Tag Categories (19.06.2026)
+
+**Color-coded tags in content-search lightbox based on Danbooru categories.**
+
+| Изменение | Детали |
+|-----------|--------|
+| Backend | Both `api_raw.py` and `gallerydl.py` return `tag_artist/character/copyright/general/meta` from Danbooru API |
+| Server | Computes `tags_by_category` per result, returns `cat_colors` from local DB |
+| Frontend | `showLightbox()` builds tag→category map, wires `_getCatListFn`/`_getTagCategoryNameFn` on lightbox |
+| Categories | Artist (red), Character (green), Copyright (blue), General (grey), Meta (dark grey) |
+
+**Key files:**
+- `src/web_app.py` — `api_content_search()` computes tags_by_category
+- `static/content/content-search.js` — showLightbox() wires categories
+- `src/backends/api_raw.py`, `gallerydl.py` — return category data from API
+
+**Testing:**
+- [ ] Content-search results include `tags_by_category` per post
+- [ ] Lightbox shows tags with category colors
+- [ ] Danbooru results have artist/character/copyright/general/meta categories
+- [ ] Rule34 results shown as 'uncategorized'
+- [ ] Tag→category map is correct for mixed results from multiple sites
+
+---
+
+## 19. R34-Only AI Filter (19.06.2026)
+
+**Checkbox to exclude AI-generated images from Rule34 search results.**
+
+| Изменение | Детали |
+|-----------|--------|
+| Frontend | Checkbox `#csAiFilter` triggers search re-run with `&filter_ai=1` |
+| Backend | Only appends `-ai_generated -ai -ai_assisted` to Rule34 queries |
+| Scope | Danbooru and NHentai are NOT affected |
+
+**Key files:**
+- `static/content/content-search.js:109-115` — checkbox handler
+- `src/web_app.py:1707-1722` — filter_ai param + query adjustment
+
+**Testing:**
+- [ ] AI filter checkbox visible in content-search
+- [ ] Checked → Rule34 results exclude AI content
+- [ ] Unchecked → all Rule34 results shown
+- [ ] Danbooru/NHentai results unchanged with filter on
+
+---
+
+## 20. Download Button with Site Label (19.06.2026)
+
+**Lightbox download button shows site name instead of just arrow.**
+
+| Изменение | Детали |
+|-----------|--------|
+| Lightbox option | `downloadLabelFn(file)` in `Lightbox()` constructor |
+| Content-search | Uses `_t('contentSearchDownload').replace('{site}', site)` |
+| Default | Falls back to `⬇` (unicode arrow) if no `downloadLabelFn` provided |
+
+**Key files:**
+- `static/shared/lightbox.js:49,467` — `_downloadLabelFn` option + render
+- `static/content/content-search.js:234-237` — downloadLabelFn implementation
+
+**i18n keys:** `contentSearchDownload` — `'Download from {site}'` / `'Скачать с {site}'`
+
+**Testing:**
+- [ ] Content-search lightbox shows "⬇ Download from Danbooru" button
+- [ ] NHentai results show "⬇ Download from NHentai" button
+- [ ] Gallery lightbox (MV) still shows `⬇` without label
+- [ ] Download button function unchanged
+
+---
+
+## 21. Mount Indicator Improvements (19.06.2026)
+
+**Mount status CSS duplicated to admin.css, indicator removed from Folders card, moved to card header in Settings.**
+
+(см. **17. Mount Indicator Improvements** выше)
+
+---
+
+## 22. NHentai Manga Download (Full Gallery) (19.06.2026)
+
+**Download all pages of an NHentai gallery into `Downloads/nhentai/{gid}/` with tag indexing.**
+
+| Изменение | Детали |
+|-----------|--------|
+| New endpoint | `POST /api/content-search/download-manga` |
+| Input | `{gid, media_id, num_pages, title, tags}` |
+| Output | `{ok, count, errors, dir}` |
+| Storage | `Downloads/nhentai/<gid>/1.jpg` .. `N.jpg` |
+| DB | Each page indexed with gallery tags, auto-tags, dimensions |
+
+**Key files:**
+- `src/web_app.py:1909-2023` — `api_content_search_download_manga()` endpoint
+- `static/content/content-search.js:241-265` — manga download button handler
+
+**i18n keys:** `contentSearchPages` — `'pages'` / `'страниц'`
+
+**Testing:**
+- [ ] Download manga button visible for NHentai results in content-search
+- [ ] Creates `Downloads/nhentai/<gid>/` directory
+- [ ] Downloads all pages 1.jpg..N.jpg
+- [ ] Each page indexed in DB with gallery tags
+- [ ] Already downloaded pages are skipped (no duplicates)
+- [ ] Errors in individual pages don't stop the batch
+
+---
+
+## 23. Content-Search Download Saves Tags to DB (19.06.2026)
+
+**Download endpoint now accepts `tags` + `tags_by_category` and indexes files in DB.**
+
+| Изменение | Детали |
+|-----------|--------|
+| Download endpoint | `GET/POST /api/content-search/download` accepts `tags` + `tags_by_category` |
+| DB save | INSERT or UPDATE in `files` with merged auto-tags + API tags |
+| Categories | Danbooru tags trigger `_ensure_categories()` |
+| Aspect ratio | Auto-computed from downloaded file dimensions |
+
+**Key files:**
+- `src/web_app.py:1792-1906` — `api_content_search_download()`
+
+**Testing:**
+- [ ] File downloaded appears in MV gallery immediately
+- [ ] Tags from content-search are saved to file
+- [ ] Danbooru categories are stored in DB
+- [ ] Duplicate download updates existing record
+
+---
+
 ## Итоговая сводка (обновлённая)
 
 | # | Фича | Строк кода | Файлов |
@@ -590,5 +760,44 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 | 10 | Comics Picker | ~30 (CSS) | 2 |
 | 11 | Content-search lightbox fix | +4 (lightbox.js) | 2 |
 | 12 | Home page polish | ~20 (home.html + CSS) | 2 |
+| 13 | Mount indicator improvements | +34 (CSS) + JS tweaks | 4 |
+| 14 | Tag categories (Danbooru) | ~40 | 3 |
+| 15 | AI filter (R34-only) | ~10 | 2 |
+| 16 | Download label + manga download | ~130 (server + JS) | 3 |
+
+---
+
+## Чеклист тестирования (дополнение)
+
+### Content-Search Tag Categories
+- [ ] `tags_by_category` in API response for Danbooru results
+- [ ] `cat_colors` returned from server
+- [ ] Lightbox shows color-coded tags
+- [ ] Rule34 results don't have categories (uncategorized)
+
+### AI Filter
+- [ ] Checkbox filters AI from R34 only
+- [ ] Re-runs search on toggle
+
+### NHentai Manga Download
+- [ ] Full gallery downloaded to `Downloads/nhentai/<gid>/`
+- [ ] Pages indexed in DB with tags
+- [ ] Error handling for network failures
+
+### Download with Tags
+- [ ] Downloaded files appear in gallery with correct tags
+- [ ] Danbooru categories preserved in tag_category_members
+- [ ] Aspect ratio tags computed correctly
+
+### Download Label
+- [ ] Content-search shows "Download from {site}"
+- [ ] MV gallery shows regular arrow
+- [ ] LabelFn works as option in Lightbox constructor
+
+### Mount Indicator
+- [ ] Green dot when mounted
+- [ ] Red dot when unmounted
+- [ ] Blinks in admin header and settings card header
+- [ ] Not duplicated in Folders card
 
 ---

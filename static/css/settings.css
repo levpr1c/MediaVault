@@ -123,7 +123,6 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  margin-top: 8px;
 }
 .mount-badge.mount-ok {
   background: var(--success);

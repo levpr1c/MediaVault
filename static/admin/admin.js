@@ -178,7 +178,6 @@ var AdminDashboard = (function() {
         '<button class="btn btn-primary" onclick="AdminDashboard._saveFolderSettings()"><span data-i18n="settingsSaveStart">' + _t('settingsSaveStart') + '</span></button>' +
         '<button class="btn" onclick="AdminDashboard._createFolders()" id="admCreateFolders"><span data-i18n="settingsCreateFolders">' + _t('settingsCreateFolders') + '</span></button>' +
         '</div>' +
-        '<div id="admMountStatus"></div>' +
         '</div>' +
         '<div class="admin-card" id="adminProgressCard" style="display:none">' +
         '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="settingsRunning">' + _t('settingsRunning') + '</span></span>' +
@@ -674,14 +673,10 @@ var AdminDashboard = (function() {
       var html = ok
         ? '<span class="mount-dot mount-dot-green"></span><span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>'
         : '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + _t('settingsMountFail') + '</span>';
-      var cardEl = document.getElementById('admMountStatus');
-      if (cardEl) cardEl.innerHTML = html;
       var headEl = document.getElementById('admMountIndicator');
       if (headEl) headEl.innerHTML = html;
     }).catch(function(e) {
       var msg = '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + e.message + '</span>';
-      var cardEl = document.getElementById('admMountStatus');
-      if (cardEl) cardEl.innerHTML = msg;
       var headEl = document.getElementById('admMountIndicator');
       if (headEl) headEl.innerHTML = msg;
     });

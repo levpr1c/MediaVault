@@ -46,6 +46,7 @@ var Lightbox = (function() {
     this._onClose = opts.onClose || null;
     this._readonly = opts.readonly || false;
     this._onDownload = opts.onDownload || null;
+    this._downloadLabelFn = opts.downloadLabelFn || null;
     this._hexToRgba = opts.hexToRgba || function(hex, a) { 
       var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
       return 'rgba('+r+','+g+','+b+','+a+')';
@@ -463,7 +464,7 @@ var Lightbox = (function() {
     panel.innerHTML =
       '<div class="lb-header">' +
         '<h3>' + this._esc(file.name || '') + '</h3>' +
-        (this._onDownload && file.path ? '<button class="lb-download-btn" id="' + this._id('DownloadBtn') + '" title="Download">\u2B07</button>' : '') +
+        (this._onDownload && file.path ? '<button class="lb-download-btn" id="' + this._id('DownloadBtn') + '" title="Download">' + (this._downloadLabelFn ? this._downloadLabelFn(file) : '\u2B07') + '</button>' : '') +
         (isAdmin && !this._readonly ? '<button id="lbDelToggle" class="' + lblClass + '" title="' + (isDel ? 'Exit delete mode' : 'Delete tags') + '">\u2715</button>' : '') +
       '</div>' +
       '<div class="meta">' + (file.width > 0 ? file.width + '\u00D7' + file.height : '') + '</div>' +

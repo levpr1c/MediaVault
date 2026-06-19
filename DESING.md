@@ -745,7 +745,33 @@ Centered at bottom, `left: 50%; transform: translateX(-50%)`. Error/success vari
 - `.cred-option` — card-style radio option, `padding: 14px 16px; border-radius: 10px`
 - `.cred-option.active` — accent border + glow bg
 
-### 6.24 Autocomplete
+### 6.24 Mount Indicator
+
+(`admin.css:420-450`, `settings.css`)
+
+The mount indicator shows storage connectivity status as a blinking dot:
+
+```css
+.mount-dot { width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block; margin-right: 6px;
+  animation: mountPulse 1.5s ease-in-out infinite; }
+.mount-dot.mounted { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+.mount-dot.unmounted { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+.mount-badge { display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--text2); }
+@keyframes mountPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+```
+
+Used in:
+- **Settings** → Appearance → Media Path card header (`#mountStatus`)
+- **Admin Panel** → page header (`#admMountIndicator`), next to page title
+- Green = storage mounted, Red = storage empty/unmounted
+- Styles duplicated in both `admin.css` and `settings.css` for independent page rendering
+
+### 6.25 Autocomplete
 
 (`mediavault.css:108-109`)
 
@@ -767,6 +793,7 @@ Centered at bottom, `left: 50%; transform: translateX(-50%)`. Error/success vari
 | `fadeIn` | Fade in + scale(.96 → 1) — modals, cards | `shared.css:147` |
 | `spin` | 360° rotation — loading spinners | `shared.css:146` |
 | `pulse` | Opacity 1 → .5 → 1 — loading states | `shared.css:149` |
+| `mountPulse` | Opacity + scale — mount indicator blinking dot | `admin.css` + `settings.css` |
 | `shake` | Horizontal shake — error feedback | `shared.css:150` |
 | `shimmer` | Skeleton loading shimmer | `shared.css:153` |
 | `btnPress` | Scale 1 → .95 → 1 — button press | `shared.css:154` |
@@ -884,12 +911,15 @@ Note: `--z-sticky` is referenced by `home.html` inline styles but is not defined
 |-------|------|---------|
 | 1 | `shared.css` | Variables, themes, base, buttons, home layout, animations, scrollbar |
 | 2 | `mediavault.css` | Gallery, lightbox, sidebar, header layout, tabs, comics viewer |
-| 3 | `settings.css` | Settings tab row, toggle cards, language selector |
+| 3 | `settings.css` | Settings tab row, toggle cards, language selector, mount indicator |
 | 4 | `tagfetch.css` | Manual/auto layout, panels, file browser, auto grid |
-| 5 | `admin.css` | Admin SPA, cards, tables, DB grid, modals, toasts |
+| 5 | `admin.css` | Admin SPA, cards, tables, DB grid, modals, toasts, **mount indicator** (duplicated) |
 | 6 | `content.css` | Content SPA, tags drag-drop, files gallery, comics editor |
+| 7 | `content-search.css` | Content search page: search bar, results grid, skeletons, autocomplete |
 
 This order is critical for specificity — later files override earlier ones without `!important`.
+
+**Note:** Mount indicator styles (`.mount-dot`, `.mount-badge`, `@keyframes mountPulse`) are duplicated in both `admin.css` and `settings.css` so the blinking dot shows on both `/admin` and `/settings` pages independently. `admin.css` does NOT load `settings.css`, hence the duplication.
 
 ### 10.2 CSS Convention
 

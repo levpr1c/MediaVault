@@ -51,11 +51,11 @@ class ApiRawBackend:
                         p = data[0]
                         fu = p.get('file_url', '')
                         return {'tags': p.get('tag_string', '').split(),
-                                'tag_general': p.get('tag_string_general', '').split(),
-                                'tag_artist': p.get('tag_string_artist', '').split(),
-                                'tag_character': p.get('tag_string_character', '').split(),
-                                'tag_copyright': p.get('tag_string_copyright', '').split(),
-                                'tag_meta': p.get('tag_string_meta', '').split(),
+                                'tag_general': (p.get('tag_string_general') or '').split(),
+                                'tag_artist': (p.get('tag_string_artist') or '').split(),
+                                'tag_character': (p.get('tag_string_character') or '').split(),
+                                'tag_copyright': (p.get('tag_string_copyright') or '').split(),
+                                'tag_meta': (p.get('tag_string_meta') or '').split(),
                                 'file_url': fu,
                                 'large_file_url': p.get('large_file_url', '') or fu,
                                 'preview_file_url': p.get('preview_file_url', '') or fu.replace('/original/', '/preview/')}
@@ -188,6 +188,11 @@ class ApiRawBackend:
                     results.append({
                         'id': str(p.get('id', '')),
                         'tags': p.get('tag_string', '').split(),
+                        'tag_artist': (p.get('tag_string_artist') or '').split(),
+                        'tag_character': (p.get('tag_string_character') or '').split(),
+                        'tag_copyright': (p.get('tag_string_copyright') or '').split(),
+                        'tag_general': (p.get('tag_string_general') or '').split(),
+                        'tag_meta': (p.get('tag_string_meta') or '').split(),
                         'file_url': fu,
                         'preview_url': preview_url,
                         'large_file_url': p.get('large_file_url', '') or fu,

@@ -38,7 +38,7 @@
 
 ## 1. Что это вообще такое?
 
-**MediaVault** — это Flask-приложение (один файл `src/web_app.py`, 4062 строки, 87 роутов, 47 `@admin_required`, 65 `@api_error_handler`) с 19 Jinja2-шаблонами, 28 JS-модулями и 3 модулями бэкендов:
+**MediaVault** — это Flask-приложение (один файл `src/web_app.py`, ~4460 строк, 90 роутов, 48 `@admin_required`, 5 `@auth_required`, 69 `@api_error_handler`) с 18 Jinja2-шаблонами, 30 JS-файлами и 2 модулями бэкендов (`gallery-dl`, `api_raw`):
 
 1. **Скачивает теги** с Rule34.xxx, Danbooru и NHentai по MD5-хешу файла
 2. **Позволяет тегировать** свою медиа-коллекцию (картинки, видео)
@@ -52,7 +52,7 @@
 flowchart TD
     User[Пользователь] -->|браузер| Flask[Flask сервер<br/>web_app.py 4062 строки]
     
-    Flask --> Auth[Система авторизации<br/>@admin_required × 47<br/>@auth_required × 2<br/>session-based]
+    Flask --> Auth[Система авторизации<br/>@admin_required × 48<br/>@auth_required × 5<br/>session-based]
     Flask --> Tpl[Jinja2 шаблоны<br/>19 файлов в 7 папках<br/>16 extend base.html]
     Flask --> Static[Статика<br/>28 JS модулей + 7 CSS<br/>~7600 строк]
     Flask --> DB[(SQLite<br/>10 таблиц)]
@@ -116,7 +116,7 @@ flowchart TD
 | **Visual order** | Порядок элементов в DOM для masonry отличается от визуального. `getVisualOrder()` сортирует по `getBoundingClientRect()` (top → left) для счётчика `lb-pos` |
 | **Авто-сканирование** (Auto Scan) | Ранее **Batch Scan** — автоматическое сканирование медиа-папки. SSE-поток с прогрессом по каждому файлу. Только auto-tags, без API. Запускается при старте сервера в фоне |
 | **Админ-панель** (Admin Panel) | Страница `/admin`: управление пользователями, API-ключами, базой данных |
-| **Декоратор** (decorator) | Пометка над функцией Python, добавляющая поведение. В проекте: `@admin_required` (33 шт), `@auth_required` (2 шт), `@api_error_handler` (53 шт). Порядок: `@app.route` → auth → handler |
+| **Декоратор** (decorator) | Пометка над функцией Python, добавляющая поведение. В проекте: `@admin_required` (48 шт), `@auth_required` (5 шт), `@api_error_handler` (69 шт). Порядок: `@app.route` → auth → handler |
 | **Категории тегов** | Группы тегов с цветами: Artist (голубой), Character (оранжевый), Copyright (фиолетовый), General (зелёный), Meta (синий). Таблицы: `tag_categories` + `tag_category_members` |
 | **Комикс** (comic) | Подборка файлов для последовательного чтения. Два режима: Scroll (лента) и Lightbox (постранично). Таблицы: `comics` + `comic_pages` (FK с CASCADE) |
 | **Медиа-директория** (media_dir) | Путь к папке с медиафайлами. Указывается в Settings → Appearance. Сканируется при старте через `_quick_scan()` |
@@ -135,7 +135,7 @@ flowchart TD
 ```
 MediaVault/
 ├── src/
-│   ├── web_app.py             ← ВЕСЬ СЕРВЕР (4062 строки, 87 роутов)
+│   ├── web_app.py             ← ВЕСЬ СЕРВЕР (~4460 строк, 90 роутов)
 │   ├── credential_store.py    ← Хранилище API-ключей (GNOME Keyring / plain text)
 │   └── backends/              ← Система бэкендов для тегов (2 модуля)
 │       ├── __init__.py        ← BACKENDS registry, fetch_tags(), search_tags()
@@ -164,7 +164,7 @@ MediaVault/
 │   │   ├── shared.css         ← Общие стили: base, header, mobile, темы (257 строк)
 │   │   ├── tagfetch.css       ← Tagfetch (134 строки)
 │   │   ├── mediavault.css     ← Галерея, лайтбокс, комиксы, тегирование, хедер (232 строки)
-│   │   ├── admin.css          ← Admin SPA: карточки, таблицы, модалы, credentials (384 строки)
+│   │   ├── admin.css          ← Admin SPA: карточки, таблицы, модалы, mount indicator (450 строк)
 │   │   ├── content.css        ← Content SPA: drag-drop теги, файловый браузер, комиксы (460 строк)
 │   │   └── settings.css       ← Settings SPA: табы, карточки, DB tools grid (112 строк)
 │   ├── shared/                ← Общий JS
@@ -195,7 +195,7 @@ MediaVault/
 │   │   ├── comics.js          ← CRUD комиксов (109 строк)
 │   │   └── utils.js           ← Утилиты, делегаты к Shared (51 строка)
 │   └── admin/
-│       └── admin.js           ← AdminDashboard SPA (747 строк, 5 разделов)
+│       └── admin.js           ← AdminDashboard SPA (770 строк, 5 разделов + mount monitoring)
 │   └── shared/
 │       └── icons.js           ← window.SiteIcons SVG-иконки (30 строк)
 ├── static/shared/icons/       ← SVG файлы: rule34.svg, danbooru.svg, nhentai.svg, kemono.svg, coomer.svg
@@ -211,7 +211,7 @@ MediaVault/
 | Файл | Строк | Что делает |
 |------|-------|------------|
 | **Python** | | |
-| `web_app.py` | 4062 | **Весь сервер** — 87 роутов, БД, кэш, i18n, auth, backends |
+| `web_app.py` | ~4460 | **Весь сервер** — 90 роутов, БД, кэш, i18n, auth, backends |
 | `credential_store.py` | 67 | Хранилище API-ключей (Keyring / plain text) |
 | `backends/__init__.py` | 41 | BACKENDS registry, fetch_tags(), search_tags() |
 | `backends/api_raw.py` | 210 | ApiRawBackend: Rule34 + Danbooru + NHentai fetch + search |
@@ -527,10 +527,10 @@ erDiagram
 |---------|----------|
 | Строк кода | **3896** |
 | `def` функций | **138+** (включая внутренние) |
-| `@app.route` (роутов) | **82** |
-| `@admin_required` | **41** (40 API + 1 страница) |
-| `@auth_required` | **2** |
-| `@api_error_handler` | **62** |
+| `@app.route` (роутов) | **90** |
+| `@admin_required` | **48** (47 API + 1 страница) |
+| `@auth_required` | **5** |
+| `@api_error_handler` | **69** |
 | `@app.before_request` | **1** (`check_auth`) |
 | `@app.after_request` | **1** (`log_access`) |
 | `@app.context_processor` | **2** (`inject_i18n`, `inject_media_vars`) |
@@ -1060,7 +1060,8 @@ flowchart TD
 | Admin-Tools | 13 | 12 | 0 | 13 |
 | Comics | 6 | 4 | 0 | 6 |
 | New Features | 8 | 5 | 0 | 8 |
-| **Всего** | **87** | **47** | **2** | **65** |
+| Content Search | 5 | 1 | 4 | 5 |
+| **Всего** | **92** | **48** | **6** | **70** |
 
 ### Контекстные процессоры
 
@@ -1234,7 +1235,7 @@ ES-модули загружаются через `<script type="module" src="..
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
-| static/admin/admin.js | 727 | AdminDashboard SPA |
+| static/admin/admin.js | 750 | AdminDashboard SPA (mount monitoring via `_checkMount`) |
 
 **tagfetch/ (4 файла, 1082 строк):**
 
@@ -1298,26 +1299,26 @@ IIFE-модули просто присваивают: `var hexToRgba = Shared.h
 
 ### 7.4 CSS-архитектура
 
-#### 7 CSS-файлов (2140 строк)
+#### 7 CSS-файлов (2206 строк)
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
 | static/css/shared.css | 303 | CSS vars, themes, base, header, mobile |
 | static/css/content.css | 684 | CM: tags drag-drop, files, comics, comics-tags |
 | static/css/mediavault.css | 242 | Gallery, lightbox, comics, sidebar |
-| static/css/admin.css | 418 | Admin cards, tables, modals |
+| static/css/admin.css | 450 | Admin cards, tables, modals, mount indicator |
 | static/css/content-search.css | 189 | Content search: search bar, results grid, autocomplete |
 | static/css/tagfetch.css | 182 | Tagfetch sidebar, preview panels |
-| static/css/settings.css | 122 | Settings tabs, cards, DB grid |
+| static/css/settings.css | 156 | Settings tabs, cards, DB grid, mount indicator |
 
 Порядок загрузки (важен для специфичности, **никакого `!important`**):
 1. `shared.css` — базовые стили, переменные
 2. `tagfetch.css` — оверрайды для tagfetch
 3. `mediavault.css` — галерея, лайтбокс, comics, header, mobile оверрайды
-4. `admin.css` — admin panel (через `head_extra` блока)
+4. `admin.css` — admin panel (через `head_extra` блока), включает mount indicator styles
 5. `content.css` — только для `/content-mgmt/*` (через условный блок)
 6. `content-search.css` — только для `/content-search`
-7. `settings.css` — только для `/settings`
+7. `settings.css` — только для `/settings`, также содержит mount indicator styles (дублированы из admin.css для независимой работы)
 
 #### CSS-переменные (system)
 
@@ -2002,7 +2003,7 @@ def auth_required(f):
 
 | Декоратор | Назначение | Статус при неудаче |
 |-----------|-----------|-------------------|
-| `@admin_required` | Только admin (32 API + 1 page) | 401 если не аутентифицирован, 403 если не admin |
+| `@admin_required` | Только admin (47 API + 1 page) | 401 если не аутентифицирован, 403 если не admin |
 | `@auth_required` | Любой авторизованный (2 эндпоинта) | 401 если не аутентифицирован |
 
 **Проверка прав на бэкенде** — единственный надёжный способ. Фронтенд только скрывает кнопки.
@@ -2758,6 +2759,210 @@ exception.GalleryDLException (code=1)
 
 **Что нужно для работы:** `pip install gallery-dl` (уже в venv). Системный CLI **не требуется** — используется Python API.
 
+### 24.17 Content-Search: Tag Categories, AI Filter, Download Labels, Mount Indicator, Manga Download
+
+#### 24.17.1 Content-Search Tag Categories (Danbooru)
+
+**Проблема:** В content-search теги в лайтбоксе отображались без цвета категорий — все серые, без группировки.
+
+**Решение (3 слоя):**
+
+**1. Бэкенд (src/backends/):**
+- `api_raw.py`: Danbooru search возвращает `tag_artist/character/copyright/general/meta` из API ответа
+- `gallerydl.py`: Danbooru search возвращает те же категории из gallery-dl metadata
+- Rule34 не возвращает категории — для R34 теги помечаются как `general`
+
+**2. Сервер (web_app.py, строка 1734):**
+```python
+# Compute tags_by_category for each result
+r['tags_by_category'] = tags_by_cat
+```
+- `api_content_search()` вычисляет `tags_by_category` per-result словарь вида `{artist: [...], character: [...], ...}`
+- Возвращает `cat_colors` — словарь цветов категорий из локальной БД
+- При download вызывает `_ensure_categories()` для Danbooru
+
+**3. Фронтенд (content-search.js, строки 293-314):**
+```javascript
+// showLightbox() builds tag→category map
+var tagToCat = {};
+_allResults.forEach(function(r) {
+    var tbc = r.tags_by_category || {};
+    for (var cat in tbc) {
+        tbc[cat].forEach(function(t) { tagToCat[t] = cat; });
+    }
+});
+csLightbox._getCatListFn = function() { return catList; };
+csLightbox._getTagCategoryNameFn = function(tag) { return tagToCat[tag] || ''; };
+```
+
+Теги в лайтбоксе показываются с цветами категорий (artist → красный, character → зелёный, и т.д.).
+
+**i18n ключи:** нет новых — используются существующие категории.
+
+#### 24.17.2 R34-Only AI Filter
+
+**Проблема:** Поиск на Rule34 показывает AI-сгенерированные изображения, которые нужно исключать.
+
+**Решение (2 слоя):**
+
+**1. Фронтенд (content-search.js, строки 109-115, 121-122):**
+```html
+<input type="checkbox" id="csAiFilter"> Hide AI
+```
+- Чекбокс `#csAiFilter` рядом с источниками поиска
+- При изменении — перезапускает поиск
+- Передаёт `&filter_ai=1` query-параметр
+
+**2. Сервер (web_app.py, строка 1707, 1722):**
+```python
+filter_ai = request.args.get('filter_ai', '0') == '1'
+# ...
+if filter_ai and s == 'rule34':
+    q_adjusted += ' -ai_generated -ai -ai_assisted'
+```
+- Параметр `filter_ai` извлекается из запроса
+- **Только для Rule34:** к запросу добавляется `-ai_generated -ai -ai_assisted` (исключающие теги)
+- Danbooru и NHentai не затрагиваются
+
+#### 24.17.3 Lightbox `downloadLabelFn` Option
+
+**Проблема:** Кнопка загрузки в лайтбоксе content-search показывала просто `⬇`, без указания сайта.
+
+**Решение:**
+
+**Сервер (web_app.py, LOCALE):**
+```python
+'contentSearchDownload': 'Download from {site}',  # EN
+'contentSearchDownload': 'Скачать с {site}',       # RU
+```
+
+**Фронтенд (shared/lightbox.js, строка 49, 467):**
+```javascript
+// Lightbox constructor
+this._downloadLabelFn = opts.downloadLabelFn || null;
+
+// Render download button
+(this._onDownload && file.path
+  ? '<button class="lb-download-btn">'
+    + (this._downloadLabelFn ? this._downloadLabelFn(file) : '\u2B07')
+    + '</button>'
+  : '')
+```
+
+**Content-search (content-search.js, строки 234-237):**
+```javascript
+downloadLabelFn: function(file) {
+    var site = file._sourceSite || 'unknown';
+    return '\u2B07 ' + _t('contentSearchDownload').replace('{site}', site);
+},
+```
+
+**i18n ключи:** `contentSearchDownload` — `'Download from {site}'` / `'Скачать с {site}'`, `contentSearchPages` — `'pages'` / `'страниц'`.
+
+#### 24.17.4 Mount Indicator
+
+**Проблема:** Индикатор монтирования хранилища (мигающая точка) работал в Settings, но не отображался в Admin Panel.
+
+**Решение (3 изменения):**
+
+**1. CSS duplication (admin.css, строки 420-450):**
+Стили `.mount-dot`, `.mount-badge`, `@keyframes mountPulse` скопированы в `admin.css`, так как админ-панель загружает только `admin.css`, а не `settings.css`.
+
+**2. Removed `admMountStatus` from Folders card (admin.js, строка 673-680):**
+Индикатор был дублирован — в хедере админки и внутри карточки Folders. Удалён из карточки Folders, оставлен только в хедере страницы (`admin.html:35`, рядом с `#adminPageTitle`).
+
+**3. Mount indicator moved to card header (settings.html:48):**
+В Settings → Appearance индикатор `#mountStatus` перенесён из футера карточки в `admin-card-header`, рядом с заголовком «Media Path».
+
+**API:** `GET /api/content-search/mount-check` (web_app.py, строка 2026) — проверяет, смонтирована ли media_dir и есть ли в ней файлы. Возвращает `{mounted: bool, empty: bool, message: string}`.
+
+#### 24.17.5 NHentai Manga Download (Full Gallery)
+
+**Проблема:** Content-search мог скачать только одну страницу nhentai (первую). Не было загрузки всей манги.
+
+**Решение:**
+
+**Новый endpoint:**
+```python
+@app.route('/api/content-search/download-manga', methods=['POST'])
+@auth_required
+@api_error_handler
+def api_content_search_download_manga():
+```
+- Принимает `{gid, media_id, num_pages, title, tags}` в JSON
+- Создаёт папку `<media_dir>/<downloads_dir>/nhentai/<gid>/`
+- Скачивает страницы `1.jpg`..`N.jpg` с `i.nhentai.net`
+- Каждую страницу индексирует в БД (INSERT OR UPDATE в `files`)
+- Присваивает теги из `tags` параметра (теги галереи NHentai)
+- Возвращает `{ok, count, errors, dir}`
+
+**Фронтенд (content-search.js, строки 241-265):**
+```javascript
+if (file._gid && file._mid) {
+    var payload = {
+        source: 'nhentai',
+        gid: file._gid,
+        media_id: file._mid,
+        num_pages: file._numPages || 1,
+        title: file._galleryTitle || '',
+        tags: file.tags || '',
+    };
+    fetch('/api/content-search/download-manga', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.error) {
+            toast(msg, 'error'); return;
+        }
+        toast(_t('settingsSaveStart') + ' (' + data.count + ' ' + _t('contentSearchPages') + ')', 'success');
+    });
+    return;
+}
+```
+
+**i18n ключи:** `contentSearchPages` — `'pages'` / `'страниц'`.
+
+#### 24.17.6 Content-Search Download Saves Tags to DB
+
+**Проблема:** При скачивании файла из content-search теги не сохранялись в БД — файл появлялся в галерее без тегов.
+
+**Решение (web_app.py, `api_content_search_download()`, строки 1851-1906):**
+
+- Принимает `tags` и `tags_by_category` в POST или GET
+- После скачивания файла:
+  1. Вычисляет auto-теги (photo/video/animated/sound)
+  2. Мержит с переданными тегами
+  3. Вычисляет aspect ratio тег
+  4. INSERT или UPDATE в таблицу `files`
+  5. Для Danbooru: вызывает `_ensure_categories()` для сохранения категорий тегов
+
+**Итог:** Скачанные файлы сразу появляются в галерее с полными тегами.
+
+#### 24.17.7 Новые API эндпоинты (content-search)
+
+| Роут | Функция | Декораторы | Описание |
+|------|---------|------------|----------|
+| `GET /api/content-search` | `api_content_search()` | `@auth_required`, `@api_error_handler` | Unified search (R34, Danbooru, NHentai) |
+| `GET/POST /api/content-search/download` | `api_content_search_download()` | `@auth_required`, `@api_error_handler` | Download file + save tags to DB |
+| `POST /api/content-search/download-manga` | `api_content_search_download_manga()` | `@auth_required`, `@api_error_handler` | Download full NHentai gallery |
+| `GET /api/content-search/mount-check` | `api_content_search_mount_check()` | `@auth_required`, `@api_error_handler` | Check storage mount status |
+| `POST /api/content-search/create-folders` | `api_content_search_create_folders()` | `@admin_required`, `@api_error_handler` | Create Gallery/Comics/Downloads subdirs |
+
+#### 24.17.8 Новые i18n ключи
+
+Добавлено в LOCALE (en + ru):
+
+| Ключ (en) | Ключ (ru) |
+|-----------|-----------|
+| `contentSearchDownload` | `'Download from {site}'` / `'Скачать с {site}'` |
+| `contentSearchPages` | `'pages'` / `'страниц'` |
+| `contentSearchSelectSource` | `'Select source'` / `'Выберите источник'` |
+| `contentSearchError` | `'Search error'` / `'Ошибка поиска'` |
+| `contentSearchStorageEmpty` | `'Storage directory empty or not mounted'` / `'Папка хранения пуста или не смонтирована'` |
+
+---
+
 ### 24.15 Выполненные фичи (16.06.2026)
 
 Три крупные фичи, реализованные и задокументированные в этом цикле:
@@ -2855,7 +3060,38 @@ exception.GalleryDLException (code=1)
 #### 24.17.3 Comics-tags tag UI
 - **`static/content/comics-tags.js:170`** — левая панель тегов использует ту же `.cm-files-left-section` структуру, что и tags-manage страница. Поиск по тегам имеет правильный wrapper.
 
-#### 24.17.4 Home page improvements
+### 24.18 Mount Indicator Improvements (19.06.2026)
+
+**Три изменения, связанные с индикатором монтирования (`GET /api/content-search/mount-check`):**
+
+#### 24.18.1 CSS fix: mount styles в `admin.css`
+
+Стили `.mount-dot`, `.mount-badge`, `@keyframes mountPulse` скопированы из `settings.css` в `admin.css` (строки 420-450). Админ-панель (`/admin`) загружает `admin.css`, но не `settings.css` — без копии стили не применялись.
+
+**Key file:** `static/css/admin.css:420-450`
+
+#### 24.18.2 `admMountStatus` удалён из Folders card
+
+Индикатор `#admMountStatus` в карточке Folders (раздел Database в `/admin`) удалён. Индикатор остался только в хедере страницы — `#admMountIndicator` рядом с `#adminPageTitle` (`admin.html:35`).
+
+**Key changes:**
+- `static/admin/admin.js` — `_checkMount()` больше не обновляет `#admMountStatus` (удалены 2 строки)
+- `templates/admin/admin.html:35` — `#admMountIndicator` в хедере
+
+#### 24.18.3 `#mountStatus` перемещён в card header (settings)
+
+В Settings → Appearance → Media Path индикатор `#mountStatus` перенесён из подвала карточки (после кнопок) в `admin-card-header`, рядом с заголовком «Media Path».
+
+**Key changes:**
+- `templates/settings.html:48` — `#mountStatus` в хедере карточки
+- `static/css/settings.css:126` — удалён `margin-top: 8px` у `.mount-badge`
+
+**Admin JS mount monitoring:**
+- `_checkMount()` — запрос к `/api/content-search/mount-check`, рендер в `#admMountIndicator`
+- `_startMountWatch()` / `_stopMountWatch()` — авто-перепроверка каждые 5 минут
+- `_mountTimer` — таймер для интервала (сбрасывается при скрытии секции)
+
+#### 24.18.4 Home page improvements
 - **`templates/home.html:302`** — карточки сбалансированы:
   - MV: `flex:1`
   - CM: `flex:1.5, max-width:520px` (был `flex:2`)

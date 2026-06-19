@@ -2720,13 +2720,13 @@ def _quick_scan(force=False):
     if not _scan_lock.acquire(blocking=False):
         log_info('quick_scan: scan already in progress, skipping')
         return (0, 0)
+    _scan_in_progress = True
+    count = 0
+    errors = 0
     try:
-        _scan_in_progress = True
         media_dir = settings.get('media_dir', '')
         if not media_dir:
             log_info('quick_scan: no media_dir set')
-            _scan_in_progress = False
-            _scan_lock.release()
             return (0, 0)
 
         # ── Fast check: compare file count ──
@@ -2737,8 +2737,6 @@ def _quick_scan(force=False):
 
         if not force and prev_dir == media_dir and current_count == prev_count:
             log_info('quick_scan: file count unchanged (%d), skipping', current_count)
-            _scan_in_progress = False
-            _scan_lock.release()
             return (0, 0)
 
         log_info('quick_scan: scanning %s (force=%s, count=%d)', media_dir, force, current_count)
@@ -4278,6 +4276,7 @@ def api_comics_search():
 @app.route('/api/comics/list')
 @api_error_handler
 def api_comics_list():
+    db = None
     try:
         db = _db_conn()
         rows = db.execute('''
@@ -4286,7 +4285,6 @@ def api_comics_list():
               (SELECT COUNT(*) FROM comic_pages WHERE comic_id = c.id) as page_count
             FROM comics c ORDER BY c.created_at DESC
         ''').fetchall()
-        db.close()
         return jsonify([{
             'id': r[0], 'title': r[1],
             'cover': r[2] if r[2] else r[5],
@@ -4296,6 +4294,8 @@ def api_comics_list():
         } for r in rows])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        if db: db.close()
 
 # Создание нового комикса из списка файлов.
 @app.route('/api/comics/add', methods=['POST'])

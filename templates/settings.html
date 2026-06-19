@@ -50,10 +50,17 @@
                 <label class="admin-field-label" for="mediaDir">{{ _('settingsMediaPath') }}</label>
                 <input type="text" id="mediaDir" class="admin-field-input" value="{{ s.get('media_dir', '') }}" placeholder="/path/to/media">
               </div>
+              <div class="admin-field-row" style="margin-top:12px">
+                <div class="admin-field"><label class="admin-field-label">{{ _('adminGalleryDir') }}</label><input class="admin-field-input" id="galleryDir" value="{{ s.get('gallery_dir', 'Gallery') }}" placeholder="Gallery"></div>
+                <div class="admin-field"><label class="admin-field-label">{{ _('adminComicsDir') }}</label><input class="admin-field-input" id="comicsDir" value="{{ s.get('comics_dir', 'Comics') }}" placeholder="Comics"></div>
+                <div class="admin-field"><label class="admin-field-label" data-i18n="settingsDownloadsDir">{{ _('settingsDownloadsDir') }}</label><input class="admin-field-input" id="downloadsDir" value="{{ s.get('downloads_dir', 'Downloads') }}" placeholder="Downloads"></div>
+              </div>
               <div style="display:flex;gap:8px;margin-top:12px">
                 <button class="btn btn-primary" onclick="SettingsApp.saveMediaDir()" data-i18n="save">{{ _('save') }}</button>
                 <button class="btn" onclick="SettingsApp.scanFolder()" data-i18n="settingsScan">{{ _('settingsScan') }}</button>
+                <button class="btn" onclick="SettingsApp.createFolders()" data-i18n="settingsCreateFolders">{{ _('settingsCreateFolders') }}</button>
               </div>
+              <div id="mountStatus" style="margin-top:12px"></div>
             </div>
 
             <div class="admin-card">
@@ -203,6 +210,7 @@
 <script>
 var SettingsApp = (function() {
   var _currentTab = 'appearance';
+  var _mountTimer = null;
 
   function _t(key) {
     if (window._i18nData) {
@@ -247,6 +255,13 @@ var SettingsApp = (function() {
     if (content) content.classList.add('active');
     if (tab) tab.classList.add('active');
     if (name === 'database') { loadDbTools(); loadBackends(); }
+    if (name === 'appearance') {
+      checkMount();
+      if (_mountTimer) clearInterval(_mountTimer);
+      _mountTimer = setInterval(checkMount, 300000);
+    } else {
+      if (_mountTimer) { clearInterval(_mountTimer); _mountTimer = null; }
+    }
   }
 
   function toggleEffects() {
@@ -296,9 +311,16 @@ var SettingsApp = (function() {
   function saveMediaDir() {
     var dir = document.getElementById('mediaDir').value.trim();
     if (!dir) { _toast('Enter a path', 'error'); return; }
-    _api('/api/settings', {method:'POST', body:{media_dir:dir}}).then(function(d) {
+    var data = {
+      media_dir: dir,
+      gallery_dir: document.getElementById('galleryDir').value.trim(),
+      comics_dir: document.getElementById('comicsDir').value.trim(),
+      downloads_dir: document.getElementById('downloadsDir').value.trim(),
+    };
+    _api('/api/settings', {method:'POST', body:data}).then(function(d) {
       if (d.scan_needed) { location.reload(); return; }
       _toast(_t('save') + ' — OK', 'success');
+      checkMount();
     }).catch(function(e) { _toast(e.message, 'error'); });
   }
 
@@ -309,6 +331,38 @@ var SettingsApp = (function() {
       return _api('/api/scan_folder', {method:'POST'});
     }).then(function(d) {
       _toast(_t('settingsScan') + ' — ' + (d.found || 0) + ' ' + _t('filesCountShort'), 'success');
+    }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  function checkMount() {
+    var el = document.getElementById('mountStatus');
+    if (!el) return;
+    _api('/api/content-search/mount-check', {method:'GET'}).then(function(d) {
+      el.innerHTML = d.mounted && !d.empty
+        ? '<span class="mount-dot mount-dot-green"></span><span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>'
+        : '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + _t('settingsMountFail') + '</span>';
+    }).catch(function(e) {
+      el.innerHTML = '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + e.message + '</span>';
+    });
+  }
+
+  function createFolders() {
+    var dir = document.getElementById('mediaDir').value.trim();
+    if (!dir) { _toast(_t('settingsSelectFolder'), 'error'); return; }
+    var data = {
+      media_dir: dir,
+      gallery_dir: document.getElementById('galleryDir').value.trim(),
+      comics_dir: document.getElementById('comicsDir').value.trim(),
+      downloads_dir: document.getElementById('downloadsDir').value.trim(),
+    };
+    _api('/api/settings', {method:'POST', body:data}).then(function() {
+      return _api('/api/content-search/create-folders', {method:'POST'});
+    }).then(function(d) {
+      var parts = [];
+      if (d.created && d.created.length) parts.push(_t('settingsCreateFoldersDone') + ': ' + d.created.join(', '));
+      if (d.existing && d.existing.length) parts.push(_t('settingsFoldersExist') + ': ' + d.existing.join(', '));
+      _toast(parts.join('; ') || _t('settingsCreateFoldersDone'), 'success');
+      checkMount();
     }).catch(function(e) { _toast(e.message, 'error'); });
   }
 
@@ -453,6 +507,7 @@ var SettingsApp = (function() {
     switchTab: switchTab, toggleEffects: toggleEffects, toggleBg: toggleBg,
     saveBrowserCache: saveBrowserCache,
     saveMediaDir: saveMediaDir, scanFolder: scanFolder,
+    checkMount: checkMount, createFolders: createFolders,
     dbAction: dbAction, loadDbTools: loadDbTools,
     loadBackends: loadBackends, saveBackends: saveBackends,
     changeUsername: changeUsername, changePassword: changePassword

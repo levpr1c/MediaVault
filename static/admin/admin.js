@@ -168,6 +168,8 @@ var AdminDashboard = (function() {
         '<div style="display:flex;gap:8px;margin-top:8px;margin-bottom:16px">' +
         '<button class="btn" onclick="AdminDashboard._pickFolder()"><span data-i18n="settingsSystemDialog">' + _t('settingsSystemDialog') + '</span></button>' +
         '<button class="btn btn-primary" onclick="AdminDashboard._scanFolder()"><span data-i18n="settingsScan">' + _t('settingsScan') + '</span></button>' +
+        '<button class="btn" onclick="AdminDashboard._rescanFolder()" id="admRescanBtn"><span>&#x21bb; Rescan</span></button>' +
+        '<span id="admScanStatus" style="font-size:12px;color:var(--text2);margin-left:4px"></span>' +
         '</div>' +
         '<div class="admin-field-row three-col">' +
         '<div class="admin-field"><label class="admin-field-label"><span data-i18n="adminGalleryDir">' + _t('adminGalleryDir') + '</span></label><input class="admin-field-input" id="galleryDir" value="' + _esc(s.gallery_dir || 'Gallery') + '" placeholder="Gallery"></div>' +
@@ -658,11 +660,29 @@ var AdminDashboard = (function() {
   function _scanFolder() {
     var dir = document.getElementById('admMediaDir').value.trim();
     if (!dir) { _toast(_t('settingsSelectFolder'), 'error'); return; }
+    var st = document.getElementById('admScanStatus');
+    if (st) st.textContent = 'scanning...';
     _api('/api/settings', {method:'POST', body:{media_dir:dir}}).then(function() {
       return _api('/api/scan_folder', {method:'POST'});
     }).then(function(d) {
-      _toast(_t('settingsScan') + ' — ' + (d.found || 0) + ' ' + _t('filesCountShort'), 'success');
-    }).catch(function(e) { _toast(e.message, 'error'); });
+      _toast(_t('settingsScan') + ' — ' + (d.scanned || 0) + ' ' + _t('filesCountShort'), 'success');
+      if (st) st.textContent = 'ok (' + (d.scanned || 0) + ' files)';
+    }).catch(function(e) { 
+      if (st) st.textContent = 'error';
+      _toast(e.message, 'error'); 
+    });
+  }
+
+  function _rescanFolder() {
+    var st = document.getElementById('admScanStatus');
+    if (st) st.textContent = 'scanning...';
+    _api('/api/scan_folder', {method:'POST'}).then(function(d) {
+      _toast('Rescan — ' + (d.scanned || 0) + ' files');
+      if (st) st.textContent = 'ok (' + (d.scanned || 0) + ' new)';
+    }).catch(function(e) {
+      if (st) st.textContent = 'error';
+      _toast(e.message, 'error');
+    });
   }
 
   var _mountTimer = null;
@@ -682,11 +702,28 @@ var AdminDashboard = (function() {
     });
   }
 
+  function _checkScanStatus() {
+    _api('/api/scan_status', {method:'GET'}).then(function(d) {
+      var st = document.getElementById('admScanStatus');
+      if (st) {
+        if (d.scan_in_progress) {
+          st.textContent = 'scan in progress...';
+        } else if (!st.textContent || st.textContent === 'scan in progress...') {
+          st.textContent = '';
+        }
+      }
+    }).catch(function() {});
+  }
+
   // Auto-recheck mount every 30s while section is visible
   function _startMountWatch() {
     _stopMountWatch();
     _checkMount();
-    _mountTimer = setInterval(_checkMount, 300000);
+    _checkScanStatus();
+    _mountTimer = setInterval(function() {
+      _checkMount();
+      _checkScanStatus();
+    }, 300000);
   }
   function _stopMountWatch() {
     if (_mountTimer) { clearInterval(_mountTimer); _mountTimer = null; }
@@ -767,6 +804,7 @@ var AdminDashboard = (function() {
     _saveCredBackend: _saveCredBackend,
     _pickFolder: _pickFolder,
     _scanFolder: _scanFolder,
+    _rescanFolder: _rescanFolder,
     _checkMount: _checkMount,
     _createFolders: _createFolders,
     _saveFolderSettings: _saveFolderSettings,

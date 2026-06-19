@@ -84,6 +84,9 @@ def log_request(method, path, query, status):
     else:
         log_info_red('%s %s → %d', method, full, status)
 
+# Флаг сканирования — предотвращает конкурентные сканы
+_scan_in_progress = False
+
 # ── Путь к БД (всегда в скрытой папке) ──
 
 _DB_DIR = os.path.expanduser('~/.local/share/MediaVault')
@@ -2712,87 +2715,104 @@ def _quick_scan(force=False):
     Uses a single transaction — no per-file commits.
     Computes width/height for image files during scan (Pillow).
     """
-    media_dir = settings.get('media_dir', '')
-    if not media_dir:
+    global _scan_in_progress
+    if _scan_in_progress:
+        log_info('quick_scan: scan already in progress, skipping')
         return (0, 0)
-
-    # ── Fast check: compare file count ──
-    s = load_settings()
-    current_count = _count_media_files(media_dir)
-    prev_count = s.get('startup_scan_count', 0)
-    prev_dir = s.get('startup_scan_dir', '')
-
-    if not force and prev_dir == media_dir and current_count == prev_count:
-        log_info('quick_scan: file count unchanged (%d), skipping', current_count)
-        return (0, 0)
-
-    _ensure_db_schema()
-    count = 0
-    errors = 0
-    db = _db_conn()
-
+    _scan_in_progress = True
     try:
-        for root, dirs, files in os.walk(media_dir):
-            # Skip hidden directories (e.g. .thumb_cache, .Trash-1000)
-            dirs[:] = [d for d in dirs if not d.startswith('.')]
+        media_dir = settings.get('media_dir', '')
+        if not media_dir:
+            log_info('quick_scan: no media_dir set')
+            return (0, 0)
 
-            for f in files:
-                if f.startswith('.'):
-                    continue
-                ext = os.path.splitext(f)[1].lower()
-                if ext not in _MEDIA_EXTS:
-                    continue
-                full = os.path.join(root, f)
-                rel = os.path.relpath(full, media_dir)
+        # ── Fast check: compare file count ──
+        s = load_settings()
+        current_count = _count_media_files(media_dir)
+        prev_count = s.get('startup_scan_count', 0)
+        prev_dir = s.get('startup_scan_dir', '')
 
-                # Already in DB → skip (has auto-tags, preview, everything)
-                if db.execute('SELECT 1 FROM files WHERE path = ?', [rel]).fetchone():
-                    continue
+        if not force and prev_dir == media_dir and current_count == prev_count:
+            log_info('quick_scan: file count unchanged (%d), skipping', current_count)
+            return (0, 0)
 
-                # New file — insert with auto-tags and folder_type
-                try:
-                    auto_tags = _get_auto_tags(full)
-                    auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
-                    merged = ','.join(sorted(auto_set)) if auto_set else ''
-                    ftype = _get_file_type(ext)
-                    size = os.path.getsize(full)
-                    mtime = int(os.path.getmtime(full))
-                    w, h = _get_image_dimensions(full) if ftype == 'image' else (0, 0)
-                    # Определяем folder_type по первому компоненту пути
-                    first_dir = rel.split('/')[0] if '/' in rel else ''
-                    gallery_dir = settings.get('gallery_dir', 'Gallery')
-                    comics_dir = settings.get('comics_dir', 'Comics')
-                    dl_dir = settings.get('downloads_dir', 'Downloads')
-                    folder_type = {gallery_dir: 'gallery', comics_dir: 'comics', dl_dir: 'downloads'}.get(first_dir, 'gallery')
+        log_info('quick_scan: scanning %s (force=%s, count=%d)', media_dir, force, current_count)
+        _ensure_db_schema()
+        count = 0
+        errors = 0
+        db = _db_conn()
 
-                    db.execute(
-                        'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
-                        [rel, f, ftype, size, mtime, merged, w, h, int(time.time()), folder_type]
-                    )
-                    count += 1
-                except Exception as e:
-                    log_error('_quick_scan error path=%s: %s', rel, e)
-                    errors += 1
+        try:
+            for root, dirs, files in os.walk(media_dir):
+                dirs[:] = [d for d in dirs if not d.startswith('.')]
+                for f in files:
+                    if f.startswith('.'):
+                        continue
+                    ext = os.path.splitext(f)[1].lower()
+                    if ext not in _MEDIA_EXTS:
+                        continue
+                    full = os.path.join(root, f)
+                    rel = os.path.relpath(full, media_dir)
+                    if db.execute('SELECT 1 FROM files WHERE path = ?', [rel]).fetchone():
+                        continue
+                    try:
+                        auto_tags = _get_auto_tags(full)
+                        auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
+                        merged = ','.join(sorted(auto_set)) if auto_set else ''
+                        ftype = _get_file_type(ext)
+                        size = os.path.getsize(full)
+                        mtime = int(os.path.getmtime(full))
+                        w, h = _get_image_dimensions(full) if ftype == 'image' else (0, 0)
+                        first_dir = rel.split('/')[0] if '/' in rel else ''
+                        gallery_dir = settings.get('gallery_dir', 'Gallery')
+                        comics_dir = settings.get('comics_dir', 'Comics')
+                        dl_dir = settings.get('downloads_dir', 'Downloads')
+                        folder_type = {gallery_dir: 'gallery', comics_dir: 'comics', dl_dir: 'downloads'}.get(first_dir, 'gallery')
+                        db.execute(
+                            'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                            [rel, f, ftype, size, mtime, merged, w, h, int(time.time()), folder_type]
+                        )
+                        count += 1
+                    except Exception as e:
+                        log_error('_quick_scan error path=%s: %s', rel, e)
+                        errors += 1
+        finally:
+            db.commit()
+            db.close()
+
+        s = load_settings()
+        s['startup_scan_count'] = current_count
+        s['startup_scan_dir'] = media_dir
+        save_settings(s)
+
+        log_info('quick_scan done: %d new, %d errors (total %d files in dir)', count, errors, current_count)
+    except Exception as e:
+        log_error('quick_scan error: %s', e)
     finally:
-        db.commit()
-        db.close()
-
-    # Save count for next startup
-    s = load_settings()
-    s['startup_scan_count'] = current_count
-    s['startup_scan_dir'] = media_dir
-    save_settings(s)
-
-    log_info('quick_scan done: %d new, %d errors (total %d files in dir)', count, errors, current_count)
+        _scan_in_progress = False
     return (count, errors)
 
-# Ручное сканирование папки (кнопка Scan Folder). Запускает _quick_scan(force=True).
+# Ручное сканирование папки (кнопка Scan/Rescan). Запускает _quick_scan(force=True).
 @app.route('/api/scan_folder', methods=['POST'])
 @admin_required
 @api_error_handler
 def api_scan_folder():
+    log_info('scan_folder: manual scan requested')
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        log_info('scan_folder: no media_dir set')
+        return jsonify({'ok': False, 'error': 'no media_dir'}), 400
+    log_info('scan_folder: media_dir=%s, scan_in_progress=%s', media_dir, _scan_in_progress)
     count, errors = _quick_scan(force=True)
+    log_info('scan_folder: done — scanned=%d, errors=%d', count, errors)
     return jsonify({'ok': True, 'scanned': count, 'errors': errors})
+
+# Статус сканирования.
+@app.route('/api/scan_status', methods=['GET'])
+@admin_required
+@api_error_handler
+def api_scan_status():
+    return jsonify({'scan_in_progress': _scan_in_progress})
 
 # Загрузка галереи с пагинацией. Параметры: page, per_page. Возвращает список файлов с тегами.
 @app.route('/api/gallery')
@@ -4062,13 +4082,14 @@ def api_clear_tag_cache():
     if os.path.exists(_DB_PATH):
         try:
             db = _db_conn()
-            db.execute('DROP TABLE IF EXISTS scan_results')
-            db.execute('DROP TABLE IF EXISTS auto_scan')
+            db.execute('DELETE FROM scan_results')
+            db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
             db.commit()
             db.close()
-            log_debug('clear_tag_cache dropped scan_results + auto_scan tables')
+            log_info('clear_tag_cache: cleared scan_results + checkpoint')
         except Exception as e:
-            log_error('clear_tag_cache db error: %s', e)
+            log_error('clear_tag_cache error: %s', e)
+            return jsonify({'error': str(e)}), 500
     return jsonify({'ok': True})
 
 # Очистка таблиц files, scan_results, auto_scan (категории сохраняются).
@@ -4076,7 +4097,7 @@ def api_clear_tag_cache():
 @admin_required
 @api_error_handler
 def api_clear_database():
-    """Clear all file records from the database (preserves categories)."""
+    """Clear files, thumb_cache, scan_results, auto_scan. Start fresh scan."""
     log_info('clear_database')
     global _api_cache, _md5_cache
     _api_cache = {}
@@ -4087,8 +4108,8 @@ def api_clear_database():
         db = _db_conn()
         db.execute('DELETE FROM files')
         db.execute('DELETE FROM thumbnail_cache')
-        db.execute('DROP TABLE IF EXISTS scan_results')
-        db.execute('DROP TABLE IF EXISTS auto_scan')
+        db.execute('DELETE FROM scan_results')
+        db.execute('DELETE FROM auto_scan')
         db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
         db.commit()
         db.close()
@@ -4132,13 +4153,13 @@ def api_clear_tags():
     if os.path.exists(_DB_PATH):
         try:
             db = _db_conn()
-            db.execute('DROP TABLE IF EXISTS tag_category_members')
-            db.execute('DROP TABLE IF EXISTS scan_results')
-            db.execute('DROP TABLE IF EXISTS auto_scan')
+            db.execute('DELETE FROM tag_category_members')
+            db.execute('DELETE FROM scan_results')
+            db.execute('DELETE FROM auto_scan')
             db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
             db.commit()
             db.close()
-            log_info('clear_tags: dropped tag_category_members, scan_results, auto_scan + checkpoint')
+            log_info('clear_tags: cleared tag_category_members, scan_results, auto_scan + checkpoint')
         except Exception as e:
             log_error('clear_tags db error: %s', e)
             return jsonify({'error': str(e)}), 500
@@ -4157,11 +4178,12 @@ def api_delete_all():
     if os.path.exists(_DB_PATH):
         try:
             db = _db_conn()
+            db.execute('PRAGMA busy_timeout=15000')
             db.execute('DELETE FROM files')
-            db.execute('DROP TABLE IF EXISTS tag_categories')
-            db.execute('DROP TABLE IF EXISTS tag_category_members')
-            db.execute('DROP TABLE IF EXISTS scan_results')
-            db.execute('DROP TABLE IF EXISTS auto_scan')
+            db.execute('DELETE FROM tag_categories')
+            db.execute('DELETE FROM tag_category_members')
+            db.execute('DELETE FROM scan_results')
+            db.execute('DELETE FROM auto_scan')
             db.execute('DELETE FROM thumbnail_cache')
             db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
             db.commit()

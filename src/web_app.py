@@ -2307,7 +2307,7 @@ def api_kemono_download():
     os.makedirs(dest_sub, exist_ok=True)
     result = backend.download(url, dest_sub)
     if result.get('ok'):
-        _quick_scan()
+        threading.Thread(target=_quick_scan, daemon=True).start()
     return jsonify(result)
 
 # ── API: Credentials ─────────────────────────
@@ -2716,15 +2716,17 @@ def _quick_scan(force=False):
     Uses a single transaction — no per-file commits.
     Computes width/height for image files during scan (Pillow).
     """
-    global _scan_in_progress
+    global _scan_in_progress, _scan_lock
     if not _scan_lock.acquire(blocking=False):
         log_info('quick_scan: scan already in progress, skipping')
         return (0, 0)
-    _scan_in_progress = True
     try:
+        _scan_in_progress = True
         media_dir = settings.get('media_dir', '')
         if not media_dir:
             log_info('quick_scan: no media_dir set')
+            _scan_in_progress = False
+            _scan_lock.release()
             return (0, 0)
 
         # ── Fast check: compare file count ──
@@ -2735,6 +2737,8 @@ def _quick_scan(force=False):
 
         if not force and prev_dir == media_dir and current_count == prev_count:
             log_info('quick_scan: file count unchanged (%d), skipping', current_count)
+            _scan_in_progress = False
+            _scan_lock.release()
             return (0, 0)
 
         log_info('quick_scan: scanning %s (force=%s, count=%d)', media_dir, force, current_count)
@@ -2804,7 +2808,10 @@ def api_scan_folder():
     if not media_dir:
         log_info('scan_folder: no media_dir set')
         return jsonify({'ok': False, 'error': 'no media_dir'}), 400
-    log_info('scan_folder: media_dir=%s, scan_in_progress=%s', media_dir, _scan_in_progress)
+    log_info('scan_folder: media_dir=%s', media_dir)
+    if _scan_in_progress:
+        log_info('scan_folder: scan already in progress')
+        return jsonify({'ok': True, 'scanned': 0, 'errors': 0, 'skipped': 'scan_in_progress'})
     count, errors = _quick_scan(force=True)
     log_info('scan_folder: done — scanned=%d, errors=%d', count, errors)
     return jsonify({'ok': True, 'scanned': count, 'errors': errors})
@@ -4071,7 +4078,7 @@ def api_clear_browser_cache():
     log_info('clear_browser_cache: busted to %d', s['cache_buster'])
     return jsonify({'ok': True, 'cache_buster': s['cache_buster']})
 
-# Очистка in-memory кэша (API + MD5) и таблиц scan_results/auto_scan.
+# Очистка in-memory кэша (API + MD5) и таблицы scan_results.
 @app.route('/api/clear_tag_cache', methods=['POST'])
 @admin_required
 @api_error_handler

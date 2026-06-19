@@ -168,7 +168,7 @@ class GalleryDlBackend:
             self._apply_gd_config(settings or {})
             return self._search_danbooru(query, page, settings)
         elif site == 'rule34':
-            return self._search_rule34(query, page)
+            return self._search_rule34(query, page, settings)
         elif site == 'nhentai':
             self._apply_gd_config(settings or {})
             return self._search_nhentai(query, page)
@@ -202,15 +202,20 @@ class GalleryDlBackend:
             print(f'GalleryDlBackend: danbooru search error: {e}', file=sys.stderr)
         return {'results': [], 'total': 0}
 
-    def _search_rule34(self, query, page):
-        """R34 search — use raw JSON API (gallery-dl needs api-key for v2)."""
+    def _search_rule34(self, query, page, settings=None):
+        """R34 search — use raw JSON API (needs api-key + user-id now)."""
         pid = page - 1
         url = f'https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&tags={requests.utils.quote(query)}&limit=100&pid={pid}'
+        creds = (settings or {}).get('credentials', {}).get('rule34', {})
+        uid = creds.get('uid', '')
+        key = creds.get('key', '')
+        if uid and key:
+            url += f'&user_id={uid}&api_key={key}'
         try:
             r = requests.get(url, headers={'User-Agent': _UA}, timeout=30)
             if r.status_code == 200 and r.text.strip():
                 posts = r.json()
-                if not posts:
+                if not isinstance(posts, list) or not posts:
                     return {'results': [], 'total': 0}
                 results = []
                 for p in posts:

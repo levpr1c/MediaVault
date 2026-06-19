@@ -37,7 +37,9 @@ function _buildHTML() {
   let html = `<div id="cmComicsTags" class="cm-files">`
   html += `<div class="cm-files-body" style="display:flex;gap:16px;height:100%">`
   html += `<div class="cm-files-left shared-tag-panel" style="flex:0 0 240px;overflow-y:auto">`
+  html += `<div class="cm-files-left-search">`
   html += `<input id="cmComicsTagSearchQ" class="cm-tag-search-input" placeholder="${_t('tagSearchPlaceholder')}">`
+  html += `</div>`
   html += `<div id="cmComicsLeftContent"></div>`
   html += `</div>`
   html += `<div class="cm-comics-grid" id="cmComicsTagsGrid" style="flex:1;overflow-y:auto">`
@@ -117,14 +119,11 @@ function _renderLeftTags(searchQ) {
     let tags = cat.tags
     if (q) tags = tags.filter(t => t.toLowerCase().includes(q))
     if (q && !tags.length && !cat.name.toLowerCase().includes(q)) return
-    html += `<div class="cm-tags-card" data-cat="${esc(cat.name)}">`
-    html += `<div class="cm-tags-card-head" style="background:${hexToRgba(cat.color, 0.1)}">`
-    html += `<span class="cm-tags-dot" style="background:${cat.color}"></span>`
-    html += `<span class="cm-tags-name" style="color:${cat.color}">${esc(cat.name)}</span>`
-    html += `<span class="cm-tags-count">${tags.length}</span>`
-    html += `</div><div class="cm-tags-card-body">`
+    html += `<div class="cm-files-left-section" data-cat="${esc(cat.name)}">`
+    html += `<div class="cm-files-left-section-title" style="color:${cat.color}">${esc(cat.name)}</div>`
+    html += `<div class="cm-files-left-tags">`
     tags.forEach(tag => {
-      html += `<span class="tag-chip" draggable="true" data-tag="${esc(tag)}" data-cat="${esc(cat.name)}" style="color:${cat.color};background:${hexToRgba(cat.color, 0.12)}">${esc(tag)}</span>`
+      html += `<span class="tag-chip cm-tags-chip" draggable="true" data-tag="${esc(tag)}" data-cat="${esc(cat.name)}" style="color:${cat.color};background:${hexToRgba(cat.color, 0.12)}">${esc(tag)}</span>`
     })
     html += `</div></div>`
   })
@@ -135,10 +134,10 @@ function _filterLeftTags(q) {
   const container = document.getElementById('cmComicsLeftContent')
   if (!container) return
   const val = q.toLowerCase().trim()
-  container.querySelectorAll('.cm-tags-card').forEach(card => {
-    const name = (card.dataset.cat || '').toLowerCase()
-    const tags = Array.from(card.querySelectorAll('.tag-chip')).some(c => c.textContent.toLowerCase().includes(val))
-    card.style.display = name.includes(val) || tags ? '' : 'none'
+  container.querySelectorAll('.cm-files-left-section').forEach(section => {
+    const name = (section.dataset.cat || '').toLowerCase()
+    const tags = Array.from(section.querySelectorAll('.tag-chip')).some(c => c.textContent.toLowerCase().includes(val))
+    section.style.display = name.includes(val) || tags ? '' : 'none'
   })
 }
 

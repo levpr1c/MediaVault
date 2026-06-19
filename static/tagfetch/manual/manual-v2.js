@@ -65,10 +65,6 @@ var ManualTagfetch = (function() {
     return html || '<span style="opacity:.5">No tags</span>';
   }
 
-  function recheckFilter() {
-    applyFilter();
-  }
-
   // ── Filter ──
 
   function setFilter(mode) {

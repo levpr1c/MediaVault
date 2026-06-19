@@ -171,8 +171,8 @@ MediaVault/
 │   │   ├── utils.js           ← i18n, форматирование, layout utilities (864 строки)
 │   │   ├── api.js             ← Базовый fetch с обработкой ошибок (37 строк)
 │   │   ├── init.js            ← Точка входа: drawer, banner, инициализация страниц (99 строк)
-│   │   ├── lightbox.js        ← Единый лайтбокс (zoom, nav, tags, swipe) (953 строки)
-│   │   ├── comics/comics.js   ← Файловый браузер ComicsPicker (cpGrid, preview, DnD, 510 строк)
+│   │   ├── lightbox.js        ← Единый лайтбокс (zoom, nav, tags, swipe) (957 строк)
+│   │   ├── comics/comics.js   ← Файловый браузер ComicsPicker (cpGrid, preview, DnD, 644 строки)
 │   │   ├── comics/comics-list.js ← Список комиксов (MV view, add-card для admin, 83 строки)
 │   │   ├── comics/picker-bridge.js ← ES-мост для ComicsPicker (53 строки)
 │   │   ├── gallery/gallery.js ← Галерея + сортировка, popular tags (753 строки)
@@ -218,7 +218,7 @@ MediaVault/
 | `backends/gallerydl.py` | 338 | GalleryDlBackend: Rule34 + Danbooru + NHentai + Kemono + Coomer |
 | **Total Python** | **4607** | **5 файлов** |
 | **JS** | | |
-| `shared/lightbox.js` | 956 | Единый лайтбокс (zoom, nav, tags, swipe) |
+| `shared/lightbox.js` | 957 | Единый лайтбокс (zoom, nav, tags, swipe) |
 | `shared/utils.js` | 945 | i18n словари, layout utilities |
 | `shared/gallery/gallery.js` | 800 | Галерея: загрузка, фильтр, пагинация, сортировка, popular tags |
 | `admin/admin.js` | 727 | AdminDashboard SPA: 5 разделов (Users, Database, API Keys, Folders, Backends) |
@@ -260,8 +260,8 @@ MediaVault/
 | **Templates** | | |
 | `settings.html` | 466 | Настройки с 4 табами (SPA) |
 | `shared/view.html` | 393 | Просмотр standalone + comics reader |
-| `home.html` | 297 | Главная 3 блока + Three.js bg |
-| `base.html` | 324 | Главный скелет: head, CONFIG, JS, CSS, footer |
+| `home.html` | 302 | Главная 3 блока + Three.js bg |
+| `base.html` | 314 | Главный скелет: head, CONFIG, JS, CSS, footer |
 | `login.html` | 177 | Логин username+password + Three.js bg (standalone) |
 | `kemono_import.html` | 138 | Страница импорта с Kemono |
 | `shared/gallery.html` | 128 | Галерея + comics tabs + lightbox |
@@ -276,8 +276,8 @@ MediaVault/
 | `tagfetch/auto.html` | 33 | Авто-режим Tagfetch |
 | `shared/popular_tags.html` | 31 | Популярные теги |
 | `franchise_search.html` | 58 | Страница франчайз-поиска |
-| **Total templates** | **2617** | **18 файлов** |
-| **Total** | **17333** | **Весь проект** (Python 4607 + JS 8109 + CSS 2140 + Templates 2617) |
+| **Total templates** | **2612** | **18 файлов** |
+| **Total** | **17468** | **Весь проект** (Python 4607 + JS 8109 + CSS 2140 + Templates 2612) |
 
 ---
 
@@ -1085,10 +1085,10 @@ flowchart TD
 
 | Файл | Строк | Роут |
 |------|-------|------|
-| templates/base.html | 324 | Shell, CONFIG JSON, CSS/JS links, header blocks |
+| templates/base.html | 314 | Shell, CONFIG JSON, CSS/JS links, header blocks |
 | templates/settings.html | 466 | Settings с 4 табами (SPA) |
 | templates/shared/view.html | 393 | Fullscreen viewer + comics reader |
-| templates/home.html | 297 | Home page 3 блока, Three.js bg |
+| templates/home.html | 302 | Home page 3 блока, Three.js bg |
 | templates/login.html | 177 | Login (standalone, не base.html), Three.js bg |
 | templates/kemono_import.html | 138 | Kemono import page |
 | templates/shared/gallery.html | 128 | Gallery + lightbox |
@@ -1186,7 +1186,7 @@ ES-модули загружаются через `<script type="module" src="..
 | Файл | Строк | Назначение |
 |------|-------|-----------|
 | static/shared/utils.js | 864 | i18n, форматирование, layout (Shared.* namespace) |
-| static/shared/lightbox.js | 953 | Fullscreen viewer, zoom, swipe, keyboard nav |
+| static/shared/lightbox.js | 957 | Fullscreen viewer, zoom, swipe, keyboard nav |
 | static/shared/home-bg.js | 145 | Three.js background для home/login (ES module) |
 | static/shared/init.js | 99 | Entry point: drawer, banner, page init |
 | static/shared/api.js | 37 | Базовый fetch GET/POST/POST upload |
@@ -2839,6 +2839,30 @@ exception.GalleryDLException (code=1)
 | `comicsTags` | Comics Tags / Теги комиксов |
 
 Добавлены в LOCALE (`web_app.py`) и `shared/utils.js`.
+
+---
+
+### 24.17 Сессия 18.06.2026 — Content-search fixes, header cleanup, home page polish
+
+#### 24.17.1 Content-search Lightbox fix
+- **`static/shared/lightbox.js:279`** — `Lightbox.close()` теперь проверяет `this._el('Media')` на null перед вызовом `.querySelector('video')`. Раньше вызов `close()` до `open()` приводил к `TypeError: Cannot read properties of null`.
+- **`static/content/content-search.js:101`** — `csLightbox.close()` обёрнут в try-catch для защиты от ошибок на странице поиска.
+
+#### 24.17.2 Header cleanup
+- **`templates/base.html`** — COMICS dropdown упрощён: удалены NHentai и Franchise. Остались только Editor и Comics Tags.
+- CM header COMICS группа теперь содержит 2 ссылки (было 4), SEARCH группа — 3 ссылки (Kemono, NHentai, Content Search).
+
+#### 24.17.3 Comics-tags tag UI
+- **`static/content/comics-tags.js:170`** — левая панель тегов использует ту же `.cm-files-left-section` структуру, что и tags-manage страница. Поиск по тегам имеет правильный wrapper.
+
+#### 24.17.4 Home page improvements
+- **`templates/home.html:302`** — карточки сбалансированы:
+  - MV: `flex:1`
+  - CM: `flex:1.5, max-width:520px` (был `flex:2`)
+  - Admin: `flex:1.2, max-width:440px`
+- CM 4-секционный грид использует класс `.hm-cm-grid` (вместо inline style)
+- Responsive breakpoints: 960px (wrap + 2-col grid), 768px (stack), 650px (1-col)
+- Account button SVG: padding 8px, размер 36×36
 
 ---
 

@@ -526,6 +526,54 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 ---
 
+### 16.8 Сессия 18.06.2026 — Content-search lightbox fix, header cleanup, comics-tags UI, home page
+
+#### 16.8.1 Content-search Lightbox fix
+
+| Фикс | Файл | Описание |
+|------|------|---------|
+| null guard в close() | `shared/lightbox.js:279` | `this._el('Media')` проверка на null перед `.querySelector('video')` |
+| try-catch wrapper | `content/content-search.js:101` | `csLightbox.close()` обёрнут в try-catch |
+
+**Проблема:** `new Lightbox()` → `doSearch()` → `Lightbox.close()` падал если `close()` вызывался до `open()` (элементы DOM не созданы). Ошибка распространялась наружу, блокируя весь поиск.
+
+#### 16.8.2 Header cleanup
+
+**COMICS dropdown** (`templates/base.html`):
+- Удалены: NHentai, Franchise
+- Остались: Editor, Comics Tags
+
+#### 16.8.3 Comics-tags tag UI restructuring
+
+| Изменение | Детали |
+|-----------|--------|
+| Left panel structure | Использует `.cm-files-left-section` (как tags-manage) |
+| Search input wrapper | Правильная обёртка (как в других CM секциях) |
+
+#### 16.8.4 Home page improvements
+
+| Изменение | Детали |
+|-----------|--------|
+| MV card | `flex:1` (был `flex:0.8`) |
+| CM card | `flex:1.5, max-width:520px` (был `flex:2`) |
+| Admin card | `flex:1.2, max-width:440px` |
+| CM grid class | `.hm-cm-grid` вместо inline style |
+| Responsive | 960px wrap, 768px stack, 650px 1-col |
+| Account button | padding 8px, 36×36 SVG |
+
+**Testing:**
+- [ ] Home page card sizes сбалансированы на 1920×1080
+- [ ] На 960px CM grid переходит в 2 колонки
+- [ ] На 768px все карточки stack
+- [ ] На 650px CM grid 1 колонка
+- [ ] Account button SVG корректного размера
+- [ ] Content-search: Lightbox.open() → close() не падает
+- [ ] Content-search: поиск работает без ошибок в консоли
+- [ ] COMICS dropdown: нет NHentai и Franchise
+- [ ] Comics-tags: левая панель тегов имеет правильную структуру
+
+---
+
 ## Итоговая сводка (обновлённая)
 
 | # | Фича | Строк кода | Файлов |
@@ -537,8 +585,10 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 | 5 | Browser Cache | ~30 | 2 |
 | 6 | UPSERT | ~10 | 1 |
 | 7 | Kemono URL | ~30 | 2 |
-| 8 | Comics Tags page | 171 (JS) | 3 (route + JS + main.js section) |
-| 9 | Content-search | 259 (JS) | 5 (route + JS + template + CSS + header) |
-| 10 | Comics Picker | ~30 (CSS) | 2 (comics.js + content.css) |
+| 8 | Comics Tags page | 171 (JS) | 3 |
+| 9 | Content-search | 259 (JS) | 5 |
+| 10 | Comics Picker | ~30 (CSS) | 2 |
+| 11 | Content-search lightbox fix | +4 (lightbox.js) | 2 |
+| 12 | Home page polish | ~20 (home.html + CSS) | 2 |
 
 ---

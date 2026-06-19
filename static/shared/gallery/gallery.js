@@ -790,7 +790,6 @@ var MediaVaultGallery = (function() {
     refreshGalleryItem: refreshGalleryItem,
     rowByPath: rowByPath,
     isSelectMode: function() { return _selectMode; },
-    selectedPaths: function() { return _selectedPaths; },
     toggleFetchedOnly: toggleFetchedOnly,
     toggleDateSort: toggleDateSort,
     setFolder: _setFolder

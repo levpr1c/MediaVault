@@ -93,14 +93,6 @@ var CONFIG = {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                 <span>Comics Tags</span>
               </a>
-              <a href="/nhentai-search" class="cm-hdr-tf-item{% if request.path == '/nhentai-search' %} active{% endif %}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                <span>NHentai</span>
-              </a>
-              <a href="/franchise-search" class="cm-hdr-tf-item{% if request.path == '/franchise-search' %} active{% endif %}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M12 8v4l3 3"/></svg>
-                <span>Franchise</span>
-              </a>
             </div>
           </div>
         <span class="cm-hdr-sep"></span>
@@ -112,11 +104,7 @@ var CONFIG = {
           <div class="cm-hdr-tf-items">
             <a href="/content-search" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <span data-i18n="searchFiles">File Search</span>
-            </a>
-            <a href="/content-search?site=nhentai" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <span data-i18n="searchComics">Comics Search</span>
+              <span data-i18n="contentSearch">Search</span>
             </a>
           </div>
         </div>
@@ -130,8 +118,7 @@ var CONFIG = {
 <div class="hdr-group-sep"></div>
 <div class="hdr-group">
   <span class="hdr-group-label" data-i18n="navSearch">Search</span>
-  <a href="/content-search" class="hdr-link{% if request.path == '/content-search' %} active{% endif %}" data-i18n="navSearchR34Dan">R34/Dan</a>
-  <a href="/content-search?site=nhentai" class="hdr-link{% if request.path == '/content-search' %} active{% endif %}">NHentai</a>
+  <a href="/content-search" class="hdr-link{% if request.path == '/content-search' %} active{% endif %}" data-i18n="contentSearch">Search</a>
 </div>
 <div class="hdr-group-sep"></div>
 <div class="hdr-group">
@@ -150,8 +137,6 @@ var CONFIG = {
   <span class="hdr-group-label">COMICS</span>
   <a href="/content-mgmt/comics-edit" class="hdr-link{% if 'comics-edit' in request.path %} active{% endif %}" data-i18n="navEditor">Editor</a>
   <a href="/content-mgmt/comics-tags" class="hdr-link{% if 'comics-tags' in request.path %} active{% endif %}">Comics Tags</a>
-  <a href="/nhentai-search" class="hdr-link{% if request.path == '/nhentai-search' %} active{% endif %}">NHentai</a>
-  <a href="/franchise-search" class="hdr-link{% if request.path == '/franchise-search' %} active{% endif %}">Franchise</a>
 </div>
 <div class="hdr-group-sep"></div>
 <div class="hdr-group">
@@ -211,8 +196,7 @@ var CONFIG = {
         </div>
         <div class="mv-drawer-group">
           <span class="hdr-group-label" data-i18n="navSearch">Search</span>
-          <a href="/content-search" class="hdr-link" data-i18n="navSearchR34Dan">R34/Dan</a>
-          <a href="/content-search?site=nhentai" class="hdr-link">NHentai</a>
+          <a href="/content-search" class="hdr-link" data-i18n="contentSearch">Search</a>
         </div>
         <div class="mv-drawer-group">
           <span class="hdr-group-label">Tagfetch</span>
@@ -228,13 +212,6 @@ var CONFIG = {
           <span class="hdr-group-label">Comics</span>
           <a href="/content-mgmt/comics-edit" class="hdr-link" data-i18n="navEditor">Editor</a>
           <a href="/content-mgmt/comics-tags" class="hdr-link">Comics Tags</a>
-          <a href="/nhentai-search" class="hdr-link">NHentai</a>
-          <a href="/franchise-search" class="hdr-link">Franchise</a>
-        </div>
-        <div class="mv-drawer-group">
-          <span class="hdr-group-label" data-i18n="navSearch">Search</span>
-          <a href="/content-search" class="hdr-link" data-i18n="searchFiles">File Search</a>
-          <a href="/content-search?site=nhentai" class="hdr-link" data-i18n="searchComics">Comics Search</a>
         </div>
         <div class="mv-drawer-group">
           <a href="/settings" class="hdr-link" data-i18n="settings">Settings</a>

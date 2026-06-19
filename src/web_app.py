@@ -161,7 +161,6 @@ LOCALE = {
         'tfFilterFound': 'Found',
         'tfFilterNotFound': 'Not found',
         'tfFilterInDb': 'In DB',
-        'tfSelectFile': 'Select a file from the folder browser',
         'tfLocal': 'Local',
         'tfNotFetched': 'Not fetched',
         'tfNoFile': 'No file selected',
@@ -249,31 +248,29 @@ LOCALE = {
         'mvGallery': 'Gallery',
         'mvComics': 'Comics',
         'mvDesc': 'Browse and explore your media library',
-        'homeComicsFetch': 'Comics Fetch',
         'homeSearchFiles': 'Search Files',
-        'homeSearchComics': 'Search Comics',
         'navMediaVault': 'MediaVault',
         'navSearch': 'Search',
-        'navSearchR34Dan': 'R34/Dan',
-        'navContent': 'Content',
         'navEditor': 'Editor',
         'navAdmin': 'Admin',
         'navGroups': 'Groups',
         'contentSearch': 'Content Search',
         'contentSearchPlaceholder': 'Search all sites by tag…',
         'contentSearchBtn': 'Search',
-        'contentSearchTabAll': 'All',
-        'contentSearchTabR34Dan': 'R34+Dan',
-        'contentSearchTabNHentai': 'NHentai',
         'contentSearchNoResults': 'No results found',
         'contentSearchError': 'Search failed',
-        'contentSearchTags': 'Tags',
-        'contentSearchId': 'ID',
-        'contentSearchSource': 'Source',
+        'contentSearchLoadMore': 'Load More',
+        'contentSearchSelectSource': 'Select at least one source',
+        'contentSearchAiFilter': 'Hide AI',
+        'contentSearchStorageEmpty': 'Storage appears empty — your drive may not be mounted',
+        'settingsDownloadsDir': 'Downloads folder',
+        'settingsCreateFolders': 'Create folders',
+        'settingsCreateFoldersDone': 'Folders created',
+        'settingsMountOk': 'Storage is ready',
+        'settingsMountFail': 'Storage is empty or not mounted',
         # ── Home page ──
         'cmHeader': 'CONTENT MANAGEMENT',
         'cmDesc': 'Manage tags, categories, and comics',
-        'tagfetch': 'TAGFETCH',
         'autoFetch': 'Auto',
         'manualFetch': 'Manual',
         'comicsEditor': 'Comics Editor',
@@ -395,7 +392,6 @@ LOCALE = {
         'tfFilterFound': 'Найдено',
         'tfFilterNotFound': 'Не найдено',
         'tfFilterInDb': 'В БД',
-        'tfSelectFile': 'Выберите файл в обзорщике',
         'tfLocal': 'Локальный',
         'tfNotFetched': 'Не получено',
         'tfNoFile': 'Файл не выбран',
@@ -482,31 +478,29 @@ LOCALE = {
         'mvGallery': 'Галерея',
         'mvComics': 'Комиксы',
         'mvDesc': 'Просмотр и управление медиатекой',
-        'homeComicsFetch': 'Поиск комиксов',
         'homeSearchFiles': 'Поиск файлов',
-        'homeSearchComics': 'Поиск комиксов',
         'navMediaVault': 'MediaVault',
         'navSearch': 'Поиск',
-        'navSearchR34Dan': 'R34/Dan',
-        'navContent': 'Контент',
         'navEditor': 'Редактор',
         'navAdmin': 'Админ',
         'navGroups': 'Группы',
         'contentSearch': 'Поиск контента',
         'contentSearchPlaceholder': 'Поиск на всех сайтах по тегу…',
         'contentSearchBtn': 'Найти',
-        'contentSearchTabAll': 'Все',
-        'contentSearchTabR34Dan': 'R34+Dan',
-        'contentSearchTabNHentai': 'NHentai',
         'contentSearchNoResults': 'Ничего не найдено',
         'contentSearchError': 'Ошибка поиска',
-        'contentSearchTags': 'Теги',
-        'contentSearchId': 'ID',
-        'contentSearchSource': 'Источник',
+        'contentSearchLoadMore': 'Загрузить ещё',
+        'contentSearchSelectSource': 'Выберите хотя бы один источник',
+        'contentSearchAiFilter': 'Без AI',
+        'contentSearchStorageEmpty': 'Хранилище пустое — возможно, накопитель не подключён',
+        'settingsDownloadsDir': 'Папка загрузок',
+        'settingsCreateFolders': 'Создать папки',
+        'settingsCreateFoldersDone': 'Папки созданы',
+        'settingsMountOk': 'Накопитель в порядке',
+        'settingsMountFail': 'Накопитель не подключён или пуст',
         # ── Home page ──
         'cmHeader': 'УПРАВЛЕНИЕ КОНТЕНТОМ',
         'cmDesc': 'Управление тегами, категориями и комиксами',
-        'tagfetch': 'ПОИСК ТЕГОВ',
         'autoFetch': 'Авто',
         'manualFetch': 'Ручной',
         'comicsEditor': 'Редактор Комиксов',
@@ -711,7 +705,7 @@ def load_settings():
         with open(SETTINGS_FILE) as f:
             s = json.load(f)
     except Exception:
-        s = {'media_dir': '', 'theme': 'dark', 'effects': True, 'three_bg': True, 'cache_buster': 0, 'startup_scan_count': 0, 'startup_scan_dir': '', 'fetch_backend': {}, 'browser_cache': 'default', 'gallery_dir': 'Gallery', 'comics_dir': 'Comics'}
+        s = {'media_dir': '', 'theme': 'dark', 'effects': True, 'three_bg': True, 'cache_buster': 0, 'startup_scan_count': 0, 'startup_scan_dir': '', 'fetch_backend': {}, 'browser_cache': 'default', 'gallery_dir': 'Gallery', 'comics_dir': 'Comics', 'downloads_dir': 'Downloads'}
     # migrate old flat keys → per-site credentials + replenish from keyring
     s = credential_store.migrate_old_keys(_credential_store, s)
     s.setdefault('fetch_backend', {})
@@ -719,6 +713,7 @@ def load_settings():
     s.setdefault('three_bg', True)
     s.setdefault('gallery_dir', 'Gallery')
     s.setdefault('comics_dir', 'Comics')
+    s.setdefault('downloads_dir', 'Downloads')
     return s
 
 def save_settings(s):
@@ -1726,6 +1721,100 @@ def api_content_search():
     log_debug('[ContentSearch API] done: query="%s" total=%d', q, total)
     return jsonify({'results': results, 'total': total})
 
+@app.route('/api/content-search/download')
+@auth_required
+@api_error_handler
+def api_content_search_download():
+    """Download a remote file to the gallery directory."""
+    url = request.args.get('url', '').strip()
+    source = request.args.get('source', '').strip()
+    if not url or not source:
+        return jsonify({'error': 'Missing url or source'}), 400
+
+    settings = load_settings()
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'error': 'Media directory not configured'}), 400
+
+    # Check storage is mounted (not empty)
+    if not os.path.isdir(media_dir) or not os.listdir(media_dir):
+        return jsonify({'error': 'storage_empty', 'message': _('contentSearchStorageEmpty')}), 400
+
+    import re
+    if not re.match(r'^[a-zA-Z0-9]+$', source):
+        return jsonify({'error': 'Invalid source name'}), 400
+
+    dl_dir = settings.get('downloads_dir', 'Downloads')
+    target_dir = os.path.join(media_dir, dl_dir, source)
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+    except Exception as e:
+        return jsonify({'error': 'Cannot create directory: ' + str(e)}), 500
+
+    from urllib.parse import urlparse
+    import requests as req_lib
+    parsed = urlparse(url)
+    filename = os.path.basename(parsed.path) or 'download'
+    filename = os.path.basename(filename)
+    target_path = os.path.join(target_dir, filename)
+
+    if os.path.exists(target_path):
+        return jsonify({'path': target_path, 'exists': True})
+
+    try:
+        r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=60, stream=True)
+        r.raise_for_status()
+        with open(target_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+        log_info('[ContentSearch] Downloaded: %s -> %s', url, target_path)
+        return jsonify({'path': target_path, 'exists': False})
+    except Exception as e:
+        return jsonify({'error': 'Download failed: ' + str(e)}), 500
+
+
+@app.route('/api/content-search/mount-check')
+@auth_required
+@api_error_handler
+def api_content_search_mount_check():
+    """Check if media_dir is mounted (has files)."""
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'mounted': False, 'empty': True, 'message': _('contentSearchStorageEmpty')})
+    if not os.path.isdir(media_dir):
+        return jsonify({'mounted': False, 'empty': True, 'message': _('contentSearchStorageEmpty')})
+    try:
+        entries = os.listdir(media_dir)
+        has_content = any(not e.startswith('.') for e in entries)
+        if not has_content:
+            return jsonify({'mounted': True, 'empty': True, 'message': _('contentSearchStorageEmpty')})
+        return jsonify({'mounted': True, 'empty': False})
+    except Exception as e:
+        return jsonify({'mounted': False, 'empty': True, 'message': str(e)})
+
+
+@app.route('/api/content-search/create-folders', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_content_search_create_folders():
+    """Create Gallery/, Comics/, Downloads/ subdirs in media_dir."""
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'error': 'media_dir not configured'}), 400
+    if not os.path.isdir(media_dir):
+        return jsonify({'error': 'media_dir does not exist'}), 400
+    created = []
+    for sub in [settings.get('gallery_dir', 'Gallery'), settings.get('comics_dir', 'Comics'), settings.get('downloads_dir', 'Downloads')]:
+        path = os.path.join(media_dir, sub)
+        try:
+            os.makedirs(path, exist_ok=True)
+            created.append(sub)
+        except Exception as e:
+            return jsonify({'error': 'Cannot create ' + sub + ': ' + str(e)}), 500
+    log_info('[ContentSearch] Created folders: %s', ', '.join(created))
+    return jsonify({'ok': True, 'created': created})
+
+
 @app.route('/api/franchise/search')
 @admin_required
 @api_error_handler
@@ -1814,7 +1903,7 @@ def api_settings():
                                  ('nh_key', 'nhentai', 'key')]:
         if old_k in data:
             s.setdefault('credentials', {}).setdefault(site, {})[cred_k] = data[old_k]
-    for k in ('media_dir', 'theme', 'three_bg', 'fetch_backend', 'browser_cache', 'gallery_dir', 'comics_dir'):
+    for k in ('media_dir', 'theme', 'three_bg', 'fetch_backend', 'browser_cache', 'gallery_dir', 'comics_dir', 'downloads_dir'):
         if k in data:
             s[k] = os.path.expanduser(data[k]) if k == 'media_dir' else data[k]
     save_settings(s)
@@ -2308,7 +2397,8 @@ def _quick_scan(force=False):
                     first_dir = rel.split('/')[0] if '/' in rel else ''
                     gallery_dir = settings.get('gallery_dir', 'Gallery')
                     comics_dir = settings.get('comics_dir', 'Comics')
-                    folder_type = {gallery_dir: 'gallery', comics_dir: 'comics', 'Downloads': 'downloads'}.get(first_dir, 'gallery')
+                    dl_dir = settings.get('downloads_dir', 'Downloads')
+                    folder_type = {gallery_dir: 'gallery', comics_dir: 'comics', dl_dir: 'downloads'}.get(first_dir, 'gallery')
 
                     db.execute(
                         'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',

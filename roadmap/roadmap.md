@@ -35,6 +35,8 @@ spec: |
 - [x] 2.11 Redesign verification — inline style → CSS, emoji 🏷️ → SVG, .hidden class
 - [x] 2.12 Site icons complete (Rule34/Danbooru/NHentai/Kemono/Coomer, icons.js)
 
+> **18.06.2026:** Header cleanup (COMICS dropdown упрощён), home page балансировка карт + responsive, content-search lightbox fix (null guard в close()), comics-tags tag UI структура унифицирована.
+
 ### Feature 3: Новые фичи
 - [x] 3.1 NHentai поиск тегов для комиксов
 - [x] 3.2 Drag-to-tag для комиксов
@@ -45,7 +47,7 @@ spec: |
 - [x] 3.6 Франчайз-поиск (по тегу: Danbooru + R34 + NHentai) — распараллеливание search_tags()
   → merged into Feature 8
 - [x] 3.8 Страница `/content-mgmt/comics-tags` — drag-and-drop тегов на карточки комиксов
-- [x] 3.9 Content-search: общий CM header + обработка ошибок (res.ok, Shared.applyI18n guard)
+- [x] 3.9 Content-search: общий CM header + обработка ошибок (res.ok, Shared.applyI18n guard, Lightbox.close() null guard)
 - [x] 3.10 Comics Picker: flexbox сетка (left→right), 6 колонок, 2100px с preview
 
 ### Feature 4: API рефакторинг (per-site credentials — DONE)

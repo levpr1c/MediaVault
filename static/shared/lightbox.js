@@ -44,6 +44,8 @@ var Lightbox = (function() {
     this._onRefreshItem = opts.onRefreshItem || null;
     this._onNavigate = opts.onNavigate || null;
     this._onClose = opts.onClose || null;
+    this._readonly = opts.readonly || false;
+    this._onDownload = opts.onDownload || null;
     this._hexToRgba = opts.hexToRgba || function(hex, a) { 
       var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
       return 'rgba('+r+','+g+','+b+','+a+')';
@@ -276,6 +278,7 @@ var Lightbox = (function() {
 
   Lightbox.prototype.close = function() {
     var media = this._el('Media');
+    if (!media) return;
     var video = media.querySelector('video');
     if (video) { video.pause(); video.src = ''; }
     var overlay = this._el('Overlay');
@@ -446,7 +449,7 @@ var Lightbox = (function() {
     var isAdmin = window.CONFIG && CONFIG.isAdmin;
     var lblClass = isDel ? 'lb-del-btn active' : 'lb-del-btn';
     var delBarHtml = '';
-    if (isDel && isAdmin) {
+    if (isDel && isAdmin && !this._readonly) {
       var selCount = this._deleteSelected.length;
       delBarHtml = '<div id="lbDelBar" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:6px 0;border-top:1px solid var(--border)">' +
         '<span style="font-size:12px;color:var(--text2);flex:1">' + selCount + ' selected</span>' +
@@ -460,16 +463,25 @@ var Lightbox = (function() {
     panel.innerHTML =
       '<div class="lb-header">' +
         '<h3>' + this._esc(file.name || '') + '</h3>' +
-        (isAdmin ? '<button id="lbDelToggle" class="' + lblClass + '" title="' + (isDel ? 'Exit delete mode' : 'Delete tags') + '">\u2715</button>' : '') +
+        (this._onDownload && file.path ? '<button class="lb-download-btn" id="' + this._id('DownloadBtn') + '" title="Download">\u2B07</button>' : '') +
+        (isAdmin && !this._readonly ? '<button id="lbDelToggle" class="' + lblClass + '" title="' + (isDel ? 'Exit delete mode' : 'Delete tags') + '">\u2715</button>' : '') +
       '</div>' +
       '<div class="meta">' + (file.width > 0 ? file.width + '\u00D7' + file.height : '') + '</div>' +
-      (isDel && this._deleteMode && isAdmin ? '<div style="font-size:11px;color:#ff4444;margin-bottom:6px">Select tags to delete</div>' : '') +
+      (isDel && this._deleteMode && isAdmin && !this._readonly ? '<div style="font-size:11px;color:#ff4444;margin-bottom:6px">Select tags to delete</div>' : '') +
       delBarHtml +
       (tagsHtml || '<div class="lb-meta-text">No tags</div>') +
-      (isAdmin ? '<div class="lb-input-row">' +
+      (!this._readonly && isAdmin ? '<div class="lb-input-row">' +
       '<input type="text" id="' + this._id('TagInput') + '" placeholder="Add tag">' +
       '</div>' +
       '<div id="lbAutocomplete"></div>' : '');
+
+    // Wire download button
+    var dlBtn = document.getElementById(this._id('DownloadBtn'));
+    if (dlBtn) {
+      dlBtn.onclick = function() {
+        if (self._onDownload) self._onDownload(file);
+      };
+    }
 
     // Wire delete mode controls (admin only)
     if (isAdmin) {
@@ -951,6 +963,8 @@ var Lightbox = (function() {
     '.shared-lightbox .lightbox-toolbar button{font-size:13px;padding:4px 8px}' +
     '.shared-lightbox .lightbox-close{top:8px;right:8px;width:36px;height:36px}' +
     '.lb-nav-zone{display:block}' +
-    '}';
+    '}' +
+    '.shared-lightbox .lb-download-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--text);font-size:16px;line-height:1;transition:all .15s}' +
+    '.shared-lightbox .lb-download-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}';
   document.head.appendChild(css);
 })();

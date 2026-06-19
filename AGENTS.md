@@ -1,6 +1,6 @@
 # MediaVault
 
-Flask single-file (`src/web_app.py`, 3847 строк, 80 роутов, 40 `@admin_required`, 2 `@auth_required`, 61 `@api_error_handler`) + `src/credential_store.py` (67). Три под-приложения: **MV** (`/mediavault/`, read-only), **CM** (`/content-mgmt/`, admin-only), **Admin** (`/admin`).
+Flask single-file (`src/web_app.py`, 4062 строки, 87 роутов, 52 `@admin_required`, 8 `@auth_required`, 66 `@api_error_handler`) + `src/credential_store.py` (122). Три под-приложения: **MV** (`/mediavault/`, read-only), **CM** (`/content-mgmt/`, admin-only), **Admin** (`/admin`).
 
 ## Команды
 
@@ -8,231 +8,141 @@ Flask single-file (`src/web_app.py`, 3847 строк, 80 роутов, 40 `@admi
 venv/bin/python src/web_app.py             # http://0.0.0.0:5050
 venv/bin/python src/web_app.py --debug     # авто-релоад + verbose
 venv/bin/python src/web_app.py --bind 127.0.0.1
-venv/bin/python test.py                    # синтаксис + локаль + мёртвый код + тесты
-venv/bin/python test.py --check py         # только Python
-venv/bin/python test.py --check js         # только JavaScript
-venv/bin/python test.py --check css        # только CSS
-venv/bin/python test.py --check locale     # только i18n
-venv/bin/python test.py --check func       # только функциональные тесты
-venv/bin/python test.py --check dead       # только мёртвый код
-venv/bin/python test.py --check smoke      # smoke-тест (запуск Flask)
+venv/bin/python test.py                    # syntax + locale + dead + func
+venv/bin/python test.py --check py/js/css/locale/func/dead/smoke
+venv/bin/python test.py --fix              # удаление неиспользуемых i18n ключей
+venv/bin/pyinstaller mediavault.spec --clean --noconfirm   # onefile (29 MB)
 ```
 
-```bash
-venv/bin/pyinstaller mediavault.spec --clean --noconfirm   # сборка onefile (29 MB)
-```
+Deps: `flask`, `requests`, `Pillow`, `gallery-dl` — в `venv/`. FFmpeg нужен для видео-превью + `ffprobe`.
 
-## Релиз (AUR)
-
-```bash
-mv dist/mediavault dist/mediavault-linux-amd64
-sha256sum dist/mediavault-linux-amd64
-# → GitHub Release v1.0.0, загрузить binary как assets
-# → обновить sha256sums в packaging/aur/mediavault-bin/PKGBUILD
-# → скопировать packaging/aur/mediavault-bin/ → AUR git → push
-```
-
-## PKGBUILD
-
-`packaging/aur/mediavault-bin/PKGBUILD` + `mediavault.install` (post_install: gnome-keyring hint). `depends=('ffmpeg')`, `optdepends=('gnome-keyring')`.
-
-Deps: `flask`, `requests`, `Pillow`, `gallery-dl` — в `venv/`. FFmpeg нужен для видео-превью + определения звука (`ffprobe`).
-
-## Конвенции (не очевидные)
+## Конвенции (критические)
 
 - **`if data is None:`** — пустой `{}` falsy в Python. Все API так.
 - **`window.fnName`** для `onclick` — IIFE модули экспортят глобалы (`Shared.*`, `AdminDashboard.*`, `ContentManager.*`). Проверять шаблон перед переименованием.
 - **`_has_non_meta_tags(tag_str)`** — false если только META_TAGS (`sound`, `animated`, `photo`, `video`, `gif`) или aspect-ratio (`^\d+:\d+$`).
 - **Thumbnail constants**: `_THUMB_LARGE = 360`, `_THUMB_XL = 600`, `_THUMB_RATIO_LIMIT = 21/9`.
 - **Icons**: inline SVG. **Нет emoji**. SVG sun/moon для темы, текст RU/EN.
-- **CSS loading order**: `shared.css` → (content.css / admin.css / tagfetch.css / settings.css) → `mediavault.css` **последний** (специфичность без `!important`).
-- **Header**: inline в `base.html`, никаких partials. Блоки: `hdr_brand`, `hdr_tabs`, `hdr_nav`, `hdr_actions`, `hdr_search`, `hdr_drawer`. Desktop `.hdr-desktop` + mobile `.hdr-mobile` скрываются/показываются через CSS media queries (768px). **Нет `window.innerWidth` в JS**.
-- **Desktop-only**: `.desktop-only` скрыт на mobile CSS. Mobile **не получает HTML** для sidebar, search panel, toolbar controls.
-- **SPA страницы**: `content-mgmt/*`, `settings`, `admin` — extend `base.html`, контент через JS. **Standalone**: `login.html` (не extend base), `popular_tags`, `view` — suppress header blocks.
+- **CSS loading order**: `shared.css` → (content.css / content-search.css / admin.css / tagfetch.css / settings.css) → `mediavault.css` **последний** (специфичность без `!important`).
+- **Header**: inline в `base.html`, никаких partials. Desktop `.hdr-desktop` + mobile `.hdr-mobile` через CSS media (768px). **Нет `window.innerWidth` в JS**.
+- **Desktop-only**: `.desktop-only` скрыт на mobile CSS. Mobile **не получает HTML** для sidebar, search panel, toolbar.
+- **SPA страницы**: `content-mgmt/*`, `settings`, `admin` — extend `base.html`, контент через JS. **Standalone** (не extend base): `login.html`. `popular_tags`, `view` — suppress header blocks.
 - **localStorage keys**: `mediavault_page_size`, `mediavault_layout`, `mediavault_thumb_size`, `mediavault_lang`.
-- **Lightbox position (`lb-pos`)**: визуальный порядок (`getVisualOrder()` → `getBoundingClientRect()` top→left), не data-array порядок. Важно для column-masonry.
-- **`ComicsPicker`**: единый компонент, `shared/comics/comics.js`. Открывается через `ComicsPicker.openPicker()`. В MV mode доступен через `picker-bridge.js` для ES-модулей CM.
-- **`comics-list.html`**: один шаблон для двух режимов — MV view (`mode != 'edit'`) и CM редактор (`mode == 'edit'`). Флаг `mode` из роута.
-- **Auth**: сессии Flask. `@admin_required` → 403 JSON. `@auth_required` → 401 JSON. `@api_error_handler` → 500 JSON с трассировкой. **Порядок**: `@app.route` → auth → `@api_error_handler`.
-- **`three_bg`** — отдельный тоггл от `effects`. `data-three-bg="0"` на `<html>` скрывает Three.js canvas через MutationObserver в `home-bg.js`. Не зависит от `data-no-effects`.
-- **`_has_users_cached`** — in-memory флаг существования пользователей (проверка при логине, сбрасывается при add/remove user).
-- **`clear_thumb_cache`** — удаляет SQLite BLOBs только (физических файлов нет).
-- **`browser_cache`** — настройка (default/reduced/nocache) управляет `Cache-Control` на `/api/media` и `/api/thumbnail`.
-- **`load_settings()`** — использует `setdefault()` для всех новых ключей (`fetch_backend`, `browser_cache`, `gallery_dir`, `comics_dir`, `cache_buster`).
+- **Lightbox position (`lb-pos`)**: визуальный порядок (`getVisualOrder()` → `getBoundingClientRect()` top→left), не data-array порядок.
+- **`ComicsPicker`**: единый компонент, `shared/comics/comics.js`. Через `ComicsPicker.openPicker()`. Для ES-модулей CM — `picker-bridge.js`.
+- **`comics-list.html`**: один шаблон для MV view (`mode != 'edit'`) и CM редактора (`mode == 'edit'`).
+- **Auth**: Flask сессии. `@admin_required` → 403 JSON. `@auth_required` → 401 JSON. `@api_error_handler` → 500 JSON. **Порядок**: `@app.route` → auth → `@api_error_handler`.
+- **`three_bg`** — отдельный тоггл от `effects`. `data-three-bg="0"` скрывает Three.js canvas через MutationObserver в `home-bg.js`.
+- **`_has_users_cached`** — in-memory флаг, сбрасывается при add/remove user.
+- **`clear_thumb_cache`** — удаляет SQLite BLOBs только (файлов нет).
+- **`browser_cache`** (default/reduced/nocache) → `Cache-Control` на `/api/media` и `/api/thumbnail`.
+- **`load_settings()`** — `setdefault()` для всех новых ключей.
+- **`Lightbox.close()`** — **всегда** проверять `_el('Media')` на null перед вызовом `querySelector('video')`. Без этого guard вызов `close()` до `open()` кидает TypeError. См. `shared/lightbox.js:279`.
+
+## ES module timing bug (важно!)
+
+`{% block content %}` рендерится **до** `{% block scripts %}` в Jinja. Модульные скрипты в `content` load/defer раньше обычных в `scripts`. **Top-level ошибка в ES-модуле блокирует ВЕСЬ остальной код** — не только после ошибки, но и все остальные скрипты на странице. Любой `new Lightbox(...)` или другой вызов в модуле должен быть в try-catch.
 
 ## Тестирование
 
-### `test.py` (корень, 782 строки)
+### `test.py` (781 строка)
 
 Кастомный CLI-раннер, **не pytest**:
 
 | Флаг | Что проверяет |
 |------|---------------|
-| `--check py` | `python -m py_compile` на всех `src/*.py` |
-| `--check js` | `node --check` на всех `static/**/*.js` |
-| `--check css` | CSS-файлы непустые |
-| `--check syntax` | py + js + css |
-| `--check locale` | AST-парсинг LOCALE из web_app.py: en↔ru parity, JS sync, дубликаты |
+| `--check py` | `python -m py_compile` на `src/*.py` |
+| `--check js` | `node --check` на `static/**/*.js` |
+| `--check css` | CSS непустые |
+| `--check locale` | AST-парсинг LOCALE: en↔ru parity, JS sync, дубликаты |
 | `--check dead` | AST (Python) + regex (JS) — неиспользуемые публичные функции |
-| `--check func` | Инжект строки Python в subprocess — `_has_non_meta_tags()`, `_get_aspect_ratio_tag()`, `_get_file_type()`, `_is_dir_empty()` |
-| `--check smoke` | Запуск Flask на :15050, GET /login (200) + /api/gallery (401) |
-| `--watch` | MD5-хуки, авто-перезапуск при изменениях |
-| `--fix` | Удаление неиспользуемых i18n ключей из web_app.py + utils.js |
+| `--check func` | Инжект Python в subprocess — хелперы |
+| `--check smoke` | Flask на :15050, GET /login (200) + /api/gallery (401) |
 
 **Без флагов** → syntax + locale + dead + func. **Smoke исключён.**
 
 ### Playwright E2E
 
-`test/test_comics_pages.py` — standalone, НЕ встроен в test.py.
-Проверяет: вёрстку карточек, грид, ComicsPicker, консольные ошибки.
+`test/test_comics_pages.py` — standalone, не встроен. Playwright через `sys.path.insert(0, '~/.agents/skills/webapp-testing')`.
 
-**Тестовых зависимостей нет** — ни pytest, ни Playwright нет в requirements.txt.
-Playwright импортируется через `sys.path.insert(0, '~/.agents/skills/webapp-testing')`.
-
-### Конвенции тестирования
-- Нет `tests/` — есть `test/` (ед.ч., один файл)
-- Нет conftest.py, фикстур, pytest-конфига
-- Нет CI/CD вообще (ни `.github/workflows/`, ни Docker, ни Makefile)
-- Dead code detection — кастомная (не coverage), регексы могут давать false positives
+### Конвенции
+- Нет `tests/` — есть `test/` (ед.ч.)
+- Нет pytest, conftest, CI/CD, Docker, Makefile, ruff, flake8, pyproject.toml
+- Dead code detection — кастомная (regex), false positives возможны
 - README.md упоминает `check.py` — **файл называется `test.py`**
 
-## Билд и CI
-
-### PyInstaller
-
-```bash
-venv/bin/pyinstaller mediavault.spec --clean --noconfirm   # → dist/mediavault (29 MB)
-```
-
-Spec: onefile, hidden imports `PIL._tkinter_finder` + `keyring.backends.*`, bundled templates/ + static/.
-**requirements.txt НЕ включает pyinstaller** — ставится руками.
-
-### Dev tooling
-
-**Нет вообще**: нет `.editorconfig`, `.eslintrc*`, `.prettierrc*`, `ruff.toml`, `.flake8`, `pyproject.toml`, `Makefile`, `.github/workflows/`, Dockerfile. Единственная автоматизация — `test.py`.
-
-## Three.js (offline)
-
-- Self-hosted: `static/lib/three.module.js` (v0.160.0, 53044 строк)
-- Importmap во всех шаблонах: `"three": "/static/lib/three.module.js"`
-- Shared модуль: `static/shared/home-bg.js` — `initHomeBg(opts)` с `beforeRender` хуком
-- Используется в `home.html` и `login.html`
-
-## Бэкенды (backends)
-
-### gallery-dl (универсальный)
-
-- **Файл:** `src/backends/gallerydl.py` — `GalleryDlBackend`
-- **Назначение:** Загрузка файлов с Kemono/Coomer
-- **Реализация:** Через subprocess (CLI), не Python API
-- **Методы:** `is_available()` → `gallery-dl --version`; `get_info(url)` → `--list-urls`; `download(url, dest)` → `--directory`
-- **Требования:** gallery-dl CLI в `PATH` (не только в venv)
-- **Ограничения:** Нет метаданных (title/tags/date), нет кук, нет dedup
-- **Python API (будущее):** `gallery_dl.extractor.find()`, `job.DataJob()`, `job.DownloadJob()`
-- **Установка:** `pip install gallery-dl` (уже в venv)
-
-## Роуты (80)
-
-9 групп. Полный справочник — `docs/code-guide.md` раздел 6.
-
-## JS модули (27 файлов, 7190 строк без lib/)
+## JS модули (30 файлов, 8765 строк без lib/)
 
 | Паттерн | Директории |
 |---------|-----------|
 | **IIFE + `window.*`** | `shared/`, `mediavault/`, `tagfetch/`, `admin/` |
-| **ES modules** (`import`/`export`) | `content/`, `shared/home-bg.js` |
+| **ES modules** (`import`/`export`) | `content/` (все 8 файлов), `shared/home-bg.js` |
 
-Всего 6 файлов с `import`: `content/` (main, tags, files, comics, nhentai_search) + `home-bg.js`.
+### CM SPA lifecycle (`static/content/main.js`)
+Секции: `tags`, `files`, `comics`, `nhentai`, `contentSearch`, `comicsTags`. Каждая — `render(destroy?)` + `destroy()`. Роутинг по `location.pathname` через `switch`.
 
-## CSS (6, 1638 строк)
+## CSS (7 файлов, 2140 строк)
 
 | Файл | Строк | Что |
 |------|-------|-----|
-| `shared.css` | 257 | CSS vars, темы, base, header, fonts (Unbounded + IBM Plex Sans self-hosted) |
-| `content.css` | 460 | CM: tags, files, comics |
-| `admin.css` | 416 | Admin SPA: cards, tables, modals, 5-section nav |
-| `mediavault.css` | 244 | Gallery, lightbox, sidebar, mobile (загружается последним) |
-| `tagfetch.css` | 129 | Tagfetch panels |
-| `settings.css` | 112 | Settings tabs, cards |
+| `shared.css` | 303 | CSS vars, темы, base, header, fonts (Unbounded + IBM Plex Sans) |
+| `content.css` | 684 | CM: tags, files, comics, picker, drag-to-tag |
+| `content-search.css` | 189 | Content search page |
+| `admin.css` | 418 | Admin SPA: cards, tables, modals, 5-section nav |
+| `mediavault.css` | 242 | Gallery, lightbox, sidebar, mobile (последний!) |
+| `tagfetch.css` | 182 | Tagfetch panels |
+| `settings.css` | 122 | Settings tabs, cards |
 
-## Шаблоны (16, 2175 строк)
+## Шаблоны (17, 1601 строка)
 
-Все кроме `login.html` extend `base.html`. См. `docs/code-guide.md` секция 7.
+Все кроме `login.html` extend `base.html`. Полный список — `docs/code-guide.md`.
 
 ## i18n
 
-- Сервер: `LOCALE` dict (209 en + 210 ru, 435 строк, строка 155-590), `_()` в Jinja2
+- Сервер: `LOCALE` dict (~435 строк, строка 155-590), `_()` в Jinja2
 - Клиент: `_i18nData` в `base.html`, `_t('key')` в JS
-- `Shared.toggleLang()` — переключение без перезагрузки
+- `Shared.toggleLang()` — без перезагрузки
+- `--check locale` + `--fix` в test.py
 
-## Shared.* utilities (`static/shared/utils.js`, 903 строки)
+## Ключевые JS файлы
 
-`Shared.hexToRgba()`, `Shared.parseTags()`, `Shared.getColumnCount()`, `Shared.reorderGalleryDOM()`, `Shared.getVisualOrder()`, `Shared.toggleTheme()`, `Shared.toggleLang()`, `Shared.applyI18n()`, `Shared.logout()`, `Shared.toggleDropdown()`, `Shared._cbSuffix()` (читает `CONFIG.cacheBuster`).
+- `static/shared/utils.js` — `Shared.hexToRgba()`, `parseTags()`, `getColumnCount()`, `getVisualOrder()`, `toggleTheme()`, `toggleLang()`, `applyI18n()`, `_cbSuffix()`
+- `static/admin/admin.js` — `_saveSettings()`, `_errorFallback()`, `_saveCredBackend()`, 5 секций (Users, Database, API Keys, Folders, Backends)
+- `static/shared/icons.js` — `SiteIcons.getIcon(site)`, поддерживает rule34, danbooru, nhentai, kemono, coomer
+- `static/shared/lightbox.js` — shared Lightbox класс
 
-## Admin JS: DRY helpers (`static/admin/admin.js`, 741 строка)
+## gallery-dl backend (`src/backends/gallerydl.py`, 379 строк)
 
-- `_saveSettings(data, msg)` — POST `/api/settings` + toast (7 мест → 1)
-- `_errorFallback(body, e)` — единый показ ошибки в catch (4 места → 1)
-- `_saveCredBackend()` — сохранение credential backend (переименован из `_selectBackend`)
-- **5 секций:** Users, Database, API Keys, Folders, Backends
+- subprocess (CLI), не Python API
+- `is_available()` → `gallery-dl --version`
+- `get_info(url)` → `--list-urls`
+- `download(url, dest)` → `--directory`
+- gallery-dl CLI в `PATH` (не только в venv)
+- `src/backends/api_raw.py` (196 строк) — второй бэкенд (raw API)
 
-## Site Icons (`static/shared/icons.js`, 30 строк + 5 SVG)
+## Three.js
 
-- `window.SiteIcons.getIcon(site)` — data URI (favicon)
-- `window.SiteIcons.getIconImg(site, size)` — `<img>` с data URI
-- `window.SiteIcons.getIconDataURI(site)` — data URI
-- Поддерживаемые сайты: rule34, danbooru, nhentai, kemono, coomer
+- Self-hosted: `static/lib/three.module.js` (v0.160.0)
+- Importmap: `"three": "/static/lib/three.module.js"`
+- `static/shared/home-bg.js` — `initHomeBg(opts)` с `beforeRender` хуком
+- Используется в `home.html` и `login.html`
 
-## New Features (branch new-features)
+## Архитектура
 
-Полная документация — `docs/code-guide.md` раздел 24, `docs/new-features-summary.md`.
-
-| Фича | Ключевые файлы | i18n |
-|------|---------------|------|
-| Backend system | `src/backends/*.py` | — |
-| Backend Selection UI | `static/admin/admin.js` | `sectionBackends`, `backendsDesc`, `backend*`, `site*`, `navBackends` |
-| Site Icons | `static/shared/icons.js`, `static/shared/icons/*.svg` | — |
-| Folder System | `web_app.py`, `admin.js` | `adminGalleryDir`, `adminComicsDir`, `navFolders`, `sectionFolders` |
-| Browser Cache | `web_app.py`, `settings.html` | `settingsBrowserCache*` |
-| UPSERT for source | `web_app.py` lines 965, 1029 | — |
-| Kemono URL | `gallerydl.py`, `web_app.py` | — |
-| Redesign | `gallery.html`, `view.html`, `mediavault.css` | — |
-| Comics fixes | `content.css`, `view.html` | — |
-| Admin refactoring | `static/admin/admin.js` | `navFolders`, `navBackends` |
-| NHentai Search | `home.html` | `homeComicsFetch` |
-| Dead code removal | `web_app.py` batch_scan | — |
-
-## Планы на будущее (16.06.2026)
-
-Остался один Feature — Gallery-dl универсальный.
-
-### Per-site credentials ✅ (Feature 7 — done)
-- Мигрированы `r34_uid/r34_key/dan_login/dan_key` в per-site формат: `credentials.rule34.*`, `credentials.danbooru.*`
-- Admin UI: поля grouped by site с иконками
-- KeyringStore: ключи `api:site:keyname` вместо `api:r34_uid`
-- load_settings()/save_settings() — миграция + per-site чтение
-
-### Franchise search (Feature 8) ✅ — done
-- `/franchise-search` страница + `/api/franchise/search` endpoint
-- Сервер-сайд рендеринг (без отдельного JS модуля)
-- Параллельный dispatch: ThreadPoolExecutor → search_tags() для rule34, danbooru, nhentai
-- Header link + 6 i18n ключей
-
-### Gallery-dl как универсальная альтернатива (Feature 6)
-- **НЕ** используем rule34Py, Pybooru, enma, nhentai-tools
-- gallery-dl (уже в venv) как второй бэкенд для R34/Danbooru/NHentai
-- GalleryDlBackend.fetch() + search() для всех сайтов
-- 2 варианта per-site в UI: raw_api или gallery_dl
-- gallery-dl сам обходит Cloudflare
+- **Decorator order**: `@app.route` → `@admin_required` → `@api_error_handler` (нарушение ломает auth)
+- **User/admin**: шаблоны `{% if session.role == 'admin' %}`, бэкенд через `@admin_required`
+- **Two-level logging**: `log_debug()`/`log_info()`/`log_error()` с ANSI цветами
+- **Per-site credentials**: `credentials.rule34.*`, `credentials.danbooru.*` в settings
+- **Franchise search**: `/franchise-search`, параллельный dispatch через ThreadPoolExecutor
 
 ## Docs
 
 | Файл | О чём |
 |------|-------|
-| `docs/code-guide.md` (2846+) | Архитектура, backend, frontend, все роуты, counts, библиотеки, планы |
-| `docs/new-features-summary.md` (395+) | Сводка всех новых фич + чеклист тестирования |
-| `docs/user-guide.md` (665) | Руководство пользователя |
-| `DESING.md` (924) | Дизайн-система: цвета, шрифты, компоненты |
+| `docs/code-guide.md` | Архитектура, backend, frontend, все роуты, counts |
+| `docs/new-features-summary.md` | Сводка новых фич + чеклист тестирования |
+| `docs/user-guide.md` | Руководство пользователя |
+| `DESING.md` | Дизайн-система: цвета, шрифты, компоненты |
 | `docs/FAQ.md` | Частые вопросы |
 | `docs/GLOSSARY.md` | Словарь терминов |
 | `docs/TROUBLESHOOTING.md` | Решение проблем |

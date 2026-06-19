@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block head_extra %}
 <link rel="stylesheet" href="/static/css/content.css?v=10">
-<link rel="stylesheet" href="/static/css/content-search.css?v=1">
+<link rel="stylesheet" href="/static/css/content-search.css?v=2">
 {% endblock %}
 {% block title %}{{ _('contentSearch') }}{% endblock %}
 {% block hdr_brand %}
@@ -25,10 +25,34 @@
       <button id="csSearchBtn" class="btn btn-sm btn-primary cs-search-btn">{{ _('contentSearchBtn') }}</button>
     </div>
 
-    <div class="cs-tabs">
-      <button class="cs-tab active" data-sites="r34,dan" data-i18n="contentSearchTabR34Dan">{{ _('contentSearchTabR34Dan') }}</button>
-      <button class="cs-tab" data-sites="nhentai" data-i18n="contentSearchTabNHentai">{{ _('contentSearchTabNHentai') }}</button>
-      <button class="cs-tab" data-sites="r34,dan,nhentai" data-i18n="contentSearchTabAll">{{ _('contentSearchTabAll') }}</button>
+    <div class="cs-sources">
+      <label class="cs-source" data-site="r34">
+        <input type="checkbox" value="r34" checked>
+        <span class="cs-source-mrk"></span>
+        <span class="cs-source-lbl">Rule34</span>
+      </label>
+      <label class="cs-source" data-site="dan">
+        <input type="checkbox" value="dan" checked>
+        <span class="cs-source-mrk"></span>
+        <span class="cs-source-lbl">Danbooru</span>
+      </label>
+      <label class="cs-source" data-site="nhentai">
+        <input type="checkbox" value="nhentai">
+        <span class="cs-source-mrk"></span>
+        <span class="cs-source-lbl">NHentai</span>
+      </label>
+      <label class="cs-ai-toggle" title="Exclude AI-generated content">
+        <input type="checkbox" id="csAiFilter">
+        <span class="cs-ai-toggle-track"></span>
+        <span class="cs-ai-toggle-lbl" data-i18n="contentSearchAiFilter">{{ _('contentSearchAiFilter') }}</span>
+      </label>
+    </div>
+
+    <div id="csPagination" class="cs-pagination" style="display:none">
+      <button id="csPrevPage" class="btn btn-sm cs-page-btn" disabled>&lsaquo;</button>
+      <span id="csPageInfo" class="cs-page-info">1/1</span>
+      <button id="csNextPage" class="btn btn-sm cs-page-btn" disabled>&rsaquo;</button>
+      <button id="csLoadMore" class="btn btn-sm cs-page-btn cs-load-more" data-i18n="contentSearchLoadMore">{{ _('contentSearchLoadMore') }}</button>
     </div>
 
     <div id="csLoading" class="admin-loading" style="display:none">
@@ -40,5 +64,5 @@
     <div id="csEmpty" class="admin-loading" style="display:none" data-i18n="contentSearchNoResults">{{ _('contentSearchNoResults') }}</div>
   </main>
 </div>
-<script type="module" src="/static/content/content-search.js?v=1"></script>
+<script type="module" src="/static/content/content-search.js?v=2"></script>
 {% endblock %}

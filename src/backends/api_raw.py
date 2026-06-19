@@ -133,17 +133,16 @@ class ApiRawBackend:
         c = self._creds('rule34', settings or {})
         uid = c.get('uid', '')
         key = c.get('key', '')
-        if not uid or not key:
-            return {'results': [], 'total': 0}
         pid = page - 1
         url = (f'https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1'
-               f'&tags={requests.utils.quote(query)}&limit=100&pid={pid}'
-               f'&user_id={uid}&api_key={key}')
+               f'&tags={requests.utils.quote(query)}&limit=100&pid={pid}')
+        if uid and key:
+            url += f'&user_id={uid}&api_key={key}'
         try:
             r = requests.get(url, headers={'User-Agent': UA}, timeout=30)
             if r.status_code == 200 and r.text.strip():
                 posts = r.json()
-                if not posts:
+                if not isinstance(posts, list) or not posts:
                     return {'results': [], 'total': 0}
                 results = []
                 for p in posts:
@@ -180,11 +179,17 @@ class ApiRawBackend:
                 results = []
                 for p in posts:
                     fu = p.get('file_url', '')
+                    preview_url = p.get('preview_url', '')
+                    if not preview_url and fu:
+                        preview_url = fu.replace('/original/', '/preview/')
+                        dot = preview_url.rfind('.')
+                        if dot >= 0:
+                            preview_url = preview_url[:dot] + '.jpg'
                     results.append({
                         'id': str(p.get('id', '')),
                         'tags': p.get('tag_string', '').split(),
                         'file_url': fu,
-                        'preview_url': p.get('preview_url', '') or fu.replace('/original/', '/preview/'),
+                        'preview_url': preview_url,
                         'large_file_url': p.get('large_file_url', '') or fu,
                         'width': p.get('image_width', 0),
                         'height': p.get('image_height', 0),

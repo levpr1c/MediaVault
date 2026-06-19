@@ -190,6 +190,9 @@ MediaVault адаптируется под экран, но это не моби
 ### Не работает поиск в Content Management (Content Search)
 Если кнопка поиска не реагирует или страница загружается некорректно — очисти кэш браузера (Ctrl+F5). Content Search использует ES-модули, которые агрессивно кэшируются браузером. После обновления JavaScript может потребоваться полная очистка кэша.
 
+### Content Search не загружается (TypeError в консоли: «Cannot read properties of null»)
+Ошибка `TypeError: Cannot read properties of null (reading 'querySelector')` возникает когда `Lightbox.close()` вызывается до того, как лайтбокс был открыт (элементы DOM ещё не созданы). Исправлено в `static/shared/lightbox.js:279` — добавлена проверка на null. Если проблема повторяется — очисти кэш браузера (Ctrl+F5).
+
 ---
 
 ## 🐍 Ошибки Python

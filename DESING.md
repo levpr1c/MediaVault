@@ -196,9 +196,9 @@ Tag chips in the UI use inline `style="background: COLOR"` applied by the templa
 | Element | Max-Width |
 |---------|-----------|
 | `.home-hero-blocks` | `1060px` (desktop) |
-| `.hm-block` (MV, Admin) | `420px` (flex:1) |
-| `.hm-block[data-block="mv"]` | `480px` |
-| `.hm-block--cm` | `620px` (flex:1.5) |
+| `.hm-block[data-block="mv"]` | none (flex:1) |
+| `.hm-block[data-block="cm"]` | `520px` (flex:1.5) |
+| `.hm-block[data-block="admin"]` | `440px` (flex:1.2) |
 | `.admin-modal-content` | `440px` |
 | `.comic-modal` (modal) | `1100px` |
 | Sidebar (`aside`) | `260px` (fixed) |
@@ -228,6 +228,7 @@ Structure inside `#appHeader`:
 | Navigation | `.hdr-nav` | Left-aligned nav links |
 | Brand | `.brand` | `font-size: 15px; font-weight: 700; font-family: var(--font-heading); color: var(--accent)` |
 | Account dropdown | `.hdr-dropdown` | Absolute positioned dropdown, `right: 0`, `radius: 10px` |
+| Account button | `.hdr-account-btn` | SVG icon, padding: 8px, 36×36, `border-radius: 10px` |
 
 **Mobile** (`.hdr-mobile` — `mediavault.css:81-95` + `shared.css:81-95`)
 
@@ -376,13 +377,16 @@ Same pattern as `.tool-btn`.
 .admin-card-desc { font-size: 13px; color: var(--text2); margin: -8px 0 16px; line-height: 1.5; }
 ```
 
-**Home Block** (`.hm-block` — inline style in `home.html`)
+**Home Block** (`.hm-block` — styles in `shared.css` + `home.html`)
 
 ```css
-.hm-block { flex: 1; min-width: 280px; max-width: 420px;
+.hm-block { flex: 1; min-width: 280px;
   background: var(--surface); border: 2px solid var(--border);
   border-radius: 18px; padding: 24px; transition: all .25s ease;
   display: flex; flex-direction: column; }
+[data-block="mv"] { flex: 1; }
+[data-block="cm"] { flex: 1.5; max-width: 520px; }
+[data-block="admin"] { flex: 1.2; max-width: 440px; }
 ```
 
 Per-block hover colors via `data-block` attribute:
@@ -397,6 +401,10 @@ Internal structure:
 - `.hm-block-grid` — flex column, gap 8px
 - `.hm-block-btn` — 44px min-height, 14px, 600 weight, rounded 10px, hover lift + color
 - `.hm-block-desc` — 12px, text2, centered, margin-top auto
+
+**CM Grid** (`.hm-cm-grid` — `shared.css`):
+- `display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;`
+- Responsive: `@media(max-width:960px)` → 2 columns, `@media(max-width:650px)` → 1 column
 
 ### 6.5 Gallery
 
@@ -817,9 +825,9 @@ Toggled via `.theme-btn.effects-off` class (reduced motion mode).
 |------------|------|---------|
 | `1440px` | *(none)* | Maximum content width reference for home blocks |
 | `1024px` | *(none)* | — |
-| `900px` | Tablet | Home blocks wrap to flex-wrap |
-| `768px` | Mobile | Major layout change |
-| `650px` | Small mobile | Home blocks stack vertically |
+| `960px` | Tablet | Home blocks wrap, CM grid → 2 columns |
+| `768px` | Mobile | Major layout change, home blocks stack |
+| `650px` | Small mobile | CM grid → 1 column |
 | `480px` | Compact | Compact thumbnails, smaller fonts |
 
 ### 8.2 Mobile (<768px) Changes

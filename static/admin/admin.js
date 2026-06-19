@@ -138,6 +138,7 @@ var AdminDashboard = (function() {
       _api('/api/settings').then(function(data) {
         self._settings = data;
         self._renderContent(body);
+        _checkMount();
       }).catch(function(e) { _errorFallback(body, e); });
     },
 
@@ -168,11 +169,16 @@ var AdminDashboard = (function() {
         '<button class="btn" onclick="AdminDashboard._pickFolder()"><span data-i18n="settingsSystemDialog">' + _t('settingsSystemDialog') + '</span></button>' +
         '<button class="btn btn-primary" onclick="AdminDashboard._scanFolder()"><span data-i18n="settingsScan">' + _t('settingsScan') + '</span></button>' +
         '</div>' +
-        '<div class="admin-field-row">' +
+        '<div class="admin-field-row three-col">' +
         '<div class="admin-field"><label class="admin-field-label"><span data-i18n="adminGalleryDir">' + _t('adminGalleryDir') + '</span></label><input class="admin-field-input" id="galleryDir" value="' + _esc(s.gallery_dir || 'Gallery') + '" placeholder="Gallery"></div>' +
         '<div class="admin-field"><label class="admin-field-label"><span data-i18n="adminComicsDir">' + _t('adminComicsDir') + '</span></label><input class="admin-field-input" id="comicsDir" value="' + _esc(s.comics_dir || 'Comics') + '" placeholder="Comics"></div>' +
+        '<div class="admin-field"><label class="admin-field-label"><span data-i18n="settingsDownloadsDir">' + _t('settingsDownloadsDir') + '</span></label><input class="admin-field-input" id="downloadsDir" value="' + _esc(s.downloads_dir || 'Downloads') + '" placeholder="Downloads"></div>' +
         '</div>' +
-        '<button class="btn btn-primary" onclick="AdminDashboard._saveFolderSettings()" style="margin-top:8px"><span data-i18n="settingsSaveStart">' + _t('settingsSaveStart') + '</span></button>' +
+        '<div style="display:flex;align-items:center;gap:12px;margin-top:8px">' +
+        '<button class="btn btn-primary" onclick="AdminDashboard._saveFolderSettings()"><span data-i18n="settingsSaveStart">' + _t('settingsSaveStart') + '</span></button>' +
+        '<button class="btn" onclick="AdminDashboard._createFolders()" id="admCreateFolders"><span data-i18n="settingsCreateFolders">' + _t('settingsCreateFolders') + '</span></button>' +
+        '</div>' +
+        '<div id="admMountStatus"></div>' +
         '</div>' +
         '<div class="admin-card" id="adminProgressCard" style="display:none">' +
         '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="settingsRunning">' + _t('settingsRunning') + '</span></span>' +
@@ -637,6 +643,7 @@ var AdminDashboard = (function() {
       media_dir: document.getElementById('admMediaDir').value.trim(),
       gallery_dir: document.getElementById('galleryDir').value.trim(),
       comics_dir: document.getElementById('comicsDir').value.trim(),
+      downloads_dir: document.getElementById('downloadsDir').value.trim(),
     };
     _saveSettings(data);
   }
@@ -657,6 +664,29 @@ var AdminDashboard = (function() {
     }).then(function(d) {
       _toast(_t('settingsScan') + ' — ' + (d.found || 0) + ' ' + _t('filesCountShort'), 'success');
     }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  function _checkMount() {
+    var statusEl = document.getElementById('admMountStatus');
+    if (!statusEl) return;
+    _api('/api/content-search/mount-check', {method:'GET'}).then(function(d) {
+      if (!d.mounted || d.empty) {
+        statusEl.innerHTML = '<span class="mount-badge mount-fail">' + _t('settingsMountFail') + '</span>';
+      } else {
+        statusEl.innerHTML = '<span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>';
+      }
+    }).catch(function(e) {
+      statusEl.innerHTML = '<span class="mount-badge mount-fail">' + e.message + '</span>';
+    });
+  }
+
+  function _createFolders() {
+    _api('/api/content-search/create-folders', {method:'POST'}).then(function(d) {
+      _toast(_t('settingsCreateFoldersDone') + ': ' + (d.created || []).join(', '), 'success');
+      _checkMount();
+    }).catch(function(e) {
+      _toast(e.message, 'error');
+    });
   }
 
   /* ─── UTILITIES ─── */
@@ -720,6 +750,8 @@ var AdminDashboard = (function() {
     _saveCredBackend: _saveCredBackend,
     _pickFolder: _pickFolder,
     _scanFolder: _scanFolder,
+    _checkMount: _checkMount,
+    _createFolders: _createFolders,
     _saveFolderSettings: _saveFolderSettings,
     _closeModal: _closeModal,
     _togglePw: _togglePw

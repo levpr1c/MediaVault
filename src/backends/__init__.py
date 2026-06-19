@@ -37,5 +37,7 @@ def search_tags(site, query, page=1, settings=None):
     if not backend:
         return {'results': [], 'total': 0}
     if hasattr(backend, 'search'):
-        return backend.search(site, query, page, settings)
+        result = backend.search(site, query, page, settings)
+        result['backend'] = backend_name
+        return result
     return {'results': [], 'total': 0}

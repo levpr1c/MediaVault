@@ -22,6 +22,9 @@ const nextBtn = document.getElementById('csNextPage')
 const loadMoreBtn = document.getElementById('csLoadMore')
 const sourceCbs = document.querySelectorAll('.cs-source input')
 
+let _csGrid = null
+let _csPageStart = 0
+
 function getActiveSites() {
   return Array.from(sourceCbs).filter(cb => cb.checked).map(cb => cb.value).join(',')
 }
@@ -94,12 +97,11 @@ async function doSearch(query) {
   hideAutocomplete()
   _apiPage = 1
   _allResults = []
-  grid.innerHTML = renderSkeletons(12)
+  _csGrid.setLoading(true)
   pagination.style.display = 'none'
-  loading.style.display = 'none'
-  empty.style.display = 'none'
   var sites = getActiveSites()
   if (!sites) {
+    _csGrid.clear()
     grid.innerHTML = '<div class="admin-loading" style="color:var(--text2)">' + _t('contentSearchSelectSource') + '</div>'
     return
   }
@@ -126,6 +128,7 @@ async function fetchPage(rawQuery, sites, pageNum) {
       var errText = await res.text()
       var errMsg
       try { errMsg = JSON.parse(errText).error || 'HTTP ' + res.status } catch(_) { errMsg = errText || 'HTTP ' + res.status }
+      _csGrid.clear()
       grid.innerHTML = '<div class="admin-loading" style="color:var(--danger)">' + _t('contentSearchError') + ': ' + esc(errMsg) + '</div>'
       loading.style.display = 'none'
       return
@@ -148,6 +151,7 @@ async function fetchPage(rawQuery, sites, pageNum) {
       if (warnEl) warnEl.style.display = 'none'
     }
     if (data.error) {
+      _csGrid.clear()
       grid.innerHTML = '<div class="admin-loading" style="color:var(--danger)">' + _t('contentSearchError') + ': ' + esc(data.error) + '</div>'
       loading.style.display = 'none'
       return
@@ -162,8 +166,7 @@ async function fetchPage(rawQuery, sites, pageNum) {
       items.forEach(function(r) { r._source = shortName; newItems.push(r) })
     }
     if (!newItems.length && _allResults.length === 0) {
-      empty.style.display = 'block'
-      grid.innerHTML = ''
+      _csGrid.setEmpty(true)
       loading.style.display = 'none'
       return
     }
@@ -174,6 +177,7 @@ async function fetchPage(rawQuery, sites, pageNum) {
     updateLoadMoreBtn()
   } catch(e) {
     if (e.name === 'AbortError' || (_ac && _ac.signal.aborted)) return
+    _csGrid.clear()
     grid.innerHTML = '<div class="admin-loading" style="color:var(--danger)">' + esc(e.message) + '</div>'
   }
   loading.style.display = 'none'
@@ -183,10 +187,8 @@ function renderPage() {
   var start = (_currentPage - 1) * PER_PAGE
   var end = Math.min(start + PER_PAGE, _allResults.length)
   var pageItems = _allResults.slice(start, end)
-  grid.innerHTML = pageItems.map(function(r) { return cardHTML(r) }).join('')
-  grid.querySelectorAll('.cs-card').forEach(function(el, i) {
-    el.addEventListener('click', function() { showLightbox(start + i) })
-  })
+  _csPageStart = start
+  _csGrid.render(pageItems)
   pageInfo.textContent = _currentPage + '/' + _totalPages
   prevBtn.disabled = _currentPage <= 1
   nextBtn.disabled = _currentPage >= _totalPages
@@ -234,6 +236,15 @@ function renderSkeletons(n) {
   }
   return html
 }
+
+// ── SharedGrid ──
+_csGrid = new SharedGrid(grid, {
+  getItemHtml: function(r) { return cardHTML(r) },
+  onItemClick: function(item, idx) { showLightbox(_csPageStart + idx) },
+  layout: 'grid',
+  loadingHtml: '<div class="shared-grid-loading cs-grid-loading">' + renderSkeletons(12) + '</div>',
+  emptyHtml: '<div class="shared-grid-empty">' + _t('mediaDirEmpty') + '</div>'
+})
 
 // ── Shared Lightbox ──
 var csLightbox;

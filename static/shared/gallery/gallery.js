@@ -21,6 +21,7 @@ var MediaVaultGallery = (function() {
   var _fetchedOnly = false;
   var _sortMode = 'name'; // 'name' | 'newest' | 'oldest'
   var _currentFolder = 'all';
+  var _sharedGrid = null;
 
   var parseTags = Shared.parseTags;
 
@@ -274,20 +275,53 @@ var MediaVaultGallery = (function() {
     _hoverEl = null;
 
     if (_filteredData.length === 0) {
+      if (_sharedGrid) { _sharedGrid.destroy(); _sharedGrid = null; }
       gallery.innerHTML = '<div class="gallery-empty"><h2>' + Shared.t('welcome') + '</h2><p>' +
         (_galleryData.length === 0 ? Shared.t('welcomeDesc') : Shared.t('noFiles')) +
         '</p></div>';
+      gallery.classList.remove('shared-grid', 'shared-grid-fixed');
       _pathIndex = null;
       document.getElementById('galleryPagination').style.display = 'none';
       return;
     }
 
     var visible = getVisibleData();
-    gallery.innerHTML = visible.map(buildGalleryItemHtml).join('');
+    var isGrid = _layoutMode === 'fixed';
+    var isScroll = _layoutMode === 'scroll';
+
+    // Scroll mode — manual rendering (SharedGrid doesn't support flex column)
+    if (isScroll) {
+      if (_sharedGrid) { _sharedGrid.destroy(); _sharedGrid = null; }
+      gallery.innerHTML = visible.map(buildGalleryItemHtml).join('');
+      gallery.classList.remove('shared-grid', 'shared-grid-fixed');
+      gallery.classList.add('scroll');
+    } else {
+      // Masonry/Grid mode — use SharedGrid
+      gallery.classList.remove('scroll');
+      if (!_sharedGrid) {
+        _sharedGrid = new SharedGrid(gallery, {
+          layout: isGrid ? 'grid' : 'masonry',
+          getItemHtml: function(file, i) {
+            return buildGalleryItemHtml(file);
+          },
+          onItemClick: function(file, idx, e) {
+            _handleItemClick(file.path, idx);
+          }
+        });
+      } else {
+        gallery.classList.toggle('shared-grid-fixed', isGrid);
+        _sharedGrid._opts.layout = isGrid ? 'grid' : 'masonry';
+      }
+      // Clear server-rendered or leftover content, then render via SharedGrid
+      var placeholder = gallery.querySelector('.gallery-empty');
+      if (placeholder) placeholder.remove();
+      _sharedGrid.render(visible);
+    }
+
     rebuildPathIndex(_filteredData);
 
     var cols = getColumnCount();
-    if (visible.length > 0 && visible.length < cols * 1.5) {
+    if (!isScroll && visible.length > 0 && visible.length < cols * 1.5) {
       gallery.classList.add('few-items');
     } else {
       gallery.classList.remove('few-items');
@@ -297,35 +331,31 @@ var MediaVaultGallery = (function() {
     if (!_galleryDelegationAttached) { attachGalleryEvents(); _galleryDelegationAttached = true; }
     renderPaginationControls();
     _renderCategorizedTags();
-    reorderGalleryDOM();
   }
 
 
-  // Генерация HTML для одного элемента галереи (с чипсами тегов, иконкой видео)
+  // Генерация HTML для одного элемента галереи с overlay-информацией
   function buildGalleryItemHtml(file) {
     var tagChips = MediaVaultTags.renderTagChips(file.tags, 5);
     var ar = file.width > 0 && file.height > 0 ? file.width / file.height : null;
-    if (ar !== null && ar < 0.75) ar = 0.75; // cap tall thumbs to 3:4
+    if (ar !== null && ar < 0.75) ar = 0.75;
     var aspectRatio = ar ? ' style="aspect-ratio:' + ar + '"' : '';
     var selected = _selectedPaths.has(file.path) ? ' selected' : '';
-    var overlay = _selectMode ? '<div class="select-overlay">' + (_selectedPaths.has(file.path) ? '✓' : '') + '</div>' : '';
+    var selectOverlay = _selectMode ? '<div class="select-overlay">' + (_selectedPaths.has(file.path) ? '✓' : '') + '</div>' : '';
     var ext = (file.name || '').split('.').pop().toLowerCase();
     var isVideo = ['mp4','webm','mov','avi','mkv'].indexOf(ext) !== -1;
     var thumbUrl = MediaVaultAPI.thumbnailUrl(file.path);
+    var infoHtml = '<div class="gallery-overlay-info">' +
+      '<div class="gallery-name">' + Shared.esc(file.name) + '</div>' +
+      '<div class="gallery-tags">' + (isVideo ? '<span class="video-label">▶ ' + ext.toUpperCase() + '</span>' : (tagChips || '')) + '</div></div>';
     if (isVideo) {
       return '<div class="gallery-item' + selected + '" data-path="' + Shared.esc(file.path) + '">' +
-        '<div class="gallery-thumb" data-src="' + thumbUrl + '"' + aspectRatio + '>' + overlay +
-        '<div class="gallery-spinner"></div><div class="video-badge">🎬</div></div>' +
-        '<div class="gallery-info">' +
-        '<div class="gallery-name">' + Shared.esc(file.name) + '</div>' +
-        '<div style="font-size:11px;color:var(--text2)">▶ ' + ext.toUpperCase() + '</div></div></div>';
+        '<div class="gallery-thumb" data-src="' + thumbUrl + '"' + aspectRatio + '>' + selectOverlay +
+        '<div class="gallery-spinner"></div><div class="video-badge">🎬</div>' + infoHtml + '</div></div>';
     }
     return '<div class="gallery-item' + selected + '" data-path="' + Shared.esc(file.path) + '">' +
-      '<div class="gallery-thumb" data-src="' + thumbUrl + '"' + aspectRatio + '>' + overlay +
-      '<div class="gallery-spinner"></div></div>' +
-      '<div class="gallery-info">' +
-      '<div class="gallery-name">' + Shared.esc(file.name) + '</div>' +
-      '<div class="gallery-tags">' + (tagChips || '') + '</div></div></div>';
+      '<div class="gallery-thumb" data-src="' + thumbUrl + '"' + aspectRatio + '>' + selectOverlay +
+      '<div class="gallery-spinner"></div>' + infoHtml + '</div></div>';
   }
 
   // Загрузка миниатюры в элемент (с обработкой ошибок и иконкой видео)
@@ -371,29 +401,35 @@ var MediaVaultGallery = (function() {
     return observer;
   }
 
-  // Подписка на события: клик (открытие лайтбокса / bulk-выбор),
-  // hover-превью для видео
+  // Единый обработчик клика по элементу галереи
+  function _handleItemClick(path, idx) {
+    if (_selectMode) {
+      if (_selectedPaths.has(path)) _selectedPaths.delete(path);
+      else _selectedPaths.add(path);
+      var item = document.querySelector('.gallery-item[data-path="' + CSS.escape(path) + '"]');
+      if (item) item.classList.toggle('selected');
+      var overlay = item && item.querySelector('.select-overlay');
+      if (overlay) overlay.textContent = _selectedPaths.has(path) ? '✓' : '';
+      updateBulkBar();
+      return;
+    }
+    if (idx < 0) return;
+    MediaVaultLightbox.open(idx, _filteredData);
+  }
+
+  // Подписка на события: hover-превью для видео + клик (scroll mode)
   function attachGalleryEvents() {
     var gallery = document.getElementById('gallery');
-    gallery.addEventListener('click', function(e) {
-      var item = e.target.closest('.gallery-item');
-      if (!item) return;
-      if (_selectMode) {
+    // Scroll mode — собственный click handler (SharedGrid не используется)
+    if (_layoutMode === 'scroll') {
+      gallery.addEventListener('click', function(e) {
+        var item = e.target.closest('.gallery-item');
+        if (!item) return;
         var path = item.dataset.path;
-        if (_selectedPaths.has(path)) _selectedPaths.delete(path);
-        else _selectedPaths.add(path);
-        item.classList.toggle('selected');
-        var overlay = item.querySelector('.select-overlay');
-        if (overlay) overlay.textContent = _selectedPaths.has(path) ? '✓' : '';
-        updateBulkBar();
-        return;
-      }
-      var path = item.dataset.path;
-      var idx = _filteredData.findIndex(function(r) { return r.path === path; });
-      if (idx < 0) return;
-      // Всегда открываем SPA лайтбокс (на мобиле — fullscreen, теги снизу, тап-зоны)
-      MediaVaultLightbox.open(idx, _filteredData);
-    });
+        var idx = _filteredData.findIndex(function(r) { return r.path === path; });
+        _handleItemClick(path, idx);
+      });
+    }
 
     // Hover preview
     gallery.addEventListener('mouseover', function(e) {
@@ -519,15 +555,8 @@ var MediaVaultGallery = (function() {
     document.querySelectorAll('[data-layout]').forEach(function(b) {
       b.classList.toggle('active', b.dataset.layout === mode);
     });
-    var gallery = document.getElementById('gallery');
-    gallery.classList.remove('fixed', 'scroll');
-    if (mode === 'fixed') {
-      gallery.classList.add('fixed');
-      updateFixedColumns();
-    } else if (mode === 'scroll') {
-      gallery.classList.add('scroll');
-    }
-    reorderGalleryDOM();
+    // SharedGrid/renderGalleryContent управляет классами, просто ререндерим
+    renderGalleryContent();
     _syncURL();
   }
 
@@ -545,34 +574,19 @@ var MediaVaultGallery = (function() {
     _syncURL();
   }
 
-  // Обновление количества колонок в grid-режиме при изменении ширины
-  function updateFixedColumns() {
-    if (_layoutMode !== 'fixed') return;
-    var gallery = document.getElementById('gallery');
-    var w = gallery.offsetWidth;
-    var colW = parseFloat(getComputedStyle(gallery).getPropertyValue('--thumb-col-width')) || 220;
-    var gap = 8;
-    var cols = Math.max(2, Math.round((w + gap) / (colW + gap)));
-    gallery.style.setProperty('--grid-cols', cols);
-  }
-
-  // Переупорядочивание DOM-элементов для masonry-раскладки (column fill)
-  function reorderGalleryDOM() {
-    if (_layoutMode !== 'columns') return;
-    var gallery = document.getElementById('gallery');
-    if (gallery.classList.contains('few-items')) return;
-    Shared.reorderGalleryDOM(gallery, '.gallery-item');
-  }
+  // Обновление колонок — больше не нужно (SharedGrid / flexbox адаптивны)
+  function updateFixedColumns() {}
 
   // Установка размера миниатюр (значение в пикселях, сохранение в localStorage)
   function setThumbSize(size) {
-    document.getElementById('gallery').style.setProperty('--thumb-col-width', size + 'px');
+    var g = document.getElementById('gallery');
+    g.style.setProperty('--thumb-col-width', size + 'px');
+    g.style.setProperty('--shared-grid-col-width', size + 'px');
     document.querySelectorAll('.thumb-size').forEach(function(b) {
       b.classList.toggle('active', b.dataset.size === size);
     });
     try { localStorage.setItem('mediavault_thumb_size', size); } catch(e) {}
     updateFixedColumns();
-    reorderGalleryDOM();
   }
 
   // Обработка ввода в поисковую строку (показ автокомплита)

@@ -57,7 +57,14 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .toolbar-sep{width:1px;height:22px;background:var(--border);flex-shrink:0;margin:0 10px}
 
 /* ─── ГАЛЕРЕЯ ─── */
-#gallery{column-width:var(--thumb-col-width,220px);flex:1;align-content:flex-start}
+#gallery{--shared-grid-col-width:var(--thumb-col-width,220px)}
+#gallery.shared-grid{column-width:var(--thumb-col-width,220px);column-gap:8px;flex:1;align-content:flex-start}
+#gallery.shared-grid.shared-grid-fixed{column-width:auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+#gallery.shared-grid.shared-grid-fixed .shared-grid-item{width:var(--thumb-col-width,220px);margin-bottom:0}
+#gallery.shared-grid .shared-grid-item{display:inline-block;width:100%;margin-bottom:8px;break-inside:avoid}
+#gallery.few-items.shared-grid .shared-grid-item{width:var(--thumb-col-width,220px);margin-bottom:0}
+#gallery.few-items.shared-grid.shared-grid-fixed .shared-grid-item{width:var(--thumb-col-width,220px)}
+#gallery.few-items.shared-grid .shared-grid-item .gallery-item{margin-bottom:0;width:auto}
 #gallery.few-items{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;column-width:auto}
 #gallery.few-items .gallery-item{width:var(--thumb-col-width,220px);margin-bottom:0}
 .gallery-empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text2)}
@@ -75,9 +82,17 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .gallery-thumb-preview{position:absolute;inset:0;z-index:var(--z-dropdown);background:var(--surface)}
 .gallery-thumb-preview img,.gallery-thumb-preview video{width:100%;height:100%;object-fit:cover;display:block}
 .gallery-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.gallery-info{padding:8px 10px}
-.gallery-name{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-.gallery-tags{display:flex;flex-wrap:wrap;gap:3px}
+
+.gallery-overlay-info{position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(transparent,rgba(0,0,0,.65));backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:#fff;opacity:0;transition:opacity .2s ease}
+.gallery-item:hover .gallery-overlay-info{opacity:1}
+@media(hover:none){.gallery-overlay-info{opacity:1;background:linear-gradient(transparent,rgba(0,0,0,.55))}}
+.gallery-item.selected .gallery-overlay-info{opacity:1}
+.gallery-name{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;color:#fff}
+.gallery-tags{display:none;flex-wrap:wrap;gap:3px}
+.gallery-item:hover .gallery-tags{display:flex}
+@media(hover:none){.gallery-tags{display:flex}}
+.gallery-tags .tag-chip{color:#fff!important;background:rgba(255,255,255,.15)!important}
+.video-label{font-size:11px;opacity:.8}
 
 .gallery-spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;position:absolute}
 
@@ -178,23 +193,21 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
   .tool-btn-icon{padding:4px;min-width:28px}
   .gallery-item{border-radius:6px}
   .gallery-item.selected::after{border-radius:6px}
-  #gallery{column-width:140px;column-gap:6px}
-  #gallery.few-items .gallery-item{width:140px}
-  #gallery.fixed{grid-template-columns:repeat(2,1fr);gap:6px}
+  #gallery.shared-grid{column-width:140px;column-gap:6px}
+  #gallery.few-items.shared-grid .shared-grid-item{width:140px}
   #gallery.scroll .gallery-thumb{width:120px;min-height:80px}
   .gallery-thumb{min-height:60px;font-size:32px}
-  .gallery-info{padding:4px 6px}
+  .gallery-overlay-info{padding:4px 6px}
   .gallery-name{font-size:11px}
   #galleryPagination{gap:4px}
   #galleryPaginationTop{gap:4px;margin-bottom:6px}
 }
 /* ═══════════════════════════════════════ МОБИЛЬНАЯ ВЁРСТКА (<480px) — компактная галерея ═══════════════════════════════════════ */
 @media(max-width:480px){
-  #gallery{column-width:120px;column-gap:4px}
-  #gallery.fixed{grid-template-columns:repeat(2,1fr);gap:4px}
+  #gallery.shared-grid{column-width:120px;column-gap:4px}
   #gallery.scroll .gallery-thumb{width:100px;min-height:70px}
   .gallery-thumb{min-height:40px;font-size:24px}
-  #gallery.few-items .gallery-item{width:120px}
+  #gallery.few-items.shared-grid .shared-grid-item{width:120px}
 }
 
 /* ─── АНИМАЦИЯ СТРАНИЦ ─── */

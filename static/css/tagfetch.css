@@ -138,8 +138,8 @@
 .auto-header .tf-stats{font-size:13px;color:var(--text2)}
 .auto-actions-top,.auto-actions{display:flex;gap:10px;align-items:center;margin-bottom:12px}
 .auto-actions-top .tf-save-stats,.auto-actions .tf-save-stats{font-size:13px;color:var(--text2)}
-.auto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px;padding:4px 0}
-.auto-card{display:flex;flex-direction:row;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;opacity:0;animation:fadeIn .3s forwards}
+.auto-grid.shared-grid{--shared-grid-col-width:360px;--shared-grid-gap:12px;padding:4px 0}
+.auto-card{display:flex;flex-direction:row;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;animation:autoFadeIn .3s forwards}@keyframes autoFadeIn{from{opacity:0}to{opacity:1}}
 .auto-card-img{flex:1;overflow:hidden;background:var(--surface2);position:relative;align-self:flex-start}
 .auto-card-landscape{flex-direction:column}
 .auto-card-landscape .auto-card-img{width:100%}
@@ -165,7 +165,7 @@
   .mt-tag-panels{flex-direction:column}
   .mt-action-bar{gap:4px;flex-wrap:wrap}
   .mt-action-bar .btn{font-size:12px;padding:6px 12px;flex:1;min-width:0;justify-content:center}
-  .auto-grid{grid-template-columns:1fr}
+  .auto-grid.shared-grid{--shared-grid-col-width:220px}
   .auto-card-compact{max-width:none}
   .auto-card-compact .auto-card-body{width:auto;flex:1}
   .auto-header{gap:8px}

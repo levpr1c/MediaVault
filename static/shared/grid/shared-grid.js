@@ -105,6 +105,21 @@ var SharedGrid = (function() {
     this._container.classList.remove('shared-grid-is-loading', 'shared-grid-is-empty');
   };
 
+  SharedGrid.prototype.addItem = function(item) {
+    this._items.push(item);
+    var idx = this._items.length - 1;
+    this._container.classList.remove('shared-grid-is-loading', 'shared-grid-is-empty');
+    var ld = this._container.querySelector('.shared-grid-loading');
+    if (ld) ld.remove();
+    var em = this._container.querySelector('.shared-grid-empty');
+    if (em) em.remove();
+    var w = document.createElement('div');
+    w.className = 'shared-grid-item';
+    w.dataset.index = idx;
+    w.insertAdjacentHTML('beforeend', this._opts.getItemHtml(item, idx));
+    this._container.appendChild(w);
+  };
+
   SharedGrid.prototype.destroy = function() {
     if (this._clickHandler) {
       this._container.removeEventListener('click', this._clickHandler);

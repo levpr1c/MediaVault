@@ -27,14 +27,24 @@ var TagfetchAuto = (function() {
     if (bst) bst.textContent = count + ' files with tags';
   }
 
-  // Добавление карточки результата автосканирования в сетку
-  function addAutoCard(data) {
-    var grid = document.getElementById('autoGrid');
-    if (!grid) return;
-    var card = document.createElement('div');
-    card.className = 'auto-card';
-    card.dataset.path = data.path;
+  // SharedGrid instance (lazy)
+  var _sharedGrid = null;
 
+  // Lazy-init SharedGrid on #autoGrid
+  function getSharedGrid() {
+    if (_sharedGrid) return _sharedGrid;
+    var el = document.getElementById('autoGrid');
+    if (!el) return null;
+    _sharedGrid = new SharedGrid(el, {
+      layout: 'masonry',
+      getItemHtml: getAutoCardHtml,
+      onItemClick: function() {}
+    });
+    return _sharedGrid;
+  }
+
+  // Генерация HTML карточки для SharedGrid.getItemHtml
+  function getAutoCardHtml(data) {
     var ext = (data.name || '').split('.').pop().toLowerCase();
     var isVideo = ['mp4','webm','mov','avi','mkv'].indexOf(ext) !== -1;
     var thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(data.path) + _cbSuffix();
@@ -66,47 +76,61 @@ var TagfetchAuto = (function() {
       tagHtml += '</div>';
     }
 
-    var img = document.createElement('img');
-    img.src = isVideo ? thumbUrl : mediaUrl;
-    img.alt = '';
-    img.loading = 'lazy';
-    img.onerror = function() { this.outerHTML = isVideo ? '<span class=placeholder>🎬 video</span>' : '<span class=placeholder>🚫</span>'; };
     var tagCount = 0;
     sections.forEach(function(s) { tagCount += (data[s[0]] || []).length; });
     tagCount += (data.r34_tags || []).length;
 
-    img.onload = function() {
-      var w = this.naturalWidth, h = this.naturalHeight;
-      var p = this.parentElement;
-      if (!p) return;
-      if (w / h >= 0.85) {
-        card.classList.add('auto-card-landscape');
-      } else {
+    var imgSrc = isVideo ? thumbUrl : mediaUrl;
+    var imgErr = isVideo ? '<span class=placeholder>🎬 video</span>' : '<span class=placeholder>🚫</span>';
 
-        if (tagCount < 25) card.classList.add('auto-card-compact');
+    return '<div class="auto-card" data-path="' + Shared.esc(data.path) + '" data-tag-count="' + tagCount + '">' +
+      '<div class="auto-card-img">' +
+        '<img src="' + imgSrc + '" alt="" loading="lazy" onerror="this.outerHTML=\'' + imgErr + '\'">' +
+        (isVideo ? '<span class="video-badge">🎬</span>' : '') +
+      '</div>' +
+      '<div class="auto-card-body">' +
+        '<div class="auto-card-name">' + Shared.esc(data.name) + '</div>' +
+        '<div class="auto-card-tags">' + tagHtml + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Применение класса layout (landscape/compact) после загрузки картинки
+  function applyCardClass(card) {
+    var img = card.querySelector('img');
+    if (!img || !img.complete) return;
+    var w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) return;
+    if (w / h >= 0.85) {
+      card.classList.add('auto-card-landscape');
+    } else {
+      var tc = parseInt(card.dataset.tagCount, 10) || 0;
+      if (tc < 25) card.classList.add('auto-card-compact');
+    }
+  }
+
+  // Добавление карточки результата автосканирования через SharedGrid
+  function addAutoCard(data) {
+    var g = getSharedGrid();
+    if (!g) return;
+    g.addItem(data);
+
+    // Aspect-ratio class после загрузки картинки
+    var cards = g._container.querySelectorAll('.auto-card');
+    var card = cards[cards.length - 1];
+    if (card) {
+      var img = card.querySelector('img');
+      if (img) {
+        if (img.complete) {
+          applyCardClass(card);
+        } else {
+          img.addEventListener('load', function() { applyCardClass(card); });
+        }
       }
-    };
-
-    var imgWrap = document.createElement('div');
-    imgWrap.className = 'auto-card-img';
-    imgWrap.appendChild(img);
-    if (isVideo) {
-      var badge = document.createElement('span');
-      badge.className = 'video-badge';
-      badge.textContent = '🎬';
-      imgWrap.appendChild(badge);
     }
 
-    var body = document.createElement('div');
-    body.className = 'auto-card-body';
-    body.innerHTML = '<div class="auto-card-name">' + Shared.esc(data.name) + '</div>' +
-      '<div class="auto-card-tags">' + tagHtml + '</div>';
-
-    card.appendChild(imgWrap);
-    card.appendChild(body);
-    grid.appendChild(card);
     if (_autoScroll) {
-      var content = card.closest('.auto-content');
+      var content = g._container.closest('.auto-content');
       if (content) content.scrollTop = content.scrollHeight;
     }
 
@@ -185,7 +209,8 @@ var TagfetchAuto = (function() {
     var scBtn = document.getElementById('saveCancelAutoBtn');
     if (scBtn) scBtn.classList.remove('hidden');
     var grid = document.getElementById('autoGrid');
-    if (grid) grid.innerHTML = '';
+    var g = getSharedGrid();
+    if (g) g.setLoading(true);
     var ba = document.getElementById('autoActions');
     if (ba) ba.classList.add('hidden');
     var bat = document.getElementById('autoActionsTop');

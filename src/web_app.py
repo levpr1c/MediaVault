@@ -2074,7 +2074,52 @@ def api_effects():
         settings = s
     return jsonify({'ok': True})
 
-# ── Auth helpers ──
+def _relocate_or_clean(old_rel_path):
+    """Search for a file by basename in media_dir. If found, update DB path.
+    If not found, delete the stale DB record. Returns new safe path or None."""
+    md = settings.get('media_dir', '')
+    if not md or not os.path.isdir(md):
+        return None
+    basename = os.path.basename(old_rel_path)
+    found = None
+    for root, _, files in os.walk(md):
+        for f in files:
+            if f == basename:
+                found = os.path.join(root, f)
+                break
+        if found:
+            break
+    if found:
+        new_rel = os.path.relpath(found, md)
+        if os.path.exists(_DB_PATH):
+            try:
+                db = _db_conn()
+                db.execute('UPDATE files SET path = ? WHERE path = ?', [new_rel, old_rel_path])
+                db.commit()
+                db.close()
+                log_info('[Relocate] %s → %s', old_rel_path, new_rel)
+            except Exception as e:
+                log_error('[Relocate] DB update failed: %s', e)
+        return found
+    # Guard: if media_dir appears unmounted (empty), do NOT delete records
+    try:
+        entries = [e for e in os.listdir(md) if not e.startswith('.')]
+        if not entries:
+            log_info_yellow('[Relocate] media_dir empty/unmounted, skip delete for %s', old_rel_path)
+            return None
+    except Exception:
+        return None
+    # Not found → delete stale record
+    if os.path.exists(_DB_PATH):
+        try:
+            db = _db_conn()
+            db.execute('DELETE FROM files WHERE path = ?', [old_rel_path])
+            db.commit()
+            db.close()
+            log_info('[Relocate] Deleted stale DB record: %s', old_rel_path)
+        except Exception as e:
+            log_error('[Relocate] DB delete failed: %s', e)
+    return None
 
 def _ensure_admin_user():
     """Create default admin if no users exist."""
@@ -2569,8 +2614,11 @@ def api_media():
         abort(404)
     safe = _safe_media_path(filepath)
     if not safe or not os.path.exists(safe):
-        log_info_yellow('api_media: not found path=%s safe=%s', filepath, safe)
-        abort(404)
+        safe = _relocate_or_clean(filepath)
+        if not safe:
+            log_info_yellow('api_media: not found path=%s', filepath)
+            abort(404)
+        log_info_green('api_media: relocated path=%s → %s', filepath, safe)
     ext = os.path.splitext(safe)[1].lower()
     resp = send_file(safe, conditional=True)
     resp.headers['Cache-Control'] = _cache_control_header()
@@ -2592,8 +2640,10 @@ def api_thumbnail():
         abort(404)
     safe = _safe_media_path(filepath)
     if not safe or not os.path.exists(safe):
-        log_info_yellow('api_thumbnail: not found path=%s safe=%s', filepath, safe)
-        abort(404)
+        safe = _relocate_or_clean(filepath)
+        if not safe:
+            log_info_yellow('api_thumbnail: not found path=%s', filepath)
+            abort(404)
     data = _get_thumbnail(safe)
     if data:
         resp = send_file(io.BytesIO(data), mimetype='image/avif')

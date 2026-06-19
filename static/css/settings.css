@@ -134,6 +134,23 @@
   color: #fff;
 }
 
+/* ─── Blinking mount dot ─── */
+.mount-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+  animation: mountPulse 1.5s ease-in-out infinite;
+}
+.mount-dot-green { background: #4ade80 }
+.mount-dot-red { background: #f87171 }
+@keyframes mountPulse {
+  0%, 100% { opacity: 1 }
+  50% { opacity: .3 }
+}
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

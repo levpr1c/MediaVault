@@ -138,7 +138,7 @@ var AdminDashboard = (function() {
       _api('/api/settings').then(function(data) {
         self._settings = data;
         self._renderContent(body);
-        _checkMount();
+        _startMountWatch();
       }).catch(function(e) { _errorFallback(body, e); });
     },
 
@@ -666,18 +666,30 @@ var AdminDashboard = (function() {
     }).catch(function(e) { _toast(e.message, 'error'); });
   }
 
+  var _mountTimer = null;
+
   function _checkMount() {
     var statusEl = document.getElementById('admMountStatus');
     if (!statusEl) return;
     _api('/api/content-search/mount-check', {method:'GET'}).then(function(d) {
       if (!d.mounted || d.empty) {
-        statusEl.innerHTML = '<span class="mount-badge mount-fail">' + _t('settingsMountFail') + '</span>';
+        statusEl.innerHTML = '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + _t('settingsMountFail') + '</span>';
       } else {
-        statusEl.innerHTML = '<span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>';
+        statusEl.innerHTML = '<span class="mount-dot mount-dot-green"></span><span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>';
       }
     }).catch(function(e) {
-      statusEl.innerHTML = '<span class="mount-badge mount-fail">' + e.message + '</span>';
+      statusEl.innerHTML = '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + e.message + '</span>';
     });
+  }
+
+  // Auto-recheck mount every 30s while section is visible
+  function _startMountWatch() {
+    _stopMountWatch();
+    _checkMount();
+    _mountTimer = setInterval(_checkMount, 300000);
+  }
+  function _stopMountWatch() {
+    if (_mountTimer) { clearInterval(_mountTimer); _mountTimer = null; }
   }
 
   function _createFolders() {
@@ -715,6 +727,7 @@ var AdminDashboard = (function() {
 
   function loadSection(name) {
     if (!_sections[name]) return;
+    _stopMountWatch();
     _current = name;
     var navEls = document.querySelectorAll('.admin-nav-item, .mv-mh-icon[data-section]');
     navEls.forEach(function(el) {

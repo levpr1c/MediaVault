@@ -139,6 +139,7 @@
 .auto-actions-top,.auto-actions{display:flex;gap:10px;align-items:center;margin-bottom:12px}
 .auto-actions-top .tf-save-stats,.auto-actions .tf-save-stats{font-size:13px;color:var(--text2)}
 .auto-grid.shared-grid{--shared-grid-col-width:360px;--shared-grid-gap:12px;padding:4px 0}
+.auto-grid.shared-grid.shared-grid-fixed{align-items:flex-start}
 .auto-card{display:flex;flex-direction:row;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;animation:autoFadeIn .3s forwards}@keyframes autoFadeIn{from{opacity:0}to{opacity:1}}
 .auto-card-img{flex:1;overflow:hidden;background:var(--surface2);position:relative;align-self:flex-start}
 .auto-card-landscape{flex-direction:column}

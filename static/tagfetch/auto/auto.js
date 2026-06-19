@@ -36,7 +36,7 @@ var TagfetchAuto = (function() {
     var el = document.getElementById('autoGrid');
     if (!el) return null;
     _sharedGrid = new SharedGrid(el, {
-      layout: 'masonry',
+      layout: 'grid',
       getItemHtml: getAutoCardHtml,
       onItemClick: function() {}
     });

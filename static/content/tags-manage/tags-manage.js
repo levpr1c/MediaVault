@@ -1,4 +1,5 @@
 import { _t, api, esc, isImageExt, isVideoExt, toast, hexToRgba, debounce } from '../utils.js'
+import { buildLeftPanelHtml, renderLeftTags, setupDragEvents } from '../../shared/grid-renderer.js'
 
 let _ac = null
 let _allFiles = []
@@ -88,7 +89,7 @@ function _buildHTML(body) {
     `<div id="cmFiles" class="cm-files">` +
       _buildToolbar() +
       `<div class="cm-files-body">` +
-        _buildLeftPanel() +
+        buildLeftPanelHtml(_t('tagSearchPlaceholder')) +
         _buildRightPanel() +
       `</div>` +
     `</div>`
@@ -123,53 +124,21 @@ function _buildToolbar() {
   `</div>`
 }
 
-function _buildLeftPanel() {
-  return `<div class="cm-files-left shared-tag-panel">` +
-    `<div class="cm-files-left-search">` +
-      `<input id="cmFilesTagSearchQ" class="cm-tag-search-input" placeholder="${_t('tagSearchPlaceholder')}">` +
-    `</div>` +
-    `<div class="cm-files-left-content" id="cmFilesLeftContent">` +
-      `<div class="admin-loading"><span class="fetch-spinner"></span></div>` +
-    `</div>` +
-  `</div>`
+function _getUncategorizedTags(q) {
+  return _popTags.filter(item => {
+    const tag = item.name || item.tag || item
+    if (q && !tag.toLowerCase().includes(q)) return false
+    return !state.tagToCat[tag]
+  }).slice(0, 20)
 }
 
 function _renderLeftTags(searchQ) {
   const container = document.getElementById('cmFilesLeftContent')
   if (!container) return
   const q = searchQ ? searchQ.toLowerCase() : ''
-
-  let html = ''
-
-  // Categories
-  state.cats.forEach(cat => {
-    let tags = cat.tags
-    if (q) tags = tags.filter(t => t.toLowerCase().includes(q))
-    if (q && !tags.length && !cat.name.toLowerCase().includes(q)) return
-
-    html += `<div class="cm-files-left-section">` +
-      `<div class="cm-files-left-section-title" style="color:${cat.color}">${esc(cat.name)}</div>` +
-      `<div class="cm-files-left-tags">`
-    tags.forEach(tag => {
-      html += `<span class="tag-chip cm-tags-chip" draggable="true" data-tag="${esc(tag)}" style="color:${cat.color};background:${hexToRgba(cat.color, 0.12)}">${esc(tag)}</span>`
-    })
-    html += `</div></div>`
+  renderLeftTags(container, state.cats, q, {
+    uncatTags: _getUncategorizedTags(q)
   })
-
-  // Uncategorized
-  const uncatTags = _getUncategorizedTags(q)
-  if (uncatTags.length) {
-    html += `<div class="cm-files-left-section">` +
-      `<div class="cm-files-left-section-title" style="color:#999">${_t('uncategorized')}</div>` +
-      `<div class="cm-files-left-tags">`
-    uncatTags.forEach(t => {
-      html += `<span class="tag-chip cm-tags-chip" draggable="true" data-tag="${esc(t.name || t)}" style="color:#999;background:rgba(153,153,153,0.12)">${esc(t.name || t)} <span class="cm-tags-count-badge">(${t.count || 0})</span></span>`
-    })
-    html += `</div></div>`
-  }
-
-  if (!html) html += `<div class="cm-files-gallery-empty">${_t('comicsEmpty')}</div>`
-  container.innerHTML = html
 }
 
 function _buildRightPanel() {
@@ -260,14 +229,6 @@ function _renderPagination() {
   }
 }
 
-function _getUncategorizedTags(q) {
-  return _popTags.filter(item => {
-    const tag = item.name || item.tag || item
-    if (q && !tag.toLowerCase().includes(q)) return false
-    return !state.tagToCat[tag]
-  }).slice(0, 20)
-}
-
 function _attachEvents(body, signal) {
   // File search (debounced)
   const doSearch = debounce(e => {
@@ -299,37 +260,14 @@ function _attachEvents(body, signal) {
     actions[el.dataset.action]?.()
   }, { signal })
 
-  // Drag tags
-  body.addEventListener('dragstart', e => {
-    const chip = e.target.closest('.cm-tags-chip')
-    if (!chip) return
-    e.dataTransfer.setData('text/plain', chip.dataset.tag)
-    e.dataTransfer.effectAllowed = 'copy'
-    chip.classList.add('dragging')
-  }, { signal })
-  body.addEventListener('dragend', e => {
-    const chip = e.target.closest('.cm-tags-chip')
-    if (chip) chip.classList.remove('dragging')
-  }, { signal })
-
-  // Drop tag on file
-  body.addEventListener('dragover', e => {
-    const item = e.target.closest('.cm-files-gallery-item')
-    if (item) { e.preventDefault(); item.classList.add('tag-dragover') }
-  }, { signal })
-  body.addEventListener('dragleave', e => {
-    const item = e.target.closest('.cm-files-gallery-item')
-    if (item) item.classList.remove('tag-dragover')
-  }, { signal })
-  body.addEventListener('drop', e => {
-    document.querySelectorAll('.cm-files-gallery-item').forEach(i => i.classList.remove('tag-dragover'))
-    const item = e.target.closest('.cm-files-gallery-item')
-    if (!item) return
-    const tag = e.dataTransfer.getData('text/plain')
-    const path = item.dataset.filepath
-    if (tag && path) assignTag(path, tag)
-  }, { signal })
-
+  // Drag-to-tag using shared setup
+  setupDragEvents(body, signal, {
+    targetSelector: '.cm-files-gallery-item',
+    onDrop(target, tag) {
+      const path = target.dataset.filepath
+      if (path) assignTag(path, tag)
+    }
+  })
 }
 
 function setPageSize(size) {
@@ -434,4 +372,8 @@ function viewFile(path) {
   }
   const idx = _filteredFiles.findIndex(f => f.path === path)
   if (idx >= 0) _lbInstance.open(idx, _filteredFiles)
+}
+
+function _cbSuffix() {
+  return window.Shared && Shared._cbSuffix ? Shared._cbSuffix() : ''
 }

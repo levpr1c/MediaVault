@@ -1,4 +1,5 @@
-import { _t, api, esc, hexToRgba, toast } from './utils.js'
+import { _t, api, esc, toast } from './utils.js'
+import { buildLeftPanelHtml, renderLeftTags, setupDragEvents, buildComicsGridHTML } from '../shared/grid-renderer.js'
 
 const state = { cats: [], tagToCat: {}, catCache: {} }
 let _ac = null
@@ -34,137 +35,65 @@ export function comicsTagsDestroy() {
 }
 
 function _buildHTML() {
-  let html = `<div id="cmComicsTags" class="cm-files">`
-  html += `<div class="cm-files-body" style="display:flex;gap:16px;height:100%">`
-  html += `<div class="cm-files-left shared-tag-panel" style="flex:0 0 240px;overflow-y:auto">`
-  html += `<div class="cm-files-left-search">`
-  html += `<input id="cmComicsTagSearchQ" class="cm-tag-search-input" placeholder="${_t('tagSearchPlaceholder')}">`
-  html += `</div>`
-  html += `<div id="cmComicsLeftContent"></div>`
-  html += `</div>`
-  html += `<div class="cm-comics-grid" id="cmComicsTagsGrid" style="flex:1;overflow-y:auto">`
-  _comics.forEach(c => {
-    html += _comicCardHTML(c)
-  })
-  html += `</div></div></div>`
-  return html
-}
-
-function _comicCardHTML(c) {
-  let html = `<div class="cm-comic-card" data-comic-id="${c.id}" data-title="${esc(c.title)}" style="position:relative">`
-  if (c.cover) {
-    html += `<div class="cm-comic-cover"><img src="/api/media?path=${encodeURIComponent(c.cover)}${_cbSuffix()}" loading="lazy" onerror="this.parentElement.innerHTML='<span class=cm-comic-fallback>&#x1F4C4;</span>'"></div>`
-  } else {
-    html += `<div class="cm-comic-cover"><span class="cm-comic-fallback">&#x1F4C4;</span></div>`
-  }
-  html += `<div class="cm-comic-info"><span class="cm-comic-title">${esc(c.title)}</span></div>`
-  html += `</div>`
-  return html
-}
-
-function _cbSuffix() {
-  return window.Shared && Shared._cbSuffix ? Shared._cbSuffix() : ''
+  return `<div id="cmComicsTags" class="cm-files">` +
+    `<div class="cm-files-body" style="display:flex;gap:16px;height:100%">` +
+      buildLeftPanelHtml(_t('tagSearchPlaceholder')) +
+      `<div class="cm-comics-tags-grid" id="cmComicsTagsGrid">` +
+        buildComicsGridHTML(_comics) +
+      `</div>` +
+    `</div></div>`
 }
 
 function _attachEvents(body, signal) {
-  body.querySelector('#cmComicsTagSearchQ')?.addEventListener('input', e => {
-    _filterLeftTags(e.target.value)
+  document.getElementById('cmFilesTagSearchQ')?.addEventListener('input', e => {
+    renderLeftTags(document.getElementById('cmFilesLeftContent'), state.cats, e.target.value)
   }, { signal })
 
-  body.addEventListener('dragstart', e => {
-    const chip = e.target.closest('.tag-chip')
-    if (!chip) return
-    e.dataTransfer.setData('text/plain', JSON.stringify({
-      tag: chip.dataset.tag,
-      source: chip.dataset.source || 'manual'
-    }))
-    e.dataTransfer.effectAllowed = 'copy'
-    chip.classList.add('dragging')
-  }, { signal })
-
-  body.addEventListener('dragend', e => {
-    const chip = e.target.closest('.tag-chip')
-    if (chip) chip.classList.remove('dragging')
-  }, { signal })
-
-  body.addEventListener('dragover', e => {
-    const card = e.target.closest('.cm-comic-card')
-    if (card) { e.preventDefault(); card.classList.add('tag-dragover') }
-  }, { signal })
-
-  body.addEventListener('dragleave', e => {
-    const card = e.target.closest('.cm-comic-card')
-    if (card) card.classList.remove('tag-dragover')
-  }, { signal })
-
-  body.addEventListener('drop', e => {
-    document.querySelectorAll('.cm-comic-card').forEach(c => c.classList.remove('tag-dragover'))
-    const card = e.target.closest('.cm-comic-card')
-    if (!card) return
-    let data
-    try { data = JSON.parse(e.dataTransfer.getData('text/plain')) } catch(_) { return }
-    if (data && data.tag) _assignTagToComic(parseInt(card.dataset.comicId), data.tag, data.source)
-  }, { signal })
+  setupDragEvents(body, signal, {
+    targetSelector: '.cm-comic-card',
+    onDrop(target, tag) {
+      const comicId = parseInt(target.dataset.comicId)
+      const source = state.tagToCat[tag] ? 'manual' : ''
+      _assignTagToComic(comicId, tag, source)
+    }
+  })
 
   _renderLeftTags()
 }
 
-function _renderLeftTags(searchQ) {
-  const container = document.getElementById('cmComicsLeftContent')
+function _renderLeftTags() {
+  const container = document.getElementById('cmFilesLeftContent')
   if (!container) return
-  const q = searchQ ? searchQ.toLowerCase() : ''
-
-  let html = ''
-  state.cats.forEach(cat => {
-    let tags = cat.tags
-    if (q) tags = tags.filter(t => t.toLowerCase().includes(q))
-    if (q && !tags.length && !cat.name.toLowerCase().includes(q)) return
-    html += `<div class="cm-files-left-section" data-cat="${esc(cat.name)}">`
-    html += `<div class="cm-files-left-section-title" style="color:${cat.color}">${esc(cat.name)}</div>`
-    html += `<div class="cm-files-left-tags">`
-    tags.forEach(tag => {
-      html += `<span class="tag-chip cm-tags-chip" draggable="true" data-tag="${esc(tag)}" data-cat="${esc(cat.name)}" style="color:${cat.color};background:${hexToRgba(cat.color, 0.12)}">${esc(tag)}</span>`
-    })
-    html += `</div></div>`
-  })
-  container.innerHTML = html
-}
-
-function _filterLeftTags(q) {
-  const container = document.getElementById('cmComicsLeftContent')
-  if (!container) return
-  const val = q.toLowerCase().trim()
-  container.querySelectorAll('.cm-files-left-section').forEach(section => {
-    const name = (section.dataset.cat || '').toLowerCase()
-    const tags = Array.from(section.querySelectorAll('.tag-chip')).some(c => c.textContent.toLowerCase().includes(val))
-    section.style.display = name.includes(val) || tags ? '' : 'none'
-  })
+  const q = document.getElementById('cmFilesTagSearchQ')?.value || ''
+  renderLeftTags(container, state.cats, q)
 }
 
 function _assignTagToComic(comicId, tag, source) {
-  const comic = _comics.find(c => c.id === comicId)
-  if (!comic || !comic.pages) return
+  api('/api/comics/get', { method: 'POST', body: { id: comicId } }).then(comic => {
+    if (!comic || !comic.pages || !comic.pages.length) return
+    const total = comic.pages.length
+    let completed = 0
 
-  let completed = 0
-  const total = comic.pages.length
-
-  comic.pages.forEach(page => {
-    api('/api/comics/pages/tag', { method: 'POST', body: { path: page.path, tag, source } })
-      .then(data => {
-        completed++
-        if (data && data.ok) {
-          const card = document.querySelector(`.cm-comic-card[data-comic-id="${comicId}"]`)
-          if (card) card.classList.add('has-tags')
-        }
-        if (completed === total) {
-          toast(`${_t('tags')} ${_t('updated')}: ${tag} → ${comic.title}`, 'success')
-        }
-      })
-      .catch(e => {
-        completed++
-        if (completed === total) {
-          toast(`${_t('settingsError')}: ${e.message}`, 'error')
-        }
-      })
+    comic.pages.forEach(page => {
+      api('/api/comics/pages/tag', { method: 'POST', body: { path: page.path, tag, source } })
+        .then(data => {
+          completed++
+          if (data && data.ok) {
+            const card = document.querySelector(`.cm-comic-card[data-comic-id="${comicId}"]`)
+            if (card) card.classList.add('has-tags')
+          }
+          if (completed === total) {
+            toast(`${_t('tags')} ${_t('updated')}: ${tag} → ${comic.title}`, 'success')
+          }
+        })
+        .catch(e => {
+          completed++
+          if (completed === total) {
+            toast(`${_t('settingsError')}: ${e.message}`, 'error')
+          }
+        })
+    })
+  }).catch(e => {
+    toast(`${_t('settingsError')}: ${e.message}`, 'error')
   })
 }

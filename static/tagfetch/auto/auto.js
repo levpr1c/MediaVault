@@ -94,18 +94,10 @@ var TagfetchAuto = (function() {
     '</div>';
   }
 
-  // Применение класса layout (landscape/compact) после загрузки картинки
+  // После загрузки картинки — ставим fallback для сломанных
   function applyCardClass(card) {
     var img = card.querySelector('img');
     if (!img || !img.complete) return;
-    var w = img.naturalWidth, h = img.naturalHeight;
-    if (!w || !h) return;
-    if (w / h >= 0.85) {
-      card.classList.add('auto-card-landscape');
-    } else {
-      var tc = parseInt(card.dataset.tagCount, 10) || 0;
-      if (tc < 25) card.classList.add('auto-card-compact');
-    }
   }
 
   // Добавление карточки результата автосканирования через SharedGrid

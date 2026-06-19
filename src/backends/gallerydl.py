@@ -6,7 +6,7 @@ Supports:
   - nhentai: raw JSON API for search, gallery-dl for gallery fetch
   - kemono/coomer: gallery-dl CLI for get_info/download (unchanged)
 """
-import json, os, re, subprocess, sys, threading, time, requests
+import concurrent.futures, json, os, re, subprocess, sys, threading, time, requests
 from pathlib import Path
 
 _KEMONO_DOMAINS = r'(?:kemono|coomer)\.(?:su|cr|cv|party|so|us|co)'
@@ -128,18 +128,30 @@ class GalleryDlBackend:
             extr = find(f'https://nhentai.net/g/{gallery_id}')
             if not extr:
                 return None
-            for _path, _prefix, data in self._gd_extract(extr, limit=1):
-                return {
-                    'id': data.get('id') or data.get('gallery_id'),
-                    'title': data.get('title', ''),
-                    'title_en': data.get('title_en', ''),
-                    'title_ja': data.get('title_ja', ''),
-                    'media_id': data.get('media_id'),
-                    'tags': list(data.get('tags', [])),
-                    'num_pages': data.get('count') or data.get('num_pages', 0),
-                    'num_favorites': data.get('num_favorites', 0),
-                    'upload_date': str(data.get('date', '')),
-                }
+            data = None
+            for _path, _prefix, d in self._gd_extract(extr, limit=1):
+                data = d
+                break
+            if data is None:
+                return None
+            # Extract num_pages from the raw API response stored by the extractor
+            num_pages = 0
+            try:
+                if hasattr(extr, 'data') and isinstance(extr.data, dict):
+                    num_pages = int(extr.data.get('num_pages', 0) or 0)
+            except Exception:
+                pass
+            return {
+                'id': data.get('id') or data.get('gallery_id'),
+                'title': data.get('title', ''),
+                'title_en': data.get('title_en', ''),
+                'title_ja': data.get('title_ja', ''),
+                'media_id': data.get('media_id'),
+                'tags': list(data.get('tags', [])),
+                'num_pages': num_pages,
+                'num_favorites': data.get('num_favorites', 0),
+                'upload_date': str(data.get('date', '')),
+            }
         except Exception as e:
             import sys
             print(f'GalleryDlBackend: fetch_gallery error: {e}', file=sys.stderr)
@@ -266,8 +278,7 @@ class GalleryDlBackend:
             page_ids = gallery_ids[start:start + per_page]
             print(f'[NHentai Debug] search: page {page} → IDs {page_ids}', file=sys.stderr)
 
-            results = []
-            for gid in page_ids:
+            def _fetch_one(gid):
                 meta = self.fetch_gallery(gid)
                 if meta:
                     entry = {
@@ -281,9 +292,16 @@ class GalleryDlBackend:
                     print(f'[NHentai Debug]   gallery id={entry["id"]} title="{entry["title"]}" '
                           f'pages={entry["pages"]} tags={len(entry["tags"])} '
                           f'thumbnail={entry["thumbnail"]}', file=sys.stderr)
-                    results.append(entry)
-                else:
-                    print(f'[NHentai Debug]   gallery id={gid} fetch failed (no metadata)', file=sys.stderr)
+                    return entry
+                print(f'[NHentai Debug]   gallery id={gid} fetch failed (no metadata)', file=sys.stderr)
+                return None
+
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(len(page_ids), 8)
+            ) as exc:
+                fetched = list(exc.map(_fetch_one, page_ids))
+
+            results = [f for f in fetched if f]
             print(f'[NHentai Debug] search: returning {len(results)} results for query="{query}"', file=sys.stderr)
             return {'results': results, 'total': len(gallery_ids)}
         except Exception as e:

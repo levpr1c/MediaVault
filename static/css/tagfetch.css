@@ -133,6 +133,7 @@
 .modal-footer{display:flex;gap:8px;padding:16px 24px;border-top:1px solid var(--border);justify-content:flex-end}
 .modal-footer .tf-save-stats{flex:1;font-size:13px;color:var(--text2)}
 /* ─── АВТОСКАНИРОВАНИЕ (AUTO) ─── */
+.tf-page[data-tf="auto"]{display:flex;flex:1;min-height:0;flex-direction:column}
 .auto-content{flex:1;padding:28px 32px;overflow-y:auto}
 .auto-header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
 .auto-header .tf-stats{font-size:13px;color:var(--text2)}
@@ -140,21 +141,13 @@
 .auto-actions-top .tf-save-stats,.auto-actions .tf-save-stats{font-size:13px;color:var(--text2)}
 .auto-grid.shared-grid{--shared-grid-col-width:360px;--shared-grid-gap:12px;padding:4px 0}
 .auto-grid.shared-grid.shared-grid-fixed{align-items:flex-start}
-.auto-card{display:flex;flex-direction:row;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;animation:autoFadeIn .3s forwards}@keyframes autoFadeIn{from{opacity:0}to{opacity:1}}
-.auto-card-img{flex:1;overflow:hidden;background:var(--surface2);position:relative;align-self:flex-start}
-.auto-card-landscape{flex-direction:column}
-.auto-card-landscape .auto-card-img{width:100%}
-.auto-card-img img{width:100%;height:auto;display:block}
-.auto-card-body{flex:0 1 auto;min-width:100px;max-width:350px;display:block;padding:14px 16px;overflow-y:auto}
+.auto-card{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;animation:autoFadeIn .3s forwards}@keyframes autoFadeIn{from{opacity:0}to{opacity:1}}
+.auto-card-img{width:100%;overflow:hidden;background:var(--surface2);position:relative}
+.auto-card-img img{width:100%;height:auto;display:block;max-height:200px;object-fit:contain}
+.auto-card-body{padding:14px 16px;max-height:240px;overflow-y:auto}
 .auto-sec-group{display:block;margin-bottom:4px}
 .auto-sec-group:last-child{margin-bottom:0}
 .auto-sec-label{font-size:11px;font-weight:600;color:var(--text2);margin:4px 4px 2px 0;display:inline-block;white-space:nowrap}
-.auto-card-landscape .auto-card-body{display:flex;flex-wrap:wrap;gap:6px 16px;padding:12px 16px;max-width:none}
-.auto-card-landscape .auto-sec-group{flex:1 1 180px;min-width:0}
-.auto-card-landscape .auto-sec-group .auto-sec-label{display:block;margin-bottom:2px}
-.auto-card-landscape .auto-tag{font-size:10px;padding:1px 5px}
-.auto-card-compact{flex:0 1 auto;max-width:600px}
-.auto-card-compact .auto-card-body{width:240px;flex:none}
 .auto-card-name{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
 .auto-tag{display:inline-block;padding:2px 6px;font-size:11px;background:var(--chip-bg);color:var(--chip-text);border:1px solid transparent;border-radius:4px;line-height:1.4}
 .auto-hover-preview{position:absolute;inset:0;z-index:var(--z-dropdown);background:var(--surface)}
@@ -167,8 +160,6 @@
   .mt-action-bar{gap:4px;flex-wrap:wrap}
   .mt-action-bar .btn{font-size:12px;padding:6px 12px;flex:1;min-width:0;justify-content:center}
   .auto-grid.shared-grid{--shared-grid-col-width:220px}
-  .auto-card-compact{max-width:none}
-  .auto-card-compact .auto-card-body{width:auto;flex:1}
   .auto-header{gap:8px}
   .auto-content{padding:12px}
 }

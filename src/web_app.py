@@ -674,7 +674,10 @@ def _md5_from_filename(filename):
 def _db_conn():
     """Open connection to the fixed DB, creating dir if needed."""
     _ensure_db_dir()
-    return sqlite3.connect(_DB_PATH)
+    conn = sqlite3.connect(_DB_PATH)
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA busy_timeout=5000')
+    return conn
 
 # Объединяет существующие теги с новыми, удаляя дубликаты
 def merge_tags(existing, new):
@@ -3626,6 +3629,7 @@ def api_auto_scan():
         log_info('auto_scan: found %d files', len(paths))
     _ensure_db_schema()
     _ensure_auto_scan_table()
+    _ensure_scan_results_table()
     log_info('auto_scan starting with %d paths', len(paths))
 
     creds = settings.get('credentials', {})
@@ -3724,7 +3728,6 @@ def api_auto_scan():
                         _ensure_r34_categories(r34_tags)
 
                     _mark_auto_scanned(rel_path)
-                    _ensure_scan_results_table()
                     if has_tags:
                         _mark_tags_found(rel_path)
                     else:
@@ -3812,11 +3815,11 @@ def api_clear_thumb_cache():
         try:
             db = _db_conn()
             db.execute('DELETE FROM thumbnail_cache')
-            db.execute('VACUUM')
+            db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
             db.commit()
             count = db.total_changes
             db.close()
-            log_info('clear_thumb_cache removed %d entries + VACUUM', count)
+            log_info('clear_thumb_cache removed %d entries + checkpoint', count)
         except Exception as e:
             log_error('clear_thumb_cache error: %s', e)
             return jsonify({'error': str(e)}), 500
@@ -4086,13 +4089,13 @@ def api_clear_database():
         db.execute('DELETE FROM thumbnail_cache')
         db.execute('DROP TABLE IF EXISTS scan_results')
         db.execute('DROP TABLE IF EXISTS auto_scan')
-        db.execute('VACUUM')
+        db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
         db.commit()
         db.close()
         s = load_settings()
         s['startup_scan_count'] = 0
         save_settings(s)
-        log_info('clear_database: cleared files, thumb_cache, scan_results, auto_scan + VACUUM')
+        log_info('clear_database: cleared files, thumb_cache, scan_results, auto_scan + checkpoint')
         return jsonify({'ok': True})
     except Exception as e:
         log_error('clear_database error: %s', e)
@@ -4132,10 +4135,10 @@ def api_clear_tags():
             db.execute('DROP TABLE IF EXISTS tag_category_members')
             db.execute('DROP TABLE IF EXISTS scan_results')
             db.execute('DROP TABLE IF EXISTS auto_scan')
-            db.execute('VACUUM')
+            db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
             db.commit()
             db.close()
-            log_info('clear_tags: dropped tag_category_members, scan_results, auto_scan + VACUUM')
+            log_info('clear_tags: dropped tag_category_members, scan_results, auto_scan + checkpoint')
         except Exception as e:
             log_error('clear_tags db error: %s', e)
             return jsonify({'error': str(e)}), 500
@@ -4160,10 +4163,10 @@ def api_delete_all():
             db.execute('DROP TABLE IF EXISTS scan_results')
             db.execute('DROP TABLE IF EXISTS auto_scan')
             db.execute('DELETE FROM thumbnail_cache')
-            db.execute('VACUUM')
+            db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
             db.commit()
             db.close()
-            log_info('delete_all: cleared files, categories, scan data, thumbs + VACUUM')
+            log_info('delete_all: cleared files, categories, scan data, thumbs + checkpoint')
         except Exception as e:
             log_error('delete_all db error: %s', e)
             return jsonify({'error': str(e)}), 500
@@ -4247,15 +4250,18 @@ def api_comics_list():
     try:
         db = _db_conn()
         rows = db.execute('''
-            SELECT c.id, c.title, c.cover_path, c.created_at,
-              (SELECT file_path FROM comic_pages WHERE comic_id = c.id ORDER BY page_number LIMIT 1) as first_page
+            SELECT c.id, c.title, c.cover_path, c.created_at, c.source,
+              (SELECT file_path FROM comic_pages WHERE comic_id = c.id ORDER BY page_number LIMIT 1) as first_page,
+              (SELECT COUNT(*) FROM comic_pages WHERE comic_id = c.id) as page_count
             FROM comics c ORDER BY c.created_at DESC
         ''').fetchall()
         db.close()
         return jsonify([{
             'id': r[0], 'title': r[1],
-            'cover': r[2] if r[2] else r[4],
-            'created_at': r[3]
+            'cover': r[2] if r[2] else r[5],
+            'created_at': r[3],
+            'source': r[4] or '',
+            'page_count': r[6]
         } for r in rows])
     except Exception as e:
         return jsonify({'error': str(e)}), 500

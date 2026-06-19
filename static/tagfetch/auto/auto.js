@@ -48,7 +48,6 @@ var TagfetchAuto = (function() {
     var ext = (data.name || '').split('.').pop().toLowerCase();
     var isVideo = ['mp4','webm','mov','avi','mkv'].indexOf(ext) !== -1;
     var thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(data.path) + _cbSuffix();
-    var mediaUrl = '/api/media?path=' + encodeURIComponent(data.path) + _cbSuffix();
 
     var sections = [
       ['dan_artist', '🎨 Artist', 'artist'],
@@ -80,7 +79,7 @@ var TagfetchAuto = (function() {
     sections.forEach(function(s) { tagCount += (data[s[0]] || []).length; });
     tagCount += (data.r34_tags || []).length;
 
-    var imgSrc = isVideo ? thumbUrl : mediaUrl;
+    var imgSrc = thumbUrl;
     var imgErr = isVideo ? '<span class=placeholder>🎬 video</span>' : '<span class=placeholder>🚫</span>';
 
     return '<div class="auto-card" data-path="' + Shared.esc(data.path) + '" data-tag-count="' + tagCount + '">' +
@@ -268,12 +267,13 @@ var TagfetchAuto = (function() {
                   if (ntfMsg.length > 70) ntfMsg = ntfMsg.slice(0, 67) + '...';
                   Shared.notify(ntfMsg, 'success');
                   Shared.playChime();
-                } else if (data.status === 'skip') {
+                } else if (data.status === 'skip' || data.status === 'no_tags') {
                   totalSkipped++;
                 }
                 if (bs) bs.textContent = totalScanned + '/' + total + ' scanned, ' + found + ' found, ' + totalSkipped + ' skipped';
               } else if (data.type === 'done') {
-                if (bs) bs.textContent = '✅ Done — ' + (data.saved || 0) + ' found, ' + (data.skipped || 0) + ' skipped';
+                var doneMsg = '✅ Done — ' + found + ' found, ' + totalSkipped + ' skipped' + (totalScanned > 0 ? ', ' + totalScanned + ' scanned' : '');
+                if (bs) bs.textContent = doneMsg;
                 releaseControls();
                 if (_autoResults.length) showAutoSave(_autoResults.length);
               }

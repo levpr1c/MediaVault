@@ -3,7 +3,7 @@
 Supports:
   - danbooru: gallery-dl for fetch (MD5) and search (no auth required)
   - rule34:  gallery-dl for fetch (MD5) and search (needs api-key + user-id)
-  - nhentai: raw JSON API for search, gallery-dl for gallery fetch
+  - nhentai: gallery-dl for both search and gallery fetch
   - kemono/coomer: gallery-dl CLI for get_info/download (unchanged)
 """
 import concurrent.futures, json, os, re, subprocess, sys, threading, time, requests
@@ -11,7 +11,7 @@ from pathlib import Path
 
 _KEMONO_DOMAINS = r'(?:kemono|coomer)\.(?:su|cr|cv|party|so|us|co)'
 _UA = 'curl/8.20.0'
-_NHENTAI_API = 'https://nhentai.net/api'
+
 
 
 class GalleryDlBackend:
@@ -265,46 +265,47 @@ class GalleryDlBackend:
         try:
             from gallery_dl.extractor import find
             tags_q = requests.utils.quote(query)
-            print(f'[NHentai Debug] search: query="{query}" page={page}', file=sys.stderr)
             extr = find(f'https://nhentai.net/search/?q={tags_q}')
             if not extr:
-                print(f'[NHentai Debug] search: extractor not found for query="{query}"', file=sys.stderr)
+                return {'results': [], 'total': 0}
+
+            gallery_ids = []
+            for _path, _prefix, _data in self._gd_extract(extr):
+                gid = _data.get('gallery_id')
+                if gid and gid not in gallery_ids:
+                    gallery_ids.append(gid)
+            if not gallery_ids:
                 return {'results': [], 'total': 0}
 
             per_page = 25
             start = (page - 1) * per_page
-            all_results = []
-            for _path, _prefix, data in self._gd_extract(extr):
-                gid = data.get('gallery_id')
-                if not gid:
+            page_ids = gallery_ids[start:start + per_page]
+
+            def _fetch_gd(gid):
+                return self.fetch_gallery(gid)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as exc:
+                fetched = list(exc.map(_fetch_gd, page_ids))
+
+            results = []
+            for f in fetched:
+                if f is None:
                     continue
-                mid = data.get('media_id') or ''
-                title = data.get('title_en') or data.get('title') or ''
-                tags_raw = list(data.get('tags', []))
-                tags = [t.get('name', '') if isinstance(t, dict) else str(t) for t in tags_raw]
-                pages = data.get('num_pages') or data.get('page_count') or 0
-                all_results.append({
-                    'id': gid,
-                    'title': title,
+                mid = str(f.get('media_id', '') or '')
+                results.append({
+                    'id': f.get('id'),
+                    'title': f.get('title', ''),
                     'mid': mid,
-                    'thumbnail': f"https://t.nhentai.net/galleries/{mid}/thumb.jpg" if mid else '',
-                    'tags': tags,
-                    'pages': pages,
+                    'thumbnail': f'https://t.nhentai.net/galleries/{mid}/thumb.jpg' if mid else '',
+                    'tags': [t.get('name', str(t)) if isinstance(t, dict) else str(t) for t in (f.get('tags', []) or [])],
+                    'pages': f.get('num_pages', 0),
                 })
-            total = len(all_results)
-            print(f'[NHentai Debug] search: found {total} results for query="{query}"', file=sys.stderr)
-            page_results = all_results[start:start + per_page]
-            for r in page_results:
-                print(f'[NHentai Debug]   gallery id={r["id"]} title="{r["title"]}" '
-                      f'pages={r["pages"]} tags={len(r["tags"])} '
-                      f'thumbnail={r["thumbnail"]}', file=sys.stderr)
-            print(f'[NHentai Debug] search: returning {len(page_results)} results for query="{query}"', file=sys.stderr)
-            return {'results': page_results, 'total': total}
+
+            return {'results': results, 'total': len(gallery_ids)}
         except Exception as e:
             import traceback
-            print(f'[NHentai Debug] search ERROR: {e}', file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
-        return {'results': [], 'total': 0}
+            traceback.print_exc()
+            return {'results': [], 'total': 0}
 
     def _search_ehentai(self, query, page):
         """Search E-Hentai via gallery-dl native e-hentai extractor."""

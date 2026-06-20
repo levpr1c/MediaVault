@@ -99,7 +99,7 @@ var MediaVaultGallery = (function() {
     loadGallery();
   }
 
-  // Отрисовка кнопок-вкладок для фильтрации по типу папки
+  // Отрисовка кнопок для фильтрации по типу папки (мультиселект, кроме All)
   function _renderFolderButtons(folder_counts, selected_folders) {
     var toolbar = document.getElementById('galleryToolbar');
     if (!toolbar) return;
@@ -117,14 +117,13 @@ var MediaVaultGallery = (function() {
       container.addEventListener('click', function(e) {
         var btn = e.target.closest('[data-folder]');
         if (!btn) return;
-        _setFolder(btn.dataset.folder);
+        _toggleFolder(btn.dataset.folder);
       });
     }
-    var current = (selected_folders && selected_folders.length === 1) ? selected_folders[0] : 'all';
     var labels = { 'all': 'All', 'gallery': 'Gallery', 'comics': 'Comics', 'downloads': 'D/L' };
     var html = '';
     ['all', 'gallery', 'comics', 'downloads'].forEach(function(ft) {
-      var active = ft === current ? ' active' : '';
+      var active = selected_folders && selected_folders.includes(ft) ? ' active' : '';
       var count = (folder_counts && folder_counts[ft] > 0) ? ' <span class="folder-btn-count">' + folder_counts[ft] + '</span>' : '';
       html += '<button class="folder-btn' + active + '" data-folder="' + ft + '">' + labels[ft] + count + '</button>';
     });

@@ -271,48 +271,35 @@ class GalleryDlBackend:
                 print(f'[NHentai Debug] search: extractor not found for query="{query}"', file=sys.stderr)
                 return {'results': [], 'total': 0}
 
-            # gallery-dl NHentai search only returns gallery_id, not full metadata
-            gallery_ids = []
-            for _path, _prefix, data in self._gd_extract(extr):
-                gid = data.get('gallery_id')
-                if gid and gid not in gallery_ids:
-                    gallery_ids.append(gid)
-            print(f'[NHentai Debug] search: found {len(gallery_ids)} gallery IDs for query="{query}"', file=sys.stderr)
-            if not gallery_ids:
-                print(f'[NHentai Debug] search: no gallery IDs for query="{query}"', file=sys.stderr)
-                return {'results': [], 'total': 0}
-
             per_page = 25
             start = (page - 1) * per_page
-            page_ids = gallery_ids[start:start + per_page]
-            print(f'[NHentai Debug] search: page {page} → IDs {page_ids}', file=sys.stderr)
-
-            def _fetch_one(gid):
-                meta = self.fetch_gallery(gid)
-                if meta:
-                    entry = {
-                        'id': meta.get('id'),
-                        'title': meta.get('title_en') or meta.get('title', ''),
-                        'mid': meta.get('media_id'),
-                        'thumbnail': f"https://t.nhentai.net/galleries/{meta.get('media_id')}/thumb.jpg",
-                        'tags': list(meta.get('tags', [])),
-                        'pages': meta.get('num_pages', 0),
-                    }
-                    print(f'[NHentai Debug]   gallery id={entry["id"]} title="{entry["title"]}" '
-                          f'pages={entry["pages"]} tags={len(entry["tags"])} '
-                          f'thumbnail={entry["thumbnail"]}', file=sys.stderr)
-                    return entry
-                print(f'[NHentai Debug]   gallery id={gid} fetch failed (no metadata)', file=sys.stderr)
-                return None
-
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=min(len(page_ids), 8)
-            ) as exc:
-                fetched = list(exc.map(_fetch_one, page_ids))
-
-            results = [f for f in fetched if f]
-            print(f'[NHentai Debug] search: returning {len(results)} results for query="{query}"', file=sys.stderr)
-            return {'results': results, 'total': len(gallery_ids)}
+            all_results = []
+            for _path, _prefix, data in self._gd_extract(extr):
+                gid = data.get('gallery_id')
+                if not gid:
+                    continue
+                mid = data.get('media_id') or ''
+                title = data.get('title_en') or data.get('title') or ''
+                tags_raw = list(data.get('tags', []))
+                tags = [t.get('name', '') if isinstance(t, dict) else str(t) for t in tags_raw]
+                pages = data.get('num_pages') or data.get('page_count') or 0
+                all_results.append({
+                    'id': gid,
+                    'title': title,
+                    'mid': mid,
+                    'thumbnail': f"https://t.nhentai.net/galleries/{mid}/thumb.jpg" if mid else '',
+                    'tags': tags,
+                    'pages': pages,
+                })
+            total = len(all_results)
+            print(f'[NHentai Debug] search: found {total} results for query="{query}"', file=sys.stderr)
+            page_results = all_results[start:start + per_page]
+            for r in page_results:
+                print(f'[NHentai Debug]   gallery id={r["id"]} title="{r["title"]}" '
+                      f'pages={r["pages"]} tags={len(r["tags"])} '
+                      f'thumbnail={r["thumbnail"]}', file=sys.stderr)
+            print(f'[NHentai Debug] search: returning {len(page_results)} results for query="{query}"', file=sys.stderr)
+            return {'results': page_results, 'total': total}
         except Exception as e:
             import traceback
             print(f'[NHentai Debug] search ERROR: {e}', file=sys.stderr)

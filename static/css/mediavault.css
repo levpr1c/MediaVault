@@ -287,10 +287,9 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .mv-page{display:none}
 .mv-page.active{display:flex;flex-direction:column;flex:1;min-height:0}
 
-/* ─── FOLDER CHECKBOXES ─── */
-.folder-checkboxes{display:flex;align-items:center;gap:2px;flex-shrink:0}
-.folder-cb{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text2);transition:all .15s;white-space:nowrap;background:transparent;border:1px solid transparent;user-select:none;line-height:1}
-.folder-cb:hover{background:rgba(255,255,255,.08);color:var(--text)}
-.folder-cb.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.folder-cb input[type="checkbox"]{accent-color:var(--accent);margin:0;width:13px;height:13px;cursor:pointer}
-.folder-cb-count{opacity:.6;font-size:10px}
+/* ─── FOLDER BUTTONS ─── */
+.folder-buttons{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.folder-btn{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text2);transition:all .15s;white-space:nowrap;background:transparent;border:1px solid transparent;user-select:none;line-height:1;font-family:inherit}
+.folder-btn:hover{background:rgba(255,255,255,.08);color:var(--text)}
+.folder-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.folder-btn-count{opacity:.6;font-size:10px;margin-left:2px}

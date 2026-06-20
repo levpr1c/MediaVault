@@ -99,35 +99,34 @@ var MediaVaultGallery = (function() {
     loadGallery();
   }
 
-  // Отрисовка чекбоксов для фильтрации по типу папки
-  function _renderFolderCheckboxes(folder_counts, selected_folders) {
+  // Отрисовка кнопок-вкладок для фильтрации по типу папки
+  function _renderFolderButtons(folder_counts, selected_folders) {
     var toolbar = document.getElementById('galleryToolbar');
     if (!toolbar) return;
-    var container = document.getElementById('folderCheckboxes');
+    var container = document.getElementById('folderButtons');
     if (!container) {
       container = document.createElement('div');
-      container.id = 'folderCheckboxes';
-      container.className = 'folder-checkboxes';
+      container.id = 'folderButtons';
+      container.className = 'folder-buttons';
       var toggle = document.getElementById('sidebarToggle');
       if (toggle && toggle.nextSibling) {
         toolbar.insertBefore(container, toggle.nextSibling);
       } else {
         toolbar.insertBefore(container, toolbar.firstChild);
       }
-      container.addEventListener('change', function(e) {
-        var cb = e.target;
-        if (cb.tagName !== 'INPUT') return;
-        _toggleFolder(cb.dataset.folder);
+      container.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-folder]');
+        if (!btn) return;
+        _setFolder(btn.dataset.folder);
       });
     }
-    var isAll = !selected_folders || selected_folders.includes('all');
-    var labels = { 'all': 'All', 'gallery': 'Gallery', 'comics': 'Comics', 'downloads': 'D/L', 'nhentai': 'nH' };
-    var html = '<label class="folder-cb' + (isAll ? ' active' : '') + '"><input type="checkbox" data-folder="all"' + (isAll ? ' checked' : '') + '> ' + labels['all'] + '</label>';
-    ['gallery', 'comics', 'downloads', 'nhentai'].forEach(function(ft) {
-      if (folder_counts && folder_counts[ft] > 0) {
-        var checked = selected_folders && selected_folders.includes(ft);
-        html += '<label class="folder-cb' + (checked ? ' active' : '') + '"><input type="checkbox" data-folder="' + ft + '"' + (checked ? ' checked' : '') + '> ' + labels[ft] + ' <span class="folder-cb-count">' + folder_counts[ft] + '</span></label>';
-      }
+    var current = (selected_folders && selected_folders.length === 1) ? selected_folders[0] : 'all';
+    var labels = { 'all': 'All', 'gallery': 'Gallery', 'comics': 'Comics', 'downloads': 'D/L' };
+    var html = '';
+    ['all', 'gallery', 'comics', 'downloads'].forEach(function(ft) {
+      var active = ft === current ? ' active' : '';
+      var count = (folder_counts && folder_counts[ft] > 0) ? ' <span class="folder-btn-count">' + folder_counts[ft] + '</span>' : '';
+      html += '<button class="folder-btn' + active + '" data-folder="' + ft + '">' + labels[ft] + count + '</button>';
     });
     container.innerHTML = html;
   }
@@ -167,7 +166,7 @@ var MediaVaultGallery = (function() {
       if (!urlParams.has('sm')) _searchMode = 'both';
       var searchInput = document.getElementById('searchInput');
       if (searchInput) searchInput.value = _searchQuery;
-      _renderFolderCheckboxes(data.folder_counts || {}, _selectedFolders);
+      _renderFolderButtons(data.folder_counts || {}, _selectedFolders);
       if (!data.media_dir_set && _galleryData.length > 0) {
         var gallery = document.getElementById('gallery');
         gallery.innerHTML = '<div class="gallery-empty"><h2>\uD83D\uDCC1 Media folder not set</h2>' +

@@ -2847,8 +2847,7 @@ def api_scan_status():
 def _folder_sql_clause(ft, settings):
     """Return (sql_fragment, params) for a folder type filter in api_gallery."""
     if ft == 'gallery':
-        fdir = settings.get('gallery_dir', 'Gallery')
-        return ('path LIKE ?', [fdir + '/%'])
+        return ("folder_type = 'gallery'", [])
     if ft == 'comics':
         fdir = settings.get('comics_dir', 'Comics')
         dl_dir = settings.get('downloads_dir', 'Downloads')
@@ -2856,9 +2855,6 @@ def _folder_sql_clause(ft, settings):
     if ft == 'downloads':
         dl_dir = settings.get('downloads_dir', 'Downloads')
         return ("(folder_type = 'downloads' AND path NOT LIKE ?)", [dl_dir + '/nhentai/%'])
-    if ft == 'nhentai':
-        dl_dir = settings.get('downloads_dir', 'Downloads')
-        return ('path LIKE ?', [dl_dir + '/nhentai/%'])
     return ('1=0', [])
 
 # Загрузка галереи с пагинацией. Параметры: page, per_page. Возвращает список файлов с тегами.
@@ -2886,7 +2882,7 @@ def api_gallery():
         if to_date is not None:
             where_clauses.append('mtime <= ?')
             params.append(to_date)
-        _VALID_FOLDERS = ('gallery', 'comics', 'downloads', 'nhentai')
+        _VALID_FOLDERS = ('gallery', 'comics', 'downloads')
         if folders_str:
             ftypes = [f.strip() for f in folders_str.split(',') if f.strip() in _VALID_FOLDERS]
             if ftypes:
@@ -2901,8 +2897,6 @@ def api_gallery():
             cl, p = _folder_sql_clause(folder, settings)
             where_clauses.append(cl)
             params.extend(p)
-        else:
-            where_clauses.append("(folder_type IS NULL OR folder_type NOT IN ('downloads'))")
         where_sql = ' WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''
         if per_page > 0:
             offset = (page - 1) * per_page
@@ -2920,18 +2914,15 @@ def api_gallery():
             files.append({'path': r[0], 'name': r[1], 'tags': r[2] or '', 'type': r[3], 'width': r[4], 'height': r[5], 'mtime': r[6], 'fetched': _has_non_meta_tags(r[2] or '')})
         total = len(files) if per_page <= 0 else db.execute('SELECT COUNT(DISTINCT path) FROM files' + where_sql, params).fetchone()[0]
         folder_counts = {}
-        gallery_dir = settings.get('gallery_dir', 'Gallery')
         comics_dir = settings.get('comics_dir', 'Comics')
         downloads_dir = settings.get('downloads_dir', 'Downloads')
-        for ft in ('gallery', 'comics', 'downloads', 'nhentai'):
+        for ft in ('gallery', 'comics', 'downloads'):
             if ft == 'gallery':
-                c = db.execute('SELECT COUNT(*) FROM files WHERE path LIKE ?', [gallery_dir + '/%']).fetchone()[0]
+                c = db.execute("SELECT COUNT(*) FROM files WHERE folder_type = 'gallery'").fetchone()[0]
             elif ft == 'comics':
-                c = db.execute('SELECT COUNT(*) FROM files WHERE path LIKE ?', [comics_dir + '/%']).fetchone()[0]
-            elif ft == 'downloads':
-                c = db.execute("SELECT COUNT(*) FROM files WHERE folder_type = 'downloads' AND path NOT LIKE ?", [downloads_dir + '/nhentai/%']).fetchone()[0]
+                c = db.execute('SELECT COUNT(*) FROM files WHERE path LIKE ? OR path LIKE ?', [comics_dir + '/%', downloads_dir + '/nhentai/%']).fetchone()[0]
             else:
-                c = db.execute('SELECT COUNT(*) FROM files WHERE path LIKE ?', [downloads_dir + '/nhentai/%']).fetchone()[0]
+                c = db.execute("SELECT COUNT(*) FROM files WHERE folder_type = 'downloads' AND path NOT LIKE ?", [downloads_dir + '/nhentai/%']).fetchone()[0]
             if c > 0:
                 folder_counts[ft] = c
         log_debug('api_gallery: folder=%s page=%d per_page=%d → %d files, %d total',

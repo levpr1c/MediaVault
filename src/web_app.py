@@ -2891,6 +2891,8 @@ def api_gallery():
             else:
                 where_clauses.append('folder_type = ?')
                 params.append(folder)
+        else:
+            where_clauses.append("(folder_type IS NULL OR folder_type NOT IN ('downloads'))")
         where_sql = ' WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''
         if per_page > 0:
             offset = (page - 1) * per_page

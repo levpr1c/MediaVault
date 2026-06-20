@@ -135,9 +135,7 @@ var MediaVault = (function() {
         return;
       }
       if (isInput) return;
-      if (e.key === 'Escape') MediaVaultLightbox.close();
-      if (e.key === 'ArrowLeft') MediaVaultLightbox.prev();
-      if (e.key === 'ArrowRight') MediaVaultLightbox.next();
+      if (e.key === 'Escape') { MediaVaultLightbox.close(); return; }
     });
 
     // Bulk tag

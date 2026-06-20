@@ -156,7 +156,7 @@ async function fetchPage(rawQuery, sites, pageNum) {
       loading.style.display = 'none'
       return
     }
-    var siteMap = { rule34: 'r34', danbooru: 'dan', nhentai: 'nhentai' }
+    var siteMap = { rule34: 'r34', danbooru: 'dan', nhentai: 'nhentai', ehentai: 'eh' }
     var newItems = []
     for (var siteKey in (data.results || {})) {
       var siteData = data.results[siteKey]
@@ -216,7 +216,7 @@ loadMoreBtn.addEventListener('click', function() {
 function cardHTML(r) {
   var imgSrc = r.preview_url || r.large_file_url || r.sample_url || r.thumbnail || r.file_url || ''
   var tagsStr = Array.isArray(r.tags) ? r.tags.join(', ') : (r.tags || '')
-  var sourceLabel = { r34: 'R34', dan: 'Dan', nhentai: 'NH' }[r._source] || r._source
+  var sourceLabel = { r34: 'R34', dan: 'Dan', nhentai: 'NH', eh: 'EH' }[r._source] || r._source
   return '<div class="cs-card">' +
     '<img class="cs-card-thumb" src="' + esc(imgSrc) + '" alt="" loading="lazy"' +
     ' onerror="this.classList.add(\'cs-img-error\')">' +
@@ -261,7 +261,7 @@ try {
       return '\u2B07 ' + _t('contentSearchDownload').replace('{site}', site);
     },
     onDownload: function(file) {
-      var src = file._sourceSite || 'unknown';
+      var src = file._source || 'unknown';
 
       // NHentai: download ALL pages of the gallery
       if (file._gid && file._mid) {
@@ -346,14 +346,16 @@ function showLightbox(index) {
     var path
     if (r._source === 'nhentai') {
       path = r.thumbnail || 'https://t.nhentai.net/galleries/' + r.mid + '/thumb.jpg'
+    } else if (r._source === 'eh') {
+      path = r.thumbnail || r.preview_url || ''
     } else {
       path = r.file_url || r.sample_url || r.preview_url
     }
-    var srcSite = r._source === 'nhentai' ? 'NHentai' : (r._source === 'r34' ? 'Rule34' : (r._source === 'dan' ? 'Danbooru' : r._source))
+    var srcSite = r._source === 'nhentai' ? 'NHentai' : (r._source === 'eh' ? 'E-Hentai' : (r._source === 'r34' ? 'Rule34' : (r._source === 'dan' ? 'Danbooru' : r._source)))
     var item = {
       path: path,
       name: '',
-      _displayName: r._source === 'nhentai' ? (r.title || 'NHentai #' + r.id) : (r._source.toUpperCase() + ' #' + r.id),
+      _displayName: r._source === 'nhentai' ? (r.title || 'NHentai #' + r.id) : (r._source === 'eh' ? (r.title || 'E-Hentai #' + r.id) : (r._source.toUpperCase() + ' #' + r.id)),
       _sourceSite: srcSite,
       _tagsByCategory: r.tags_by_category || {},
       width: r.width || null,
@@ -363,6 +365,11 @@ function showLightbox(index) {
     if (r._source === 'nhentai') {
       item._gid = r.id;
       item._mid = r.mid;
+      item._numPages = r.pages || 1;
+      item._galleryTitle = r.title || '';
+    } else if (r._source === 'eh') {
+      item._gid = r.id;
+      item._token = r.token || '';
       item._numPages = r.pages || 1;
       item._galleryTitle = r.title || '';
     }
@@ -375,9 +382,13 @@ function showLightbox(index) {
 var params = new URLSearchParams(window.location.search)
 var siteParam = params.get('site')
 var qParam = params.get('q')
-if (siteParam === 'nhentai') {
+if (siteParam === 'nhentai' || siteParam === 'eh') {
   sourceCbs.forEach(function(cb) { cb.checked = false })
-  document.querySelector('.cs-source[data-site="nhentai"] input').checked = true
+  if (siteParam === 'eh') {
+    document.querySelector('.cs-source[data-site="eh"] input').checked = true
+  } else {
+    document.querySelector('.cs-source[data-site="nhentai"] input').checked = true
+  }
 } else if (siteParam === 'all') {
   sourceCbs.forEach(function(cb) { cb.checked = true })
 } else if (siteParam === 'r34,dan') {

@@ -2,7 +2,7 @@
 
 ## 1. Зачем этот документ
 
-Справочник для AI-агентов: как MediaVault взаимодействует с внешними сайтами (Rule34, Danbooru, NHentai, Kemono, Coomer), какие бэкенды есть, как хранятся credentials, какие изменения были сделаны в new-features branch.
+Справочник для AI-агентов: как MediaVault взаимодействует с внешними сайтами (Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer), какие бэкенды есть, как хранятся credentials, какие изменения были сделаны в new-features branch.
 
 MediaVault не хранит медиа с этих сайтов. Он использует их API для получения тегов (по MD5 хешу файла) и для поиска/импорта контента. Архитектура модульная: каждый сайт может использовать один из двух бэкендов, настраиваемых per-site в админ-панели.
 
@@ -33,6 +33,7 @@ _DEFAULT_BACKEND = {
     'rule34':  'api_raw',
     'danbooru':'api_raw',
     'nhentai': 'gallerydl',
+    'ehentai': 'gallerydl',
     'kemono':  'gallerydl',
     'coomer':  'gallerydl',
 }
@@ -75,6 +76,7 @@ var sites = [
     {id:'rule34',  creds:[...], backends:['api_raw','gallerydl']},
     {id:'danbooru',creds:[...], backends:['api_raw','gallerydl']},
     {id:'nhentai', creds:[...], backends:['api_raw','gallerydl']},
+    {id:'ehentai', creds:[],    backends:['gallerydl']},
     {id:'kemono',  creds:[],    backends:['gallerydl']},
     {id:'coomer',  creds:[],    backends:['gallerydl']},
 ];
@@ -89,7 +91,8 @@ function _saveApiKeys() {
         credentials: {
             rule34:   { uid: _val('admrule34uid'), key: _val('admrule34key') },
             danbooru: { login: _val('admdanboorulogin'), key: _val('admdanboorukey') },
-            nhentai:  { key: _val('admnhentaikey') }
+            nhentai:  { key: _val('admnhentaikey') },
+            ehentai:  { key: _val('admehentaikey') }
         }
     };
     var selects = document.querySelectorAll('.backend-select');
@@ -110,13 +113,15 @@ function _saveApiKeys() {
         "rule34": "api_raw",
         "danbooru": "api_raw",
         "nhentai": "gallerydl",
+        "ehentai": "gallerydl",
         "kemono": "gallerydl",
         "coomer": "gallerydl"
     },
     "credentials": {
         "rule34":   {"uid": "", "key": ""},
         "danbooru": {"login": "", "key": ""},
-        "nhentai":  {"key": ""}
+        "nhentai":  {"key": ""},
+        "ehentai":  {"key": ""}
     }
 }
 ```
@@ -306,6 +311,8 @@ def _apply_gd_config(self, settings):
     gconfig.set(('extractor', 'danbooru'), 'page-limit', 1)
     gconfig.set(('extractor', 'nhentai'), 'per-page', 25)
     gconfig.set(('extractor', 'nhentai'), 'page-limit', 1)
+    gconfig.set(('extractor', 'ehentai'), 'per-page', 25)
+    gconfig.set(('extractor', 'ehentai'), 'page-limit', 1)
 ```
 
 ### 4.2 Поддерживаемые сайты
@@ -315,6 +322,7 @@ def _apply_gd_config(self, settings):
 | Rule34 | + | + (raw API) | - | - | search через raw JSON (gallery-dl требует api-key для v2) |
 | Danbooru | + | + | - | - | auth опциональна |
 | NHentai | + (fetch_gallery) | + | - | - | gallery-dl сам обходит Cloudflare |
+| E-Hentai | + (fetch_gallery) | + | - | - | gallery-dl сам обходит Cloudflare |
 | Kemono | - | - | + (через CLI) | + (через CLI) | импорт постов |
 | Coomer | - | - | + (через CLI) | + (через CLI) | импорт постов |
 
@@ -445,6 +453,7 @@ _PER_SITE_SCHEMA = {
     'rule34':   ['uid', 'key'],
     'danbooru': ['login', 'key'],
     'nhentai':  ['key'],
+    'ehentai':  ['key'],
 }
 
 _OLD_KEY_MAP = {
@@ -453,6 +462,7 @@ _OLD_KEY_MAP = {
     'dan_login': ('danbooru', 'login'),
     'dan_key':   ('danbooru', 'key'),
     'nh_key':    ('nhentai',  'key'),
+    'eh_key':    ('ehentai',  'key'),
 }
 ```
 
@@ -468,7 +478,7 @@ class KeyringStore:
     def delete(self, key: str)
 ```
 
-Ключи в GNOME Keyring: `api:rule34:uid`, `api:rule34:key`, `api:danbooru:login`, `api:danbooru:key`, `api:nhentai:key`.
+Ключи в GNOME Keyring: `api:rule34:uid`, `api:rule34:key`, `api:danbooru:login`, `api:danbooru:key`, `api:nhentai:key`, `api:ehentai:key`.
 
 ### 5.3 Жизненный цикл
 
@@ -488,7 +498,7 @@ def save_settings(s):
         _credential_store.delete('api:r34_key')
         # ...
         # записываем per-site ключи
-        for site, keys in [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']), ('nhentai', ['key'])]:
+        for site, keys in [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']), ('nhentai', ['key']), ('ehentai', ['key'])]:
             site_cred = cred.get(site, {})
             for k in keys:
                 val = site_cred.get(k, '')
@@ -515,7 +525,7 @@ data = request.get_json(silent=True)
 if 'credentials' in data:
     s['credentials'] = data['credentials']
 # backward compat: старые плоские ключи
-for old_k, site, cred_k in [('r34_uid', 'rule34', 'uid'), ...]:
+for old_k, site, cred_k in [('r34_uid', 'rule34', 'uid'), ('eh_key', 'ehentai', 'key'), ...]:
     if old_k in data:
         s.setdefault('credentials', {}).setdefault(site, {})[cred_k] = data[old_k]
 ```
@@ -551,7 +561,7 @@ UA = 'MediaVault/1.0 (mediavault project)'
 
 **Стало:** Модульная архитектура в `src/backends/`:
 - `ApiRawBackend` — для Rule34, Danbooru, NHentai (прямые API)
-- `GalleryDlBackend` — для всех 5 сайтов (gallery-dl Python API)
+- `GalleryDlBackend` — для всех 6 сайтов (gallery-dl Python API)
 - Dispatch через `fetch_tags()` / `search_tags()`
 
 ### 7.2 Per-site credentials
@@ -587,10 +597,10 @@ UA = 'MediaVault/1.0 (mediavault project)'
 
 **Что сделано:**
 1. GalleryDlBackend полностью переписан на Python API (`gallery_dl.extractor.find`, итератор `.items()`)
-2. Поддерживает все 5 сайтов: Rule34, Danbooru, NHentai, Kemono, Coomer
+2. Поддерживает все 6 сайтов: Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer
 3. Зарегистрирован в BACKENDS registry (gallerydl) — доступен в Admin UI
 4. Admin UI: 2 варианта per-site (api_raw или gallery_dl)
-5. Дефолтный бэкенд для NHentai/Kemono/Coomer (gallery-dl сам обходит Cloudflare)
+5. Дефолтный бэкенд для NHentai/E-Hentai/Kemono/Coomer (gallery-dl сам обходит Cloudflare)
 
 ### 7.7 Админ-панель: рефакторинг (5 разделов)
 
@@ -613,6 +623,7 @@ window.SiteIcons = {
         rule34: '...',   // Красный круг с "34"
         danbooru: '...', // Коричневая буква D
         nhentai: '...',  // Розовая молния NHentai
+        ehentai: '...',  // Сине-зелёная буква E
         kemono: '...',   // Оранжевая маска
         coomer: '...',   // Синяя маска
     },
@@ -628,7 +639,7 @@ window.SiteIcons = {
 
 - Страница `/franchise-search` + API `/api/franchise/search`
 - Сервер-сайд рендеринг (без отдельного JS модуля)
-- Параллельный dispatch: `ThreadPoolExecutor` → `search_tags()` для rule34, danbooru, nhentai
+- Параллельный dispatch: `ThreadPoolExecutor` → `search_tags()` для rule34, danbooru, nhentai, ehentai
 - Результаты с source badge + site icon
 - Header link + 6 i18n ключей
 
@@ -753,7 +764,7 @@ for site, keys in [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']),
 |-------|------|-------|------------|--------|
 | GET | `/api/fetch_file` | + | Получить теги по MD5 | `fetch_tags()` → настроенный бэкенд |
 | GET | `/api/nhentai/search` | - | Поиск по NHentai | `search_tags('nhentai')` |
-| GET | `/api/franchise/search` | + | Параллельный поиск | `search_tags()` × 3 (R34/Dan/NH) |
+| GET | `/api/franchise/search` | + | Параллельный поиск | `search_tags()` × 4 (R34/Dan/NH/EH) |
 | GET | `/api/kemono/mirrors` | + | Зеркала Kemono | `GalleryDlBackend.get_mirrors()` |
 | GET | `/api/kemono/info` | + | Метаданные поста | `GalleryDlBackend.get_info()` (CLI) |
 | POST | `/api/kemono/download` | + | Скачать пост | `GalleryDlBackend.download()` (CLI) |
@@ -771,8 +782,9 @@ for site, keys in [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']),
 | Rule34 | + (прямой API, требует ключи) | + (через gallery-dl, требует ключи) |
 | Danbooru | + (прямой API, auth опциональна) | + (через gallery-dl, auth опциональна) |
 | NHentai | + (API v2) | + (gallery-dl, дефолтный) |
+| E-Hentai | - | + (gallery-dl, дефолтный) |
 | Kemono/Coomer | - | + (CLI subprocess) |
-| Поиск (search) | Rule34, Danbooru, NHentai | Rule34(прямой HTTP), Danbooru, NHentai |
+| Поиск (search) | Rule34, Danbooru, NHentai | Rule34(прямой HTTP), Danbooru, NHentai, E-Hentai |
 | Thread-safety | Да (stateless) | Да (threading.Lock) |
 | User-Agent | MediaVault/1.0 | gallery-dl дефолтный |
 
@@ -786,4 +798,4 @@ for site, keys in [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']),
 | `src/credential_store.py` | 122 | KeyringStore, миграция, per-site схема |
 | `src/web_app.py` | 3898 | Роуты, dispatch, save/load settings |
 | `static/admin/admin.js` | 727 | Admin UI: API Keys, Backends, Folders |
-| `static/shared/icons.js` | 30 | SiteIcons: SVG data URI для всех сайтов |
+| `static/shared/icons.js` | 30 | SiteIcons: SVG data URI для всех 6 сайтов |

@@ -20,8 +20,7 @@ var MediaVaultGallery = (function() {
   var _previewOverlay = null;
   var _fetchedOnly = false;
   var _sortMode = 'name'; // 'name' | 'newest' | 'oldest'
-  var _currentFolder = 'all';
-  var _sharedGrid = null;
+  var _selectedFolders = ['all'];
 
   var parseTags = Shared.parseTags;
 
@@ -34,7 +33,9 @@ var MediaVaultGallery = (function() {
     if (_layoutMode !== 'columns') params.mode = _layoutMode;
     if (_searchQuery) params.q = _searchQuery;
     if (_searchMode !== 'both') params.sm = _searchMode;
-    if (_currentFolder !== 'all') params.folder = _currentFolder;
+    if (_selectedFolders.length > 0 && !_selectedFolders.includes('all')) {
+      params.folders = _selectedFolders.join(',');
+    }
     return params;
   }
 
@@ -57,46 +58,78 @@ var MediaVaultGallery = (function() {
       if (p.has('mode')) _layoutMode = p.get('mode');
       if (p.has('q')) _searchQuery = p.get('q');
       if (p.has('sm')) _searchMode = p.get('sm');
-      if (p.has('folder')) _currentFolder = p.get('folder');
+      if (p.has('folders')) {
+        _selectedFolders = p.get('folders').split(',');
+      } else if (p.has('folder')) {
+        _selectedFolders = [p.get('folder')];
+      }
     } catch(e) {}
   }
 
   // Установка фильтра по типу папки (gallery/comics/downloads) и перезагрузка
   function _setFolder(folder) {
-    if (folder === _currentFolder) return;
-    _currentFolder = folder;
+    if (folder === 'all') {
+      if (_selectedFolders.length === 1 && _selectedFolders[0] === 'all') return;
+      _selectedFolders = ['all'];
+    } else {
+      if (_selectedFolders.length === 1 && _selectedFolders[0] === folder) return;
+      _selectedFolders = [folder];
+    }
     _currentPage = 1;
     loadGallery();
   }
 
-  // Отрисовка вкладок-пилюлек для фильтрации по типу папки
-  function _renderFolderTabs(folder_counts, current_folder) {
+  function _toggleFolder(folder) {
+    if (folder === 'all') {
+      if (_selectedFolders.length === 1 && _selectedFolders[0] === 'all') return;
+      _selectedFolders = ['all'];
+    } else {
+      var idx = _selectedFolders.indexOf(folder);
+      if (idx >= 0) {
+        _selectedFolders.splice(idx, 1);
+      } else {
+        _selectedFolders = _selectedFolders.filter(function(f) { return f !== 'all'; });
+        _selectedFolders.push(folder);
+      }
+      if (_selectedFolders.length === 0) {
+        _selectedFolders = ['all'];
+      }
+    }
+    _currentPage = 1;
+    loadGallery();
+  }
+
+  // Отрисовка чекбоксов для фильтрации по типу папки
+  function _renderFolderCheckboxes(folder_counts, selected_folders) {
     var toolbar = document.getElementById('galleryToolbar');
     if (!toolbar) return;
-    var container = document.getElementById('folderTabs');
+    var container = document.getElementById('folderCheckboxes');
     if (!container) {
       container = document.createElement('div');
-      container.id = 'folderTabs';
-      container.className = 'toolbar-group';
+      container.id = 'folderCheckboxes';
+      container.className = 'folder-checkboxes';
       var toggle = document.getElementById('sidebarToggle');
       if (toggle && toggle.nextSibling) {
         toolbar.insertBefore(container, toggle.nextSibling);
       } else {
         toolbar.insertBefore(container, toolbar.firstChild);
       }
+      container.addEventListener('change', function(e) {
+        var cb = e.target;
+        if (cb.tagName !== 'INPUT') return;
+        _toggleFolder(cb.dataset.folder);
+      });
     }
-    var labels = { 'all': 'All', 'gallery': 'Gallery', 'comics': 'Comics', 'downloads': 'Downloads' };
-    var html = '<button class="tool-btn folder-tab' + (current_folder === 'all' ? ' active' : '') + '" data-folder="all">' + labels['all'] + '</button>';
+    var isAll = !selected_folders || selected_folders.includes('all');
+    var labels = { 'all': 'All', 'gallery': 'Gallery', 'comics': 'Comics', 'downloads': 'D/L' };
+    var html = '<label class="folder-cb' + (isAll ? ' active' : '') + '"><input type="checkbox" data-folder="all"' + (isAll ? ' checked' : '') + '> ' + labels['all'] + '</label>';
     ['gallery', 'comics', 'downloads'].forEach(function(ft) {
       if (folder_counts && folder_counts[ft] > 0) {
-        html += '<button class="tool-btn folder-tab' + (current_folder === ft ? ' active' : '') + '" data-folder="' + ft + '">' + labels[ft] + ' <span style="opacity:.6;font-size:11px">' + folder_counts[ft] + '</span></button>';
+        var checked = selected_folders && selected_folders.includes(ft);
+        html += '<label class="folder-cb' + (checked ? ' active' : '') + '"><input type="checkbox" data-folder="' + ft + '"' + (checked ? ' checked' : '') + '> ' + labels[ft] + ' <span class="folder-cb-count">' + folder_counts[ft] + '</span></label>';
       }
     });
     container.innerHTML = html;
-    container.addEventListener('click', function(e) {
-      var btn = e.target.closest('[data-folder]');
-      if (btn) _setFolder(btn.dataset.folder);
-    });
   }
 
   // Построение индекса путь → {row} для быстрого доступа
@@ -115,10 +148,10 @@ var MediaVaultGallery = (function() {
   // Загрузка списка файлов галереи с сервера
   function loadGallery() {
     var status = document.getElementById('statusText');
-    if (status) status.textContent = 'Loading…';
+    if (status) status.textContent = 'Loading\u2026';
     var apiUrl = '/api/gallery';
-    if (_currentFolder && _currentFolder !== 'all') {
-      apiUrl += '?folder=' + encodeURIComponent(_currentFolder);
+    if (_selectedFolders.length > 0 && !_selectedFolders.includes('all')) {
+      apiUrl += '?folders=' + encodeURIComponent(_selectedFolders.join(','));
     }
     fetch(apiUrl).then(function(r) { return r.json(); }).then(function(data) {
       if (data.error) {
@@ -134,15 +167,15 @@ var MediaVaultGallery = (function() {
       if (!urlParams.has('sm')) _searchMode = 'both';
       var searchInput = document.getElementById('searchInput');
       if (searchInput) searchInput.value = _searchQuery;
-      _renderFolderTabs(data.folder_counts || {}, data.current_folder || 'all');
+      _renderFolderCheckboxes(data.folder_counts || {}, _selectedFolders);
       if (!data.media_dir_set && _galleryData.length > 0) {
         var gallery = document.getElementById('gallery');
-        gallery.innerHTML = '<div class="gallery-empty"><h2>📁 Media folder not set</h2>' +
+        gallery.innerHTML = '<div class="gallery-empty"><h2>\uD83D\uDCC1 Media folder not set</h2>' +
           '<p>' + _galleryData.length + ' files in database, but no media directory configured.</p>' +
           '<p>Choose a folder to load images from:</p>' +
           '</div>';
         document.getElementById('galleryPagination').style.display = 'none';
-        if (status) status.textContent = _galleryData.length + ' files — needs media folder';
+        if (status) status.textContent = _galleryData.length + ' files \u2014 needs media folder';
         return;
       }
       applyFilter();
@@ -275,11 +308,10 @@ var MediaVaultGallery = (function() {
     _hoverEl = null;
 
     if (_filteredData.length === 0) {
-      if (_sharedGrid) { _sharedGrid.destroy(); _sharedGrid = null; }
       gallery.innerHTML = '<div class="gallery-empty"><h2>' + Shared.t('welcome') + '</h2><p>' +
         (_galleryData.length === 0 ? Shared.t('welcomeDesc') : Shared.t('noFiles')) +
         '</p></div>';
-      gallery.classList.remove('shared-grid', 'shared-grid-fixed');
+      gallery.className = 'shared-grid';
       _pathIndex = null;
       document.getElementById('galleryPagination').style.display = 'none';
       return;
@@ -289,39 +321,24 @@ var MediaVaultGallery = (function() {
     var isGrid = _layoutMode === 'fixed';
     var isScroll = _layoutMode === 'scroll';
 
-    // Scroll mode — manual rendering (SharedGrid doesn't support flex column)
+    // Set gallery class based on layout mode
     if (isScroll) {
-      if (_sharedGrid) { _sharedGrid.destroy(); _sharedGrid = null; }
-      gallery.innerHTML = visible.map(buildGalleryItemHtml).join('');
-      gallery.classList.remove('shared-grid', 'shared-grid-fixed');
-      gallery.classList.add('scroll');
+      gallery.className = 'scroll';
     } else {
-      // Masonry/Grid mode — use SharedGrid
-      gallery.classList.remove('scroll');
-      if (!_sharedGrid) {
-        _sharedGrid = new SharedGrid(gallery, {
-          layout: isGrid ? 'grid' : 'masonry',
-          getItemHtml: function(file, i) {
-            return buildGalleryItemHtml(file);
-          },
-          onItemClick: function(file, idx, e) {
-            _handleItemClick(file.path, idx);
-          }
-        });
-      } else {
-        gallery.classList.toggle('shared-grid-fixed', isGrid);
-        _sharedGrid._opts.layout = isGrid ? 'grid' : 'masonry';
-      }
-      // Clear server-rendered or leftover content, then render via SharedGrid
-      var placeholder = gallery.querySelector('.gallery-empty');
-      if (placeholder) placeholder.remove();
-      _sharedGrid.render(visible);
+      gallery.className = 'shared-grid' + (isGrid ? ' shared-grid-fixed' : '');
+    }
+
+    gallery.innerHTML = visible.map(buildGalleryItemHtml).join('');
+
+    // Reorder DOM for masonry visual order
+    if (_layoutMode === 'columns') {
+      Shared.reorderGalleryDOM(gallery, '.file-card');
     }
 
     rebuildPathIndex(_filteredData);
 
     var cols = getColumnCount();
-    if (!isScroll && visible.length > 0 && visible.length < cols * 1.5) {
+    if (_layoutMode === 'columns' && visible.length > 0 && visible.length < cols * 1.5) {
       gallery.classList.add('few-items');
     } else {
       gallery.classList.remove('few-items');
@@ -334,51 +351,62 @@ var MediaVaultGallery = (function() {
   }
 
 
-  // Генерация HTML для одного элемента галереи с overlay-информацией
+  // Генерация HTML для одного элемента галереи с new .file-card структурой
   function buildGalleryItemHtml(file) {
     var tagChips = MediaVaultTags.renderTagChips(file.tags, 5);
-    var ar = file.width > 0 && file.height > 0 ? file.width / file.height : null;
-    if (ar !== null && ar < 0.75) ar = 0.75;
-    var aspectRatio = ar ? ' style="aspect-ratio:' + ar + '"' : '';
-    var selected = _selectedPaths.has(file.path) ? ' selected' : '';
-    var selectOverlay = _selectMode ? '<div class="select-overlay">' + (_selectedPaths.has(file.path) ? '✓' : '') + '</div>' : '';
     var ext = (file.name || '').split('.').pop().toLowerCase();
     var isVideo = ['mp4','webm','mov','avi','mkv'].indexOf(ext) !== -1;
     var thumbUrl = MediaVaultAPI.thumbnailUrl(file.path);
-    var infoHtml = '<div class="gallery-overlay-info">' +
-      '<div class="gallery-name">' + Shared.esc(file.name) + '</div>' +
-      '<div class="gallery-tags">' + (isVideo ? '<span class="video-label">▶ ' + ext.toUpperCase() + '</span>' : (tagChips || '')) + '</div></div>';
-    if (isVideo) {
-      return '<div class="gallery-item' + selected + '" data-path="' + Shared.esc(file.path) + '">' +
-        '<div class="gallery-thumb" data-src="' + thumbUrl + '"' + aspectRatio + '>' + selectOverlay +
-        '<div class="gallery-spinner"></div><div class="video-badge">🎬</div>' + infoHtml + '</div></div>';
+    var selected = _selectedPaths.has(file.path) ? ' selected' : '';
+    var selectOverlay = _selectMode ? '<div class="select-overlay">' + (_selectedPaths.has(file.path) ? '\u2713' : '') + '</div>' : '';
+    var orient = '';
+    if (file.width > 0 && file.height > 0) {
+      orient = file.width > file.height ? 'landscape' : (file.height > file.width ? 'portrait' : 'square');
     }
-    return '<div class="gallery-item' + selected + '" data-path="' + Shared.esc(file.path) + '">' +
-      '<div class="gallery-thumb" data-src="' + thumbUrl + '"' + aspectRatio + '>' + selectOverlay +
-      '<div class="gallery-spinner"></div>' + infoHtml + '</div></div>';
+    var orientAttr = orient ? ' data-orient="' + orient + '"' : '';
+    var tagsHtml = isVideo ? '<span class="video-label">\u25B6 ' + ext.toUpperCase() + '</span>' : (tagChips || '');
+    var videoBadge = isVideo ? '<svg class="file-card-video-badge" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>' : '';
+    return '<div class="file-card' + selected + '" data-path="' + Shared.esc(file.path) + '"' + orientAttr + '>' +
+      '<div class="file-card-thumb" data-src="' + thumbUrl + '">' + selectOverlay +
+      '<div class="file-card-spinner"></div>' + videoBadge + '</div>' +
+      '<div class="file-card-body">' +
+      '<div class="file-card-bg" style="--thumb:url(' + thumbUrl + ')"></div>' +
+      '<div class="file-card-content">' +
+      '<div class="file-card-name">' + Shared.esc(file.name) + '</div>' +
+      '<div class="file-card-tags">' + tagsHtml + '</div>' +
+      '</div></div></div>';
   }
 
-  // Загрузка миниатюры в элемент (с обработкой ошибок и иконкой видео)
+  // Загрузка миниатюры в .file-card-thumb (с обработкой ошибок и иконкой видео)
   function loadThumbnail(el, src) {
     el.dataset.loaded = '1';
-    var isVid = el.querySelector('.video-badge');
-    var overlay = el.querySelector('.gallery-overlay-info');
+    var card = el.closest('.file-card');
+    var bgEl = card && card.querySelector('.file-card-bg');
+    var isVid = el.querySelector('.file-card-video-badge');
+    var spinner = el.querySelector('.file-card-spinner');
     var img = document.createElement('img');
     img.alt = '';
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+    img.style.cssText = 'width:100%;display:block';
     img.onload = function() {
-      el.innerHTML = '';
+      // Set orientation from natural dimensions if not already set
+      if (card && !card.dataset.orient) {
+        card.dataset.orient = img.naturalWidth > img.naturalHeight ? 'landscape' :
+          (img.naturalHeight > img.naturalWidth ? 'portrait' : 'square');
+      }
+      // Set background on .file-card-bg
+      if (bgEl) bgEl.style.cssText += ';--thumb:url(' + src + ')';
+      // Remove spinner
+      if (spinner) spinner.remove();
       el.appendChild(img);
       if (isVid) el.appendChild(isVid);
-      if (overlay) el.appendChild(overlay);
     };
     img.onerror = function() {
+      if (spinner) spinner.remove();
       if (isVid) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100px;font-size:48px;background:var(--surface2);color:var(--text2)">🎬</div><div style="padding:4px;font-size:10px;text-align:center;color:var(--text2)">video</div>';
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100px;font-size:48px;background:var(--surface2);color:var(--text2)">\uD83C\uDFAC</div>';
       } else {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100px;font-size:32px;background:var(--surface2);color:var(--text2)">💀</div><div style="padding:4px;font-size:10px;text-align:center;color:var(--text2)">not found</div>';
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100px;font-size:32px;background:var(--surface2);color:var(--text2)">\uD83D\uDC80</div><div style="padding:4px;font-size:10px;text-align:center;color:var(--text2)">not found</div>';
       }
-      if (overlay) el.appendChild(overlay);
     };
     img.src = src;
   }
@@ -399,7 +427,7 @@ var MediaVaultGallery = (function() {
       }
     }, { rootMargin: '300px' });
 
-    var els = document.querySelectorAll('.gallery-thumb[data-src]');
+    var els = document.querySelectorAll('.file-card-thumb[data-src]');
     for (var i = 0; i < els.length; i++) observer.observe(els[i]);
     return observer;
   }
@@ -409,10 +437,10 @@ var MediaVaultGallery = (function() {
     if (_selectMode) {
       if (_selectedPaths.has(path)) _selectedPaths.delete(path);
       else _selectedPaths.add(path);
-      var item = document.querySelector('.gallery-item[data-path="' + CSS.escape(path) + '"]');
+      var item = document.querySelector('.file-card[data-path="' + CSS.escape(path) + '"]');
       if (item) item.classList.toggle('selected');
       var overlay = item && item.querySelector('.select-overlay');
-      if (overlay) overlay.textContent = _selectedPaths.has(path) ? '✓' : '';
+      if (overlay) overlay.textContent = _selectedPaths.has(path) ? '\u2713' : '';
       updateBulkBar();
       return;
     }
@@ -422,33 +450,32 @@ var MediaVaultGallery = (function() {
     MediaVaultLightbox.open(actualIdx, _filteredData);
   }
 
-  // Подписка на события: hover-превью для видео + клик (scroll mode)
+  // Подписка на события: клик по .file-card + hover-превью для видео
   function attachGalleryEvents() {
     var gallery = document.getElementById('gallery');
-    // Scroll mode — собственный click handler (SharedGrid не используется)
-    if (_layoutMode === 'scroll') {
-      gallery.addEventListener('click', function(e) {
-        var item = e.target.closest('.gallery-item');
-        if (!item) return;
-        var path = item.dataset.path;
-        var idx = _filteredData.findIndex(function(r) { return r.path === path; });
-        _handleItemClick(path, idx);
-      });
-    }
+    // Click handler for all modes (SharedGrid no longer handles clicks)
+    gallery.addEventListener('click', function(e) {
+      var item = e.target.closest('.file-card');
+      if (!item) return;
+      var path = item.dataset.path;
+      if (!path) return;
+      var idx = _filteredData.findIndex(function(r) { return r.path === path; });
+      _handleItemClick(path, idx);
+    });
 
     // Hover preview
     gallery.addEventListener('mouseover', function(e) {
-      var item = e.target.closest('.gallery-item');
+      var item = e.target.closest('.file-card');
       if (!item || item === _hoverEl) return;
       if (_hoverEl) stopPreview();
       _hoverEl = item;
       playPreview(item);
     });
     gallery.addEventListener('mouseout', function(e) {
-      var item = e.target.closest('.gallery-item');
+      var item = e.target.closest('.file-card');
       if (!item || item !== _hoverEl) return;
       var related = e.relatedTarget;
-      if (related && related.closest && related.closest('.gallery-item') === item) return;
+      if (related && related.closest && related.closest('.file-card') === item) return;
       _hoverEl = null;
       stopPreview();
     });
@@ -457,7 +484,7 @@ var MediaVaultGallery = (function() {
   // Воспроизведение hover-превью (видео или изображение)
   function playPreview(item) {
     var path = item.dataset.path;
-    var thumb = item.querySelector('.gallery-thumb');
+    var thumb = item.querySelector('.file-card-thumb');
     if (!thumb || !path) return;
     var row = rowByPath(path);
     if (!row) return;
@@ -530,11 +557,11 @@ var MediaVaultGallery = (function() {
       else if (_currentPage >= total - half) { start = total - maxVisible + 1; }
       else { start = _currentPage - half; end = _currentPage + half; }
     }
-    if (start > 1) { html += '<button class="tool-btn page-num" data-page="1">1</button>'; if (start > 2) html += '<span style="padding:0 4px;color:var(--text2)">…</span>'; }
+    if (start > 1) { html += '<button class="tool-btn page-num" data-page="1">1</button>'; if (start > 2) html += '<span style="padding:0 4px;color:var(--text2)">\u2026</span>'; }
     for (var i = start; i <= end; i++) {
       html += '<button class="tool-btn page-num' + (i === _currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
     }
-    if (end < total) { if (end < total - 1) html += '<span style="padding:0 4px;color:var(--text2)">…</span>'; html += '<button class="tool-btn page-num" data-page="' + total + '">' + total + '</button>'; }
+    if (end < total) { if (end < total - 1) html += '<span style="padding:0 4px;color:var(--text2)">\u2026</span>'; html += '<button class="tool-btn page-num" data-page="' + total + '">' + total + '</button>'; }
     document.getElementById('pageNumbers').innerHTML = html;
     var numT = document.getElementById('pageNumbersTop');
     if (numT) numT.innerHTML = html;
@@ -560,7 +587,6 @@ var MediaVaultGallery = (function() {
     document.querySelectorAll('[data-layout]').forEach(function(b) {
       b.classList.toggle('active', b.dataset.layout === mode);
     });
-    // SharedGrid/renderGalleryContent управляет классами, просто ререндерим
     renderGalleryContent();
     _syncURL();
   }
@@ -656,7 +682,7 @@ var MediaVaultGallery = (function() {
 
   // Получение визуального порядка элементов (сортировка по позиции на экране)
   function getVisualOrder() {
-    return Shared.getVisualOrder(document.getElementById('gallery'), '.gallery-item');
+    return Shared.getVisualOrder(document.getElementById('gallery'), '.file-card');
   }
 
   // Обновление счетчика файлов в статусной строке
@@ -737,9 +763,9 @@ var MediaVaultGallery = (function() {
 
   // Обновление чипсов тегов в элементе галереи после сохранения
   function refreshGalleryItem(path, tags) {
-    var el = document.querySelector('.gallery-item[data-path="' + CSS.escape(path) + '"]');
+    var el = document.querySelector('.file-card[data-path="' + CSS.escape(path) + '"]');
     if (el) {
-      var tagsEl = el.querySelector('.gallery-tags');
+      var tagsEl = el.querySelector('.file-card-tags');
       if (tagsEl) tagsEl.innerHTML = MediaVaultTags.renderTagChips(tags, 5);
     }
   }
@@ -811,7 +837,8 @@ var MediaVaultGallery = (function() {
     isSelectMode: function() { return _selectMode; },
     toggleFetchedOnly: toggleFetchedOnly,
     toggleDateSort: toggleDateSort,
-    setFolder: _setFolder
+    setFolder: _setFolder,
+    toggleFolder: _toggleFolder
   };
 })();
 

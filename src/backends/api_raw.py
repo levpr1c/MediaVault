@@ -19,6 +19,8 @@ class ApiRawBackend:
             return self._fetch_danbooru(md5, c.get('login', ''), c.get('key', ''))
         elif site == 'nhentai':
             return self._fetch_nhentai(md5, settings)
+        elif site == 'ehentai':
+            return self._fetch_ehentai(md5, settings)
         return {'tags': [], 'file_url': '', 'preview_url': ''}
 
     def _fetch_rule34(self, md5, uid, key):
@@ -64,6 +66,78 @@ class ApiRawBackend:
                     time.sleep(1)
         return {'tags': [], 'tag_general': [], 'tag_artist': [], 'tag_character': [],
                 'tag_copyright': [], 'tag_meta': [], 'file_url': '', 'large_file_url': '', 'preview_file_url': ''}
+
+    def _fetch_ehentai(self, gid_token, settings):
+        """E-Hentai gallery metadata via official API (gdata method).
+        Input format: 'gallery_id:gallery_token' or just 'gallery_id'.
+        """
+        if not gid_token or ':' not in gid_token:
+            return {'tags': [], 'file_url': '', 'preview_url': ''}
+        parts = gid_token.split(':', 1)
+        gid = parts[0].strip()
+        token = parts[1].strip()
+        if not gid.isdigit() or not token:
+            return {'tags': [], 'file_url': '', 'preview_url': ''}
+        try:
+            r = requests.post(
+                'https://api.e-hentai.org/api.php',
+                json={'method': 'gdata', 'gidlist': [[int(gid), token]], 'namespace': 1},
+                headers={'User-Agent': UA},
+                timeout=15
+            )
+            if r.status_code != 200:
+                return {'tags': [], 'file_url': '', 'preview_url': ''}
+            d = r.json()
+            glist = d.get('gmetadata', [])
+            if not glist:
+                return {'tags': [], 'file_url': '', 'preview_url': ''}
+            g = glist[0]
+            tags_raw = g.get('tags', [])
+            tags = []
+            for t in tags_raw:
+                if ':' in t:
+                    tags.append(t.split(':', 1)[1])
+                else:
+                    tags.append(t)
+            return {
+                'tags': tags,
+                'tags_raw': tags_raw,
+                'title': g.get('title', ''),
+                'title_jpn': g.get('title_jpn', ''),
+                'category': g.get('category', ''),
+                'thumb': g.get('thumb', ''),
+                'file_count': int(g.get('filecount', 0) or 0),
+                'file_url': g.get('thumb', ''),
+                'preview_url': g.get('thumb', ''),
+                'rating': g.get('rating', ''),
+                'uploader': g.get('uploader', ''),
+            }
+        except Exception:
+            pass
+        return {'tags': [], 'file_url': '', 'preview_url': ''}
+
+    def search_ehentai_gdata(self, queries, settings=None):
+        """Batch gallery metadata lookup via gdata API.
+        queries: list of (gid, token) tuples.
+        Returns list of gallery dicts (max 25 per call).
+        """
+        if not queries:
+            return []
+        batches = [queries[i:i+25] for i in range(0, len(queries), 25)]
+        results = []
+        for batch in batches:
+            try:
+                r = requests.post(
+                    'https://api.e-hentai.org/api.php',
+                    json={'method': 'gdata', 'gidlist': batch, 'namespace': 1},
+                    headers={'User-Agent': UA},
+                    timeout=15
+                )
+                if r.status_code == 200:
+                    results.extend(r.json().get('gmetadata', []))
+            except Exception:
+                pass
+        return results
 
     def _fetch_nhentai(self, gid, settings):
         """NHentai gallery lookup by ID (v2 API)."""
@@ -131,6 +205,9 @@ class ApiRawBackend:
             return self._search_danbooru(query, page, settings)
         elif site == 'nhentai':
             return self._search_nhentai(query, page, settings)
+        elif site == 'ehentai':
+            # No search API — returns empty; use gallery-dl instead
+            return {'results': [], 'total': 0}
         return {'results': [], 'total': 0}
 
     def _search_rule34(self, query, page, settings):

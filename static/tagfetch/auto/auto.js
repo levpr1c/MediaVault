@@ -27,23 +27,7 @@ var TagfetchAuto = (function() {
     if (bst) bst.textContent = count + ' files with tags';
   }
 
-  // SharedGrid instance (lazy)
-  var _sharedGrid = null;
-
-  // Lazy-init SharedGrid on #autoGrid
-  function getSharedGrid() {
-    if (_sharedGrid) return _sharedGrid;
-    var el = document.getElementById('autoGrid');
-    if (!el) return null;
-    _sharedGrid = new SharedGrid(el, {
-      layout: 'grid',
-      getItemHtml: getAutoCardHtml,
-      onItemClick: function() {}
-    });
-    return _sharedGrid;
-  }
-
-  // Генерация HTML карточки для SharedGrid.getItemHtml
+  // Генерация HTML карточки
   function getAutoCardHtml(data) {
     var ext = (data.name || '').split('.').pop().toLowerCase();
     var isVideo = ['mp4','webm','mov','avi','mkv'].indexOf(ext) !== -1;
@@ -75,40 +59,48 @@ var TagfetchAuto = (function() {
       tagHtml += '</div>';
     }
 
-    var tagCount = 0;
-    sections.forEach(function(s) { tagCount += (data[s[0]] || []).length; });
-    tagCount += (data.r34_tags || []).length;
-
     var imgSrc = thumbUrl;
     var imgErr = isVideo ? '<span class=placeholder>🎬 video</span>' : '<span class=placeholder>🚫</span>';
+    var escapedPath = Shared.esc(data.path);
+    var videoBadge = isVideo ? '<span class="video-badge">🎬</span>' : '';
+    var imgTag = '<img src="' + imgSrc + '" alt="" loading="lazy" onerror="this.outerHTML=\'' + imgErr + '\'">';
 
-    return '<div class="auto-card" data-path="' + Shared.esc(data.path) + '" data-tag-count="' + tagCount + '">' +
-      '<div class="auto-card-img">' +
-        '<img src="' + imgSrc + '" alt="" loading="lazy" onerror="this.outerHTML=\'' + imgErr + '\'">' +
-        (isVideo ? '<span class="video-badge">🎬</span>' : '') +
+    return '<div class="file-card auto-card" data-path="' + escapedPath + '" data-orient="landscape">' +
+      '<div class="file-card-thumb">' +
+        imgTag +
+        videoBadge +
       '</div>' +
-      '<div class="auto-card-body">' +
-        '<div class="auto-card-name">' + Shared.esc(data.name) + '</div>' +
-        '<div class="auto-card-tags">' + tagHtml + '</div>' +
+      '<div class="file-card-body">' +
+        '<div class="file-card-bg" style="--thumb:url(' + thumbUrl + ')"></div>' +
+        '<div class="file-card-content">' +
+          '<div class="file-card-tags">' + tagHtml + '</div>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }
 
 
-  // Добавление карточки результата автосканирования через SharedGrid
+  // Добавление карточки результата автосканирования — в свою колонку, без перескоков
+  function _ensureCols(grid) {
+    if (grid.querySelector(':scope > .auto-col')) return;
+    var w = grid.offsetWidth || 1200;
+    var cols = Math.max(1, Math.floor(w / 420));
+    for (var i = 0; i < cols; i++) {
+      var col = document.createElement('div');
+      col.className = 'auto-col';
+      grid.appendChild(col);
+    }
+  }
   function addAutoCard(data) {
-    var g = getSharedGrid();
-    if (!g) return;
-    g.addItem(data);
-
-    var cards = g._container.querySelectorAll('.auto-card');
-    var card = cards[cards.length - 1];
-
+    var grid = document.getElementById('autoGrid');
+    if (!grid) return;
+    _ensureCols(grid);
+    var col = grid.children[_autoResults.length % grid.children.length];
+    if (col) col.insertAdjacentHTML('beforeend', getAutoCardHtml(data));
     if (_autoScroll) {
-      var content = g._container.closest('.auto-content');
+      var content = grid.closest('.auto-content');
       if (content) content.scrollTop = content.scrollHeight;
     }
-
     attachAutoHover();
   }
 
@@ -128,7 +120,7 @@ var TagfetchAuto = (function() {
     var ext = name.split('.').pop().toLowerCase();
     var isVid = ['mp4','webm','mov','avi','mkv'].indexOf(ext) !== -1;
     if (!isVid) return;
-    var wrap = card.querySelector('.auto-card-img');
+    var wrap = card.querySelector('.file-card-thumb');
     if (!wrap) return;
     stopPreview();
     var overlay = document.createElement('div');
@@ -164,6 +156,32 @@ var TagfetchAuto = (function() {
       _hoverEl = null;
       stopPreview();
     });
+    grid.addEventListener('click', function(e) {
+      var card = e.target.closest('.auto-card');
+      if (!card) return;
+      var path = card.dataset.path;
+      if (!path) return;
+      var thumb = card.querySelector('.file-card-thumb');
+      if (!thumb || !thumb.contains(e.target)) return;
+      openAutoLightbox(path);
+    });
+  }
+
+  // --- Lightbox (ленивая инициализация — lightbox.js грузится после auto.js) ---
+  var _autoLb = null;
+  function openAutoLightbox(path) {
+    if (!_autoLb) {
+      try { if (typeof Lightbox === 'undefined') return; } catch(e) { return; }
+      try {
+        _autoLb = new Lightbox({
+          prefix: 'auto',
+          panel: false,
+          mediaUrl: function(file) { return MediaVaultAPI.mediaUrl(file.path); }
+        });
+      } catch(e) { return; }
+    }
+    var idx = _autoResults.findIndex(function(r) { return r.path === path; });
+    if (idx >= 0) _autoLb.open(idx, _autoResults);
   }
 
   // Включение/выключение авто-скролла к новым карточкам
@@ -184,8 +202,6 @@ var TagfetchAuto = (function() {
     var scBtn = document.getElementById('saveCancelAutoBtn');
     if (scBtn) scBtn.classList.remove('hidden');
     var grid = document.getElementById('autoGrid');
-    var g = getSharedGrid();
-    if (g) g.setLoading(true);
     var ba = document.getElementById('autoActions');
     if (ba) ba.classList.add('hidden');
     var bat = document.getElementById('autoActionsTop');
@@ -348,12 +364,17 @@ var TagfetchAuto = (function() {
     saveNext();
   }
 
+  function reorderAutoGrid() {
+    Shared.reorderGalleryDOM(document.getElementById('autoGrid'), '.auto-card');
+  }
+
   return {
     startAutoScan: startAutoScan,
     cancelAutoScan: cancelAutoScan,
     saveAndCancelAuto: saveAndCancelAuto,
     saveAllAutoResults: saveAllAutoResults,
-    toggleAutoScroll: toggleAutoScroll
+    toggleAutoScroll: toggleAutoScroll,
+    reorderAutoGrid: reorderAutoGrid
   };
 })();
 
@@ -365,3 +386,4 @@ window.cancelAutoScan = TagfetchAuto.cancelAutoScan;
 window.saveAndCancelAuto = TagfetchAuto.saveAndCancelAuto;
 window.saveAllAutoResults = TagfetchAuto.saveAllAutoResults;
 window.toggleAutoScroll = TagfetchAuto.toggleAutoScroll;
+window.reorderAutoGrid = TagfetchAuto.reorderAutoGrid;

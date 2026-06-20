@@ -190,17 +190,23 @@ function _renderGallery() {
     const thumbSrc = '/api/thumbnail?path=' + encodeURIComponent(f.path) + _cbSuffix()
     const isImg = isImageExt(f.name)
     const isVideo = isVideoExt(f.name)
-    return `<div class="cm-files-gallery-item" data-path="${esc(f.path)}" data-action="view-file" data-filepath="${esc(f.path)}">` +
-      `<div class="cm-files-thumb${isVideo ? ' cm-video-thumb' : ''}">` +
+    const orient = (f.width > 0 && f.height > 0) ? (f.width > f.height ? 'landscape' : (f.height > f.width ? 'portrait' : 'square')) : ''
+    return `<div class="file-card" data-path="${esc(f.path)}" data-filepath="${esc(f.path)}" data-action="view-file"${orient ? ' data-orient="' + orient + '"' : ''}>` +
+      `<div class="file-card-thumb">` +
       (isImg || isVideo ? `<img src="${thumbSrc}" loading="lazy">` :
        `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`) +
-      (isVideo ? '<svg class="cm-video-badge" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>' : '') +
+      (isVideo ? '<svg class="file-card-video-badge" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>' : '') +
       `</div>` +
-      `<div class="cm-files-gallery-name">${esc(f.name)}</div>` +
+      `<div class="file-card-body">` +
+        `<div class="file-card-bg"${isImg || isVideo ? ' style="--thumb:url(' + thumbSrc + ')"' : ''}></div>` +
+        `<div class="file-card-content">` +
+          `<div class="file-card-name">${esc(f.name)}</div>` +
+        `</div>` +
+      `</div>` +
     `</div>`
   }).join('')
   if (_layoutMode === 'columns') {
-    Shared.reorderGalleryDOM(document.getElementById('cmFilesGallery'), '.cm-files-gallery-item')
+    Shared.reorderGalleryDOM(document.getElementById('cmFilesGallery'), '.file-card')
   }
   _renderPagination()
 }
@@ -208,7 +214,7 @@ function _renderGallery() {
 function getVisualOrder() {
   var gallery = document.getElementById('cmFilesGallery')
   if (!gallery) return []
-  return Shared.getVisualOrder(gallery, '.cm-files-gallery-item')
+  return Shared.getVisualOrder(gallery, '.file-card')
 }
 
 function _renderPagination() {
@@ -262,7 +268,7 @@ function _attachEvents(body, signal) {
 
   // Drag-to-tag using shared setup
   setupDragEvents(body, signal, {
-    targetSelector: '.cm-files-gallery-item',
+    targetSelector: '.file-card',
     onDrop(target, tag) {
       const path = target.dataset.filepath
       if (path) assignTag(path, tag)

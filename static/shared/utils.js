@@ -350,6 +350,7 @@ var _i18nData = {
     siteNhentai: "NHentai",
     siteKemono: "Kemono",
     siteCoomer: "Coomer",
+    siteEhentai: "E-Hentai",
   },
   ru: {
 
@@ -617,6 +618,7 @@ var _i18nData = {
     siteNhentai: "NHentai",
     siteKemono: "Kemono",
     siteCoomer: "Coomer",
+    siteEhentai: "E-Hentai",
   }
 };
 
@@ -903,7 +905,16 @@ Shared.parseTags = function(str) {
 Shared.getColumnCount = function(gallery) {
   if (!gallery) return 4;
   var style = getComputedStyle(gallery);
-  var colW = parseFloat(style.columnWidth) || 160;
+  var colW = parseFloat(style.columnWidth);
+  if (!colW || colW <= 0) {
+    var items = gallery.querySelectorAll('.file-card');
+    if (items.length < 2) return 1;
+    var firstRect = items[0].getBoundingClientRect();
+    for (var i = 1; i < items.length; i++) {
+      if (items[i].getBoundingClientRect().top !== firstRect.top) return i;
+    }
+    return items.length;
+  }
   var gap = parseFloat(style.columnGap) || 10;
   return Math.max(1, Math.round((gallery.offsetWidth + gap) / (colW + gap)));
 };

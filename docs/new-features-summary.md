@@ -12,15 +12,15 @@
 |-----------|------|-----------|
 | Registry | `backends/__init__.py` | `BACKENDS` dict (2 бэкенда), `fetch_tags()`, `search_tags()` dispatch |
 | ApiRawBackend | `backends/api_raw.py` | Прямой API для Rule34 (XML), Danbooru (JSON) и NHentai (v2) |
-| GalleryDlBackend | `backends/gallerydl.py` | Все 5 сайтов через gallery-dl Python API (338 строк) |
+| GalleryDlBackend | `backends/gallerydl.py` | Все 6 сайтов через gallery-dl Python API (338 строк) |
 
 **Настройка:** `fetch_backend` dict в settings.json. Пример:
 ```json
-{"rule34": "api_raw", "danbooru": "api_raw", "nhentai": "gallerydl", "kemono": "gallerydl", "coomer": "gallerydl"}
+{"rule34": "api_raw", "danbooru": "api_raw", "nhentai": "gallerydl", "ehentai": "gallerydl", "kemono": "gallerydl", "coomer": "gallerydl"}
 ```
 
 **Dependencies:**
-- `gallery-dl` — для Rule34/Danbooru/NHentai/Kemono/Coomer (установлен в venv, Python API)
+- `gallery-dl` — для Rule34/Danbooru/NHentai/E-Hentai/Kemono/Coomer (установлен в venv, Python API)
 
 **Testing:**
 - [ ] `from backends import fetch_tags; fetch_tags('rule34', md5, settings)` — работает
@@ -39,12 +39,13 @@
 | Rule34 | api_raw, gallerydl |
 | Danbooru | api_raw, gallerydl |
 | NHentai | gallerydl, api_raw |
+| E-Hentai | gallerydl |
 | Kemono | gallerydl |
 | Coomer | gallerydl |
 
 **Key files:** `static/admin/admin.js` → `_sections.backends` (строки 195-280)
 
-**i18n keys:** `sectionBackends`, `backendsDesc`, `backendApiRaw`, `backendGallerydl`, `siteRule34`, `siteDanbooru`, `siteNhentai`, `siteKemono`, `siteCoomer`, `navBackends`
+**i18n keys:** `sectionBackends`, `backendsDesc`, `backendApiRaw`, `backendGallerydl`, `siteRule34`, `siteDanbooru`, `siteNhentai`, `siteEhentai`, `siteKemono`, `siteCoomer`, `navBackends`
 
 **Testing:**
 - [ ] Раздел Backends отображается в `/admin` (иконка шестерёнки)
@@ -56,11 +57,11 @@
 
 ## 3. Site Icons
 
-**SVG-иконки для Rule34, Danbooru, NHentai, Kemono, Coomer.**
+**SVG-иконки для Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer.**
 
 **Key files:**
 - `static/shared/icons.js` — `window.SiteIcons` (IIFE) с методами `getIcon()`, `getIconImg()`, `getIconDataURI()`
-- `static/shared/icons/rule34.svg` (и аналоги для других сайтов) — физические SVG файлы
+- `static/shared/icons/rule34.svg` (и аналоги для других сайтов) — физические SVG файлы (`ehentai.svg`)
 
 **Usage:**
 ```javascript
@@ -290,7 +291,7 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 |------|-----------|--------|
 | 1 | Backend system (2 бэкенда) | 589 | 3 |
 | 2 | Backend Selection UI | ~60 | 1 (admin.js) |
-| 3 | Site Icons | 30 + SVG | 6 |
+| 3 | Site Icons | 30 + SVG | 7 |
 | 4 | Folder System | ~50 | 2 |
 | 5 | Browser Cache | ~30 | 2 |
 | 6 | UPSERT | ~10 | 1 |
@@ -315,9 +316,9 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 ## 14. Зависимости (текущие библиотеки)
 
 ### gallery-dl (v1.32.3+)
-- **Назначение:** Универсальный бэкенд для поиска и загрузки (R34/Danbooru/NHentai/Kemono/Coomer)
+- **Назначение:** Универсальный бэкенд для поиска и загрузки (R34/Danbooru/NHentai/E-Hentai/Kemono/Coomer)
 - **Установка:** `pip install gallery-dl` (в venv)
-- **Используется в:** `src/backends/gallerydl.py` — все 5 сайтов через Python API
+- **Используется в:** `src/backends/gallerydl.py` — все 6 сайтов через Python API
 - **Особенности:** Python API (`gallery_dl.extractor.find()`, `job.DataJob()`, `job.DownloadJob()`)
 - **Требования:** только `pip install gallery-dl` (CLI в PATH не требуется)
 
@@ -388,8 +389,8 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 **Решение:** Вместо rule34Py, Pybooru, enma, nhentai-tools — используем gallery-dl (уже в venv) для search() и fetch() на всех сайтах. Два варианта per-site: raw_api (legacy) и gallery_dl.
 
 **Ключевые файлы:**
-- `src/backends/gallerydl.py` — расширение до 338 строк: поиск и fetch через Python API для всех 5 сайтов
-- `src/backends/__init__.py` — gallerydl зарегистрирован в BACKENDS, дефолт для NHentai/Kemono/Coomer
+- `src/backends/gallerydl.py` — расширение до 338 строк: поиск и fetch через Python API для всех 6 сайтов
+- `src/backends/__init__.py` — gallerydl зарегистрирован в BACKENDS, дефолт для NHentai/E-Hentai/Kemono/Coomer
 - `src/web_app.py` — dispatch обновлён
 - `static/admin/admin.js` — gallery_dl опция в Backend Selection UI для всех сайтов
 - `NokufindBackend` **удалён** — gallery-dl полностью заменил для NHentai
@@ -404,7 +405,7 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 - [x] 6.7 Backend Selection UI: gallery_dl опция для всех сайтов
 - [x] 6.8 Выбор gallery_dl → поиск/fetch через gallery-dl
 - [x] 6.9 Сравнение результатов: raw_api vs gallery_dl
-- [x] 6.10 gallery-dl как дефолтный бэкенд для NHentai/Kemono/Coomer, raw_api — legacy/fallback
+- [x] 6.10 gallery-dl как дефолтный бэкенд для NHentai/E-Hentai/Kemono/Coomer, raw_api — legacy/fallback
 
 ---
 
@@ -750,7 +751,7 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 |---|------|-----------|--------|
 | 1 | Backend system (2 бэкенда) | 589 | 3 |
 | 2 | Backend Selection UI | ~60 | 1 (admin.js) |
-| 3 | Site Icons | 30 + SVG | 6 |
+| 3 | Site Icons | 30 + SVG | 7 |
 | 4 | Folder System | ~50 | 2 |
 | 5 | Browser Cache | ~30 | 2 |
 | 6 | UPSERT | ~10 | 1 |

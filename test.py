@@ -157,6 +157,7 @@ _HARDCODED_USED = frozenset([
     'secConfirmClearDb', 'secConfirmDedup',
     'backendApiRaw', 'backendGallerydl',
     'siteRule34', 'siteDanbooru', 'siteNhentai', 'siteKemono', 'siteCoomer',
+    'siteEhentai',
 ])
 
 def _extract_html_keys():

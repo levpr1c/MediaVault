@@ -140,7 +140,7 @@ MediaVault/
 │   └── backends/              ← Система бэкендов для тегов (2 модуля)
 │       ├── __init__.py        ← BACKENDS registry, fetch_tags(), search_tags()
 │       ├── api_raw.py         ← ApiRawBackend (Rule34 + Danbooru + NHentai)
-│       └── gallerydl.py       ← GalleryDlBackend (Rule34 + Danbooru + NHentai + Kemono + Coomer)
+│       └── gallerydl.py       ← GalleryDlBackend (Rule34 + Danbooru + NHentai + E-Hentai + Kemono + Coomer)
 ├── templates/                      ← Jinja2-шаблоны (все extend base.html)
 │   ├── base.html              ← Главный скелет: <head>, CONFIG, JS, CSS, footer
 │   ├── home.html              ← Главная страница / (3 блока, аккаунт-дропдаун)
@@ -199,7 +199,7 @@ MediaVault/
 │       └── admin.js           ← AdminDashboard SPA (770 строк, 5 разделов + mount monitoring)
 │   └── shared/
 │       └── icons.js           ← window.SiteIcons SVG-иконки (30 строк)
-├── static/shared/icons/       ← SVG файлы: rule34.svg, danbooru.svg, nhentai.svg, kemono.svg, coomer.svg
+├── static/shared/icons/       ← SVG файлы: rule34.svg, danbooru.svg, nhentai.svg, ehentai.svg, kemono.svg, coomer.svg
 ├── AGENTS.md                  ← Памятка для OpenCode
 ├── DESING.md                  ← Полный гайд по дизайн-системе
 ├── docs/code-guide.md         ← ЭТОТ ФАЙЛ
@@ -216,7 +216,7 @@ MediaVault/
 | `credential_store.py` | 67 | Хранилище API-ключей (Keyring / plain text) |
 | `backends/__init__.py` | 41 | BACKENDS registry, fetch_tags(), search_tags() |
 | `backends/api_raw.py` | 210 | ApiRawBackend: Rule34 + Danbooru + NHentai fetch + search |
-| `backends/gallerydl.py` | 338 | GalleryDlBackend: Rule34 + Danbooru + NHentai + Kemono + Coomer |
+| `backends/gallerydl.py` | 338 | GalleryDlBackend: Rule34 + Danbooru + NHentai + E-Hentai + Kemono + Coomer |
 | **Total Python** | **4607** | **5 файлов** |
 | **JS** | | |
 | `shared/lightbox.js` | 957 | Единый лайтбокс (zoom, nav, tags, swipe) |
@@ -246,7 +246,7 @@ MediaVault/
 | `mediavault/api.js` | 47 | API-вызовы |
 | `mediavault/utils.js` | 45 | Утилиты |
 | `shared/api.js` | 37 | Базовый fetch с обработкой ошибок |
-| `shared/icons.js` | 25 | Site icons: SVG-иконки для Rule34, Danbooru, NHentai, Kemono, Coomer |
+| `shared/icons.js` | 25 | Site icons: SVG-иконки для Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer |
 | `tagfetch/tagfetch.js` | 17 | Определение вкладки из URL (getCurrentTab) |
 | **Total JS** | **8109** | **28 файлов** (без lib/three.module.js) |
 | **CSS** | | |
@@ -879,7 +879,7 @@ def log_access(response):
 
 ### 9. Credential Store (`src/credential_store.py`, 122 строки)
 
-Отдельный модуль для безопасного хранения API-ключей Rule34, Danbooru и NHentai.
+Отдельный модуль для безопасного хранения API-ключей Rule34, Danbooru, NHentai и E-Hentai.
 
 **Класс `KeyringStore`:**
 - Обёртка над библиотекой `keyring`, service name: `'mediavault'`
@@ -938,7 +938,7 @@ flowchart TD
 | `/content-mgmt/tags-group` | `cm_tags_group()` | — | Только Groups/категории |
 | `/content-mgmt/comics-edit` | `cm_comics_edit()` | `@admin_required` | Редактор комиксов |
 | `/content-mgmt/comics-tags` | `comics_tags_page()` | `@admin_required` | Comics grid + category tags drag-to-tag |
-| `/content-search` | `content_search_page()` | `@admin_required` | Unified search (R34, Danbooru, NHentai) |
+| `/content-search` | `content_search_page()` | `@admin_required` | Unified search (R34, Danbooru, NHentai, E-Hentai) |
 | `/nhentai-search` | `nhentai_search_page()` | — | Поиск по NHentai (Feature 11) → редирект на /content-search |
 | `/franchise-search` | `franchise_search_page()` | — | Поиск по всем сайтам (Feature 8) → редирект на /content-search |
 | `/kemono-import` | `kemono_import_page()` | — | Страница импорта с Kemono (Feature 7) |
@@ -1101,7 +1101,7 @@ flowchart TD
 | templates/franchise_search.html | 58 | Franchise search page |
 | templates/admin/admin.html | 45 | Admin SPA |
 | templates/similar.html | 45 | Similar files page |
-| templates/content-search.html | 44 | Content search page (R34, Danbooru, NHentai) |
+| templates/content-search.html | 44 | Content search page (R34, Danbooru, NHentai, E-Hentai) |
 | templates/tagfetch/auto.html | 33 | Auto tagfetch |
 | templates/shared/popular_tags.html | 31 | Popular tags |
 | templates/content-mgmt/tags.html | 28 | Tags management + Comics Tags |
@@ -1192,7 +1192,7 @@ ES-модули загружаются через `<script type="module" src="..
 | static/shared/home-bg.js | 145 | Three.js background для home/login (ES module) |
 | static/shared/init.js | 99 | Entry point: drawer, banner, page init |
 | static/shared/api.js | 37 | Базовый fetch GET/POST/POST upload |
-| static/shared/icons.js | 30 | Site icons: Rule34, Danbooru, NHentai, Kemono, Coomer |
+| static/shared/icons.js | 30 | Site icons: Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer |
 
 **shared/gallery/ (3 файла, 1073 строк):**
 
@@ -1228,7 +1228,7 @@ ES-модули загружаются через `<script type="module" src="..
 | static/content/tags-manage/tags-manage.js | 437 | Files, masonry, lightbox |
 | static/content/comics.js | 339 | Comics CRUD + modal events |
 | static/content/comics-tags.js | 171 | Comics grid + category tags, drag-to-tag |
-| static/content/content-search.js | 259 | Unified search (R34, Danbooru, NHentai) |
+| static/content/content-search.js | 259 | Unified search (R34, Danbooru, NHentai, E-Hentai) |
 | static/content/nhentai_search.js | 189 | NHentai search (individual page) |
 | static/content/utils.js | 51 | Shared utilities, fallback к Shared.* |
 
@@ -2425,7 +2425,7 @@ data: {"generated": 98, "failed": 2, "skipped": 0, "total_elapsed": 34.2}
 src/backends/
 ├── __init__.py       ← BACKENDS registry (2), fetch_tags(), search_tags()
 ├── api_raw.py        ← ApiRawBackend: Rule34 + Danbooru + NHentai (прямые API, 210 строк)
-└── gallerydl.py      ← GalleryDlBackend: все 5 сайтов (gallery-dl Python API, 338 строк)
+└── gallerydl.py      ← GalleryDlBackend: все 6 сайтов (gallery-dl Python API, 338 строк)
 ```
 
 **`backends/__init__.py`** (41 строка):
@@ -2444,7 +2444,7 @@ BACKENDS = {
 }
 ```
 
-Настройка `fetch_backend` (dict) в settings.json определяет какой бэкенд использовать для каждого сайта. По умолчанию: Rule34/Danbooru → `api_raw`, NHentai/Kemono/Coomer → `gallerydl`. Поддерживаемые ключи: `rule34`, `danbooru`, `nhentai`, `kemono`, `coomer`.
+Настройка `fetch_backend` (dict) в settings.json определяет какой бэкенд использовать для каждого сайта. По умолчанию: Rule34/Danbooru → `api_raw`, NHentai/E-Hentai/Kemono/Coomer → `gallerydl`. Поддерживаемые ключи: `rule34`, `danbooru`, `nhentai`, `ehentai`, `kemono`, `coomer`.
 
 **`api_raw.py`** (210 строк) — `ApiRawBackend`:
 - `fetch(site, md5, settings)` — Rule34 XML API + Danbooru JSON API + NHentai API v2 с 3 retry и задержкой 1s
@@ -2458,7 +2458,7 @@ BACKENDS = {
 
 **`gallerydl.py`** (338 строк) — `GalleryDlBackend`:
 - Использует **Python API** (`gallery_dl.extractor.find`, `job.DataJob`, `job.DownloadJob`) — не CLI subprocess
-- Поддерживает все 5 сайтов: Rule34, Danbooru, NHentai, Kemono, Coomer
+- Поддерживает все 6 сайтов: Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer
 - `fetch(site, md5, settings)` — получение тегов/метаданных по MD5
 - `search(site, query, page, settings)` — поиск по тегам/запросу
 - `get_info(url)` — метаданные (artist, post_id, список файлов)
@@ -2473,11 +2473,11 @@ BACKENDS = {
 **Раздел «Backends»** в Admin Panel (`/admin`):
 - Загружает `fetch_backend` из `/api/settings`
 - Для каждого сайта показывает иконку (через `window.SiteIcons`) и выпадающий список бэкендов
-- Сайты: Rule34/Danbooru → `api_raw`, NHentai/Kemono/Coomer → `gallerydl`
+- Сайты: Rule34/Danbooru → `api_raw`, NHentai/E-Hentai/Kemono/Coomer → `gallerydl`
 - Кнопка **Save** — отправляет `POST /api/settings` с `{fetch_backend: {site: backend, ...}}`
 - Реализация: `admin.js` → `_sections.backends` (строки 278-339)
 
-**i18n ключи:** `sectionBackends`, `backendsDesc`, `backendApiRaw`, `backendGallerydl`, `siteRule34`, `siteDanbooru`, `siteNhentai`, `siteKemono`, `siteCoomer`, `navBackends`.
+**i18n ключи:** `sectionBackends`, `backendsDesc`, `backendApiRaw`, `backendGallerydl`, `siteRule34`, `siteDanbooru`, `siteNhentai`, `siteEhentai`, `siteKemono`, `siteCoomer`, `navBackends`.
 
 ### 24.3 Site Icons (`static/shared/icons.js` + `static/shared/icons/`)
 
@@ -2489,6 +2489,7 @@ window.SiteIcons = {
         rule34: '...',   // Красный круг с "34"
         danbooru: '...', // Коричневая буква D
         nhentai: '...',  // Розовая молния NHentai
+        ehentai: '...',  // Сине-зелёная буква E
         kemono: '...',   // Оранжевая маска
         coomer: '...',   // Синяя маска
     },
@@ -2503,7 +2504,7 @@ window.SiteIcons = {
 - Доступны через `window.SiteIcons.getIconImg('rule34', 16)`
 
 Плацехолдер SVG-файлы в `static/shared/icons/` — для обратной совместимости:
-- `rule34.svg`, `danbooru.svg`, `nhentai.svg`, `kemono.svg`, `coomer.svg`
+- `rule34.svg`, `danbooru.svg`, `nhentai.svg`, `ehentai.svg`, `kemono.svg`, `coomer.svg`
 
 ### 24.4 Система подпапок (Folder System)
 
@@ -2698,7 +2699,7 @@ var _programmaticScroll = false;
 
 ### 24.14 Библиотеки: gallery-dl (универсальный бэкенд)
 
-**Что это:** Программа и Python-библиотека для скачивания галерей с сайтов. Поддерживает 270+ сайтов (Rule34, Danbooru, NHentai, Kemono, Coomer и др.).
+**Что это:** Программа и Python-библиотека для скачивания галерей с сайтов. Поддерживает 270+ сайтов (Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer и др.).
 
 **Установка:** `pip install gallery-dl` (уже в venv)
 
@@ -2944,7 +2945,7 @@ if (file._gid && file._mid) {
 
 | Роут | Функция | Декораторы | Описание |
 |------|---------|------------|----------|
-| `GET /api/content-search` | `api_content_search()` | `@auth_required`, `@api_error_handler` | Unified search (R34, Danbooru, NHentai) |
+| `GET /api/content-search` | `api_content_search()` | `@auth_required`, `@api_error_handler` | Unified search (R34, Danbooru, NHentai, E-Hentai) |
 | `GET/POST /api/content-search/download` | `api_content_search_download()` | `@auth_required`, `@api_error_handler` | Download file + save tags to DB |
 | `POST /api/content-search/download-manga` | `api_content_search_download_manga()` | `@auth_required`, `@api_error_handler` | Download full NHentai gallery |
 | `GET /api/content-search/mount-check` | `api_content_search_mount_check()` | `@auth_required`, `@api_error_handler` | Check storage mount status |
@@ -2988,10 +2989,10 @@ if (file._gid && file._mid) {
 
 **Что сделано:**
 1. GalleryDlBackend полностью переписан на Python API (gallery_dl.extractor, DataJob, DownloadJob)
-2. Поддерживает все 5 сайтов: Rule34, Danbooru, NHentai, Kemono, Coomer
+2. Поддерживает все 6 сайтов: Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer
 3. Зарегистрирован в BACKENDS registry (gallerydl) — доступен в Admin UI
 4. Admin UI: 2 варианта per-site (api_raw или gallery_dl)
-5. Дефолтный бэкенд для NHentai/Kemono/Coomer (gallery-dl сам обходит Cloudflare)
+5. Дефолтный бэкенд для NHentai/E-Hentai/Kemono/Coomer (gallery-dl сам обходит Cloudflare)
 6. NokufindBackend удалён — gallery-dl полностью заменяет
 
 ### 24.16 Сессия 17.06.2026 — Comics-tags, header refactor, content-search, comics picker
@@ -3306,7 +3307,7 @@ User clicks "Save All" -> saveAllAutoResults() -> /api/save_all_fetched
 | **Consumer** | Franchise search, NHentai search | Manual tagfetch, Auto tagfetch |
 | **Input** | `(site, query, page, settings)` | `(site, md5, settings)` |
 | **Output** | `{'results': [...], 'total': int}` | Site-specific dict (see above) |
-| **Sites** | rule34, danbooru, nhentai | rule34, danbooru, nhentai (+ kemono via gallery-dl) |
+| **Sites** | rule34, danbooru, nhentai, ehentai | rule34, danbooru, nhentai, ehentai (+ kemono via gallery-dl) |
 | **Caching** | None at backend level | None at backend level (web_app.py caches per-md5) |
 | **Backend dispatch** | Same `fetch_backend` config | Same `fetch_backend` config |
 | **Error handling** | `{'results': [], 'total': 0}` on failure | `{'tags': [], 'file_url': '', 'preview_url': ''}` on failure |
@@ -3316,7 +3317,7 @@ User clicks "Save All" -> saveAllAutoResults() -> /api/save_all_fetched
 - Same dispatch mechanism (`BACKENDS` registry + `fetch_backend` config + `_DEFAULT_BACKEND`)
 - Same backend classes (`ApiRawBackend`, `GalleryDlBackend`)
 - Both return dicts with consistent top-level keys
-- Both handle the same 3 primary sites (rule34, danbooru, nhentai)
+- Both handle the same 4 primary sites (rule34, danbooru, nhentai, ehentai)
 
 **What prevents unification:**
 1. **Different return shapes** -- `fetch()` returns categorized tags (Danbooru: `tag_artist`, `tag_character`, etc.), `search()` returns a flat list of results

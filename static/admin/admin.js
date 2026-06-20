@@ -254,6 +254,10 @@ var AdminDashboard = (function() {
           creds:[], backends:['gallerydl']},
         {id:'coomer', nameKey:'siteCoomer', icon:'coomer',
           creds:[], backends:['gallerydl']},
+        {id:'ehentai', nameKey:'siteEhentai', icon:'ehentai',
+          creds:[{id:'key', label:'API Key'}],
+          vals:{key: (s.credentials?.ehentai?.key || '')},
+          backends:['api_raw','gallerydl']},
       ];
       var html =
         '<div class="admin-card">' +
@@ -614,7 +618,8 @@ var AdminDashboard = (function() {
       credentials: {
         rule34: { uid: _val('admrule34uid'), key: _val('admrule34key') },
         danbooru: { login: _val('admdanboorulogin'), key: _val('admdanboorukey') },
-        nhentai: { key: _val('admnhentaikey') }
+        nhentai: { key: _val('admnhentaikey') },
+        ehentai: { key: _val('admehentaikey') }
       }
     };
     var selects = document.querySelectorAll('.backend-select');

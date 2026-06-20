@@ -146,11 +146,11 @@ curl -X POST http://localhost:5050/api/regenerate_thumbnails
 Бэкенды определяют, какой модуль используется для получения тегов с каждого сайта:
 - **API Raw** — для Rule34 и Danbooru (прямые API)
 - **API Raw** — для Rule34, Danbooru и NHentai (прямые API)
-- **Gallery-DL** — для Kemono и Coomer (через gallery-dl CLI), а также для NHentai (по умолчанию)
+- **Gallery-DL** — для E-Hentai, Kemono и Coomer (через gallery-dl CLI), а также для NHentai (по умолчанию)
 Настройка: Admin Panel → Backends. Если бэкенд не выбран — используется `api_raw` по умолчанию.
 
 ### ❓ Зачем нужны иконки сайтов?
-Иконки Rule34, Danbooru, NHentai, Kemono, Coomer используются в интерфейсе админ-панели (секция Backends) для визуальной идентификации сайтов. Иконки — реальные favicon (скачанные с сайтов), доступны через `window.SiteIcons.getIconImg('rule34', 16)`.
+Иконки Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer используются в интерфейсе админ-панели (секция Backends) для визуальной идентификации сайтов. Иконки — реальные favicon (скачанные с сайтов), доступны через `window.SiteIcons.getIconImg('rule34', 16)`.
 
 ### ❓ Что такое Folder Settings в админке?
 Раздел Folders в Admin Panel позволяет настроить имена подпапок в вашей медиа-директории:
@@ -173,7 +173,7 @@ curl -X POST http://localhost:5050/api/regenerate_thumbnails
 Поддерживаются зеркала: `.su`, `.cr`, `.cv`, `.party`, `.so`, `.us`, `.co` для kemono и coomer.
 
 ### ❓ Как работать с Comics Tags (теги для комиксов)?
-Страница `/content-mgmt/comics-tags` позволяет перетаскивать теги прямо на карточки комиксов. Слева — категории тегов (artist, character, copyright, general) с цветами, справа — карточки комиксов. Перетащи тег на комикс — он привяжется. Поддерживаются теги с Rule34, Danbooru и NHentai. Доступна только администраторам.
+Страница `/content-mgmt/comics-tags` позволяет перетаскивать теги прямо на карточки комиксов. Слева — категории тегов (artist, character, copyright, general) с цветами, справа — карточки комиксов. Перетащи тег на комикс — он привяжется. Поддерживаются теги с Rule34, Danbooru, NHentai и E-Hentai. Доступна только администраторам.
 
 ### ❓ Как искать теги на NHentai?
 Через страницу поиска `/nhentai-search` (кнопка «Comics Fetch» на главной) или через API: `GET /api/nhentai/search?q=query`. Использует `GalleryDlBackend` (gallery-dl) для поиска и получения данных.

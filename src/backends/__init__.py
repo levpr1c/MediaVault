@@ -13,6 +13,7 @@ _DEFAULT_BACKEND = {
     'rule34': 'api_raw',
     'danbooru': 'api_raw',
     'nhentai': 'gallerydl',    # gallery-dl NHentai search + gallery fetch
+    'ehentai': 'gallerydl',   # gallery-dl e-hentai search + gallery fetch
     'kemono': 'gallerydl',
     'coomer': 'gallerydl',
 }

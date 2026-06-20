@@ -3,7 +3,7 @@
 > **Сфокусированный документ.** Здесь описаны только: система бэкендов (backend dispatch), хранение API-ключей (credential store), per-site credentials, fetch-логика и gallery-dl как универсальная альтернатива.
 >
 > Полный справочник API (все эндпоинты, auth, settings, gallery, lightbox, теги, комиксы, админка) — в [`docs/code-guide.md`](code-guide.md).
-> Интеграция с внешними сайтами (Rule34, Danbooru, NHentai, Kemono, Coomer) — в [`docs/sites-api-in-MV.md`](sites-api-in-MV.md).
+> Интеграция с внешними сайтами (Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer) — в [`docs/sites-api-in-MV.md`](sites-api-in-MV.md).
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### 1.1 Архитектура
 
-Для хранения API-ключей Rule34, Danbooru, NHentai используется `KeyringStore` (GNOME Keyring) или fallback в `settings.json` (plain text).
+Для хранения API-ключей Rule34, Danbooru, NHentai, E-Hentai используется `KeyringStore` (GNOME Keyring) или fallback в `settings.json` (plain text).
 
 Файл: `src/credential_store.py`, класс `KeyringStore`.
 
@@ -22,6 +22,7 @@
 | Rule34 | `api:rule34:uid`, `api:rule34:key` | user_id + api_key |
 | Danbooru | `api:danbooru:login`, `api:danbooru:key` | login + api_key |
 | NHentai | `api:nhentai:key` | API-ключ |
+| E-Hentai | `api:ehentai:key` | API-ключ |
 
 **Миграция:** старые плоские ключи (`r34_uid`, `r34_key`, `dan_login`, `dan_key`, `nh_key`) автоматически мигрируются в per-site формат при загрузке настроек (в `load_settings()`).
 
@@ -62,7 +63,7 @@ BACKENDS = {
 | `fetch_tags(site, md5, settings)` | Получить теги по MD5 через настроенный бэкенд |
 | `search_tags(site, query, page, settings)` | Поиск по тегу/запросу |
 
-Настройка `fetch_backend` (dict в settings.json) определяет, какой бэкенд используется для каждого сайта. Ключи: `rule34`, `danbooru`, `nhentai`, `kemono`, `coomer`.
+Настройка `fetch_backend` (dict в settings.json) определяет, какой бэкенд используется для каждого сайта. Ключи: `rule34`, `danbooru`, `nhentai`, `ehentai`, `kemono`, `coomer`.
 
 ### 2.2 ApiRawBackend (`src/backends/api_raw.py`)
 
@@ -89,7 +90,7 @@ BACKENDS = {
 
 ### 2.3 GalleryDlBackend (`src/backends/gallerydl.py`)
 
-Обёртка над CLI `gallery-dl`. Для Kemono и Coomer. 338 строк.
+Обёртка над CLI `gallery-dl`. Для E-Hentai, Kemono и Coomer. 338 строк.
 
 - `is_available()` — проверка `gallery-dl --version`
 - `get_info(url)` — метаданные поста (через `--list-urls`)
@@ -133,7 +134,7 @@ BACKENDS = {
 
 Admin UI (`/admin`, раздел Backends) позволяет выбрать бэкенд для каждого сайта:
 - `api_raw` (Rule34, Danbooru, NHentai)
-- `gallerydl` (универсальный, по умолчанию для NHentai, Kemono, Coomer)
+- `gallerydl` (универсальный, по умолчанию для NHentai, E-Hentai, Kemono, Coomer)
 
 ---
 
@@ -167,7 +168,7 @@ window.SiteIcons = {
 }
 ```
 
-Поддерживаемые сайты: `rule34`, `danbooru`, `nhentai`, `kemono`, `coomer`.
+Поддерживаемые сайты: `rule34`, `danbooru`, `nhentai`, `ehentai`, `kemono`, `coomer`.
 
 Иконки используются в:
 - Admin Backend Selection UI (каждая строка сайта)

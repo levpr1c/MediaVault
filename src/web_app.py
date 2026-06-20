@@ -356,6 +356,7 @@ LOCALE = {
         'siteRule34': 'Rule34',
         'siteDanbooru': 'Danbooru',
         'siteNhentai': 'NHentai',
+        'siteEhentai': 'E-Hentai',
         'siteKemono': 'Kemono',
         'siteCoomer': 'Coomer',
         'categoryNewName': 'New category name',
@@ -593,6 +594,7 @@ LOCALE = {
         'siteRule34': 'Rule34',
         'siteDanbooru': 'Danbooru',
         'siteNhentai': 'NHentai',
+        'siteEhentai': 'E-Hentai',
         'siteKemono': 'Kemono',
         'siteCoomer': 'Coomer',
         'toAllMedia': 'ко всем медиа',
@@ -747,7 +749,8 @@ def save_settings(s):
         _credential_store.delete('api:dan_login')
         _credential_store.delete('api:dan_key')
         _credential_store.delete('api:nh_key')
-        for site, keys in [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']), ('nhentai', ['key'])]:
+        _credential_store.delete('api:eh_key')
+        for site, keys in [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']), ('nhentai', ['key']), ('ehentai', ['key'])]:
             site_cred = cred.get(site, {})
             for k in keys:
                 val = site_cred.get(k, '')
@@ -756,7 +759,7 @@ def save_settings(s):
                 else:
                     _credential_store.delete(f'api:{site}:{k}')
     # remove any leftover flat keys
-    for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key', 'nh_key'):
+    for k in ('r34_uid', 'r34_key', 'dan_login', 'dan_key', 'nh_key', 'eh_key'):
         s.pop(k, None)
     os.makedirs(SETTINGS_DIR, exist_ok=True)
     with open(SETTINGS_FILE, 'w') as f:
@@ -1727,13 +1730,13 @@ def api_content_search():
     """API: parallel search across selected sites."""
     q = request.args.get('q', '').strip()
     page = request.args.get('page', 1, type=int)
-    sites_param = request.args.get('sites', 'r34,dan,nhentai')
+    sites_param = request.args.get('sites', 'r34,dan,nhentai,eh')
     filter_ai = request.args.get('filter_ai', '0') == '1'
     if not q:
         return jsonify({'error': 'no query'}), 400
     from backends import search_tags
     import concurrent.futures
-    site_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai'}
+    site_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'eh': 'ehentai'}
     sites = [site_map[s] for s in sites_param.split(',') if s in site_map]
     results = {}
     total = 0
@@ -1865,6 +1868,11 @@ def api_content_search_download():
     if not re.match(r'^[a-zA-Z0-9]+$', source):
         return jsonify({'error': 'Invalid source name'}), 400
 
+    _SOURCE_FOLDER = {
+        'r34': 'rule34', 'dan': 'danbooru',
+        'nhentai': 'nhentai', 'eh': 'ehentai',
+    }
+    source = _SOURCE_FOLDER.get(source, source.lower())
     dl_dir = settings.get('downloads_dir', 'Downloads')
     target_dir = os.path.join(media_dir, dl_dir, source)
     try:
@@ -2224,7 +2232,7 @@ def api_settings():
     # backward compat: accept old flat keys, convert to per-site
     for old_k, site, cred_k in [('r34_uid', 'rule34', 'uid'), ('r34_key', 'rule34', 'key'),
                                  ('dan_login', 'danbooru', 'login'), ('dan_key', 'danbooru', 'key'),
-                                 ('nh_key', 'nhentai', 'key')]:
+                                 ('nh_key', 'nhentai', 'key'), ('eh_key', 'ehentai', 'key')]:
         if old_k in data:
             s.setdefault('credentials', {}).setdefault(site, {})[cred_k] = data[old_k]
     for k in ('media_dir', 'theme', 'three_bg', 'fetch_backend', 'browser_cache', 'gallery_dir', 'comics_dir', 'downloads_dir'):
@@ -2255,6 +2263,21 @@ def api_nhentai_search():
     log_debug('[NHentai API] search: %d results, %d total for query="%s"', n, total, query)
     if result.get('error'):
         log_debug_red('[NHentai API] search ERROR: %s', result['error'])
+    return jsonify(result)
+
+@app.route('/api/ehentai/gallery')
+@api_error_handler
+def api_ehentai_gallery():
+    """Get E-Hentai gallery metadata via official API (gdata method).
+    Params: gid (required), token (required)
+    """
+    gid = request.args.get('gid', '').strip()
+    token = request.args.get('token', '').strip()
+    if not gid or not token:
+        return jsonify({'error': 'Missing gid or token'}), 400
+    from backends.api_raw import ApiRawBackend
+    backend = ApiRawBackend()
+    result = backend._fetch_ehentai(f'{gid}:{token}', load_settings())
     return jsonify(result)
 
 @app.route('/api/kemono/mirrors')
@@ -2333,7 +2356,7 @@ def api_set_credential_backend():
     if data is None:
         return jsonify({'error': 'no data'}), 400
     name = data.get('backend', '')
-    _PER_SITE = [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']), ('nhentai', ['key'])]
+    _PER_SITE = [('rule34', ['uid', 'key']), ('danbooru', ['login', 'key']), ('nhentai', ['key']), ('ehentai', ['key'])]
     if name == 'KeyringStore':
         ks = credential_store.KeyringStore()
         if not ks.is_available():
@@ -2826,7 +2849,7 @@ def api_scan_status():
 @api_error_handler
 def api_gallery():
     """Return files from DB with pagination for MediaVault gallery.
-    Supports ?folder=gallery|comics|downloads to filter by folder_type."""
+    Supports ?folders=gallery,comics (comma-separated) or ?folder=gallery|comics|downloads to filter by folder_type."""
     if not os.path.exists(_DB_PATH):
         return jsonify({'files': [], 'categories': {}, 'total': 0, 'media_dir_set': False, 'folder_counts': {}})
     try:
@@ -2836,6 +2859,7 @@ def api_gallery():
         from_date = request.args.get('from_date', None, type=int)
         to_date = request.args.get('to_date', None, type=int)
         folder = request.args.get('folder', None, type=str)
+        folders_str = request.args.get('folders', None, type=str)
         db = _db_conn()
         where_clauses = []
         params = []
@@ -2845,7 +2869,21 @@ def api_gallery():
         if to_date is not None:
             where_clauses.append('mtime <= ?')
             params.append(to_date)
-        if folder and folder in ('gallery', 'comics', 'downloads'):
+        if folders_str:
+            ftypes = [f.strip() for f in folders_str.split(',') if f.strip() in ('gallery', 'comics', 'downloads')]
+            if ftypes:
+                or_parts = []
+                for ft in ftypes:
+                    if ft in ('gallery', 'comics'):
+                        fdir = settings.get(ft + '_dir', ft.capitalize())
+                        or_parts.append('path LIKE ?')
+                        params.append(fdir + '/%')
+                    else:
+                        or_parts.append('folder_type = ?')
+                        params.append(ft)
+                where_clauses.append('(' + ' OR '.join(or_parts) + ')')
+            folder = ','.join(ftypes)
+        elif folder and folder in ('gallery', 'comics', 'downloads'):
             if folder in ('gallery', 'comics'):
                 fdir = settings.get(folder + '_dir', folder.capitalize())
                 where_clauses.append('path LIKE ?')
@@ -3762,6 +3800,8 @@ def api_auto_scan():
 
                     found_count = len(all_tags)
 
+                    w, h = _get_image_dimensions(filepath) if os.path.isfile(filepath) else (0, 0)
+
                     tag_colors = {}
                     try:
                         tag_colors, _ = _get_tag_categories()
@@ -3773,6 +3813,7 @@ def api_auto_scan():
                         "status": "ok" if has_tags else "no_tags",
                         "path": rel_path, "name": os.path.basename(rel_path),
                         "found": found_count,
+                        "width": w, "height": h,
                         "tag_colors": tag_colors,
                         "dan_artist": dan_result.get('tag_artist', []) if isinstance(dan_result, dict) else [],
                         "dan_character": dan_result.get('tag_character', []) if isinstance(dan_result, dict) else [],

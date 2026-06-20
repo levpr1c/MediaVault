@@ -98,18 +98,10 @@ var CONFIG = {
             </div>
           </div>
         <span class="cm-hdr-sep"></span>
-        <div class="cm-hdr-tf" id="cmHdrSearch">
-          <button class="cm-hdr-tf-btn" onclick="CMHeader.toggle(event, 'cmHdrSearch')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            SEARCH
-          </button>
-          <div class="cm-hdr-tf-items">
-            <a href="/content-search" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <span data-i18n="contentSearch">Search</span>
-            </a>
-          </div>
-        </div>
+        <a href="/content-search" class="cm-hdr-tf-btn{% if request.path == '/content-search' %} active{% endif %}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <span data-i18n="contentSearch">Search</span>
+        </a>
       </div>
 {% else %}
 <div class="hdr-group">

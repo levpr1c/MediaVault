@@ -72,12 +72,14 @@ _OLD_KEY_MAP = {
     'dan_login': ('danbooru', 'login'),
     'dan_key':   ('danbooru', 'key'),
     'nh_key':    ('nhentai',  'key'),
+    'eh_key':    ('ehentai',  'key'),
 }
 
 _PER_SITE_SCHEMA = {
     'rule34':   ['uid', 'key'],
     'danbooru': ['login', 'key'],
     'nhentai':  ['key'],
+    'ehentai':  ['key'],
 }
 
 def migrate_old_keys(ks: KeyringStore | None, s: dict) -> dict:

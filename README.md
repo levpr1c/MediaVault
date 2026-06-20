@@ -43,7 +43,7 @@ Optional — `python3-keyring` for storing API keys in system keychain (GNOME Ke
 | **📚 Comics** | Create collections, read in Scroll (webtoon) or Lightbox mode |
 | **🏷️ Tags** | Danbooru-style categories with colors, auto-tags (photo/video/animated/sound), aspect-ratio tags |
 | **🎴 Comics Tags** | Drag-and-drop tags from categories onto comic cards |
-| **🔍 Content Search** | Unified search across Rule34, Danbooru, NHentai with color-coded tag categories, AI filter (R34 only), download with tag indexing |
+| **🔍 Content Search** | Unified search across Rule34, Danbooru, NHentai, E-Hentai with color-coded tag categories, AI filter (R34 only), download with tag indexing |
 | **📥 NHentai Manga Download** | Download entire galleries (all pages) directly to Downloads/nhentai/ with full tag indexing |
 | **💾 Storage mount indicator** | Blinking dot shows mount status in Settings & Admin Panel |
 | **👥 Users** | Admin (full access) and user (read-only) roles |

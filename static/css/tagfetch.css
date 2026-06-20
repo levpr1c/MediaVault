@@ -24,7 +24,7 @@
 .path-item .icon { flex-shrink: 0; width: 18px; text-align: center; }
 .path-item .pname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .path-item.selected { background: var(--accent); color: #fff; border-radius: 6px; }
-.path-item-droppable.drag-over { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--surface2); }
+.path-item.drag-over, .path-item-droppable.drag-over { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--surface2); }
 
 /* ─── FILE INFO ─── */
 #fileInfo {
@@ -133,22 +133,26 @@
 .modal-footer{display:flex;gap:8px;padding:16px 24px;border-top:1px solid var(--border);justify-content:flex-end}
 .modal-footer .tf-save-stats{flex:1;font-size:13px;color:var(--text2)}
 /* ─── АВТОСКАНИРОВАНИЕ (AUTO) ─── */
-.tf-page[data-tf="auto"]{display:flex;flex:1;min-height:0;flex-direction:column}
-.auto-content{flex:1;padding:28px 32px;overflow-y:auto}
+.tf-page[data-tf="auto"]{display:flex;flex:1;min-height:0;flex-direction:column;overflow-y:auto}
+.auto-content{padding:28px 32px}
 .auto-header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
 .auto-header .tf-stats{font-size:13px;color:var(--text2)}
 .auto-actions-top,.auto-actions{display:flex;gap:10px;align-items:center;margin-bottom:12px}
 .auto-actions-top .tf-save-stats,.auto-actions .tf-save-stats{font-size:13px;color:var(--text2)}
-.auto-grid.shared-grid{--shared-grid-col-width:360px;--shared-grid-gap:12px;padding:4px 0}
-.auto-grid.shared-grid.shared-grid-fixed{align-items:flex-start}
-.auto-card{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;animation:autoFadeIn .3s forwards}@keyframes autoFadeIn{from{opacity:0}to{opacity:1}}
-.auto-card-img{width:100%;overflow:hidden;background:var(--surface2);position:relative}
-.auto-card-img img{width:100%;height:auto;display:block;max-height:200px;object-fit:contain}
-.auto-card-body{padding:14px 16px;max-height:240px;overflow-y:auto}
+@keyframes autoFadeIn{from{opacity:0}to{opacity:1}}
+#autoGrid{display:flex;flex-direction:row;gap:12px;align-items:flex-start;padding:8px 0;width:100%;min-height:60px}
+#autoGrid .auto-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+#autoGrid .auto-card{width:100%;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:var(--surface);animation:autoFadeIn .3s forwards}
+
+.auto-card[data-orient="landscape"] .file-card-thumb{overflow:hidden;position:relative;background:var(--surface2)}
+.auto-card[data-orient="landscape"] .file-card-thumb img{width:100%;display:block}
+.auto-card[data-orient="landscape"] .file-card-body{position:relative;overflow:hidden}
+#autoGrid .auto-card[data-orient="landscape"] .file-card-body .file-card-bg{position:absolute;inset:-30px;background-image:var(--thumb);background-size:cover;background-position:var(--bg-pos,center bottom);filter:blur(20px);opacity:.25;z-index:0;pointer-events:none}
+.auto-card[data-orient="landscape"] .file-card-content{position:relative;z-index:1;padding:14px 16px}
+.auto-card-name{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
 .auto-sec-group{display:block;margin-bottom:4px}
 .auto-sec-group:last-child{margin-bottom:0}
 .auto-sec-label{font-size:11px;font-weight:600;color:var(--text2);margin:4px 4px 2px 0;display:inline-block;white-space:nowrap}
-.auto-card-name{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
 .auto-tag{display:inline-block;padding:2px 6px;font-size:11px;background:var(--chip-bg);color:var(--chip-text);border:1px solid transparent;border-radius:4px;line-height:1.4}
 .auto-hover-preview{position:absolute;inset:0;z-index:var(--z-dropdown);background:var(--surface)}
 .auto-hover-preview video{width:100%;height:100%;object-fit:cover;display:block}
@@ -159,7 +163,7 @@
   .mt-tag-panels{flex-direction:column}
   .mt-action-bar{gap:4px;flex-wrap:wrap}
   .mt-action-bar .btn{font-size:12px;padding:6px 12px;flex:1;min-width:0;justify-content:center}
-  .auto-grid.shared-grid{--shared-grid-col-width:220px}
+
   .auto-header{gap:8px}
   .auto-content{padding:12px}
 }
@@ -168,3 +172,77 @@
   .mt-tag-panels{gap:6px}
   #fileInfo{padding:12px 14px;font-size:12px}
 }
+
+/* ─── FILE CARD (for autoGrid) ─── */
+#autoGrid .file-card {
+  border-radius: 8px; border: 1px solid var(--border); overflow: hidden;
+  cursor: pointer; background: var(--surface); transition: all .15s;
+  position: relative;
+}
+#autoGrid .file-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px var(--shadow); }
+#autoGrid .file-card.tag-dragover { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+#autoGrid .file-card-thumb {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); overflow: hidden; line-height: 0;
+  position: relative; min-height: 60px;
+}
+#autoGrid .file-card-thumb img, #autoGrid .file-card-thumb video {
+  width: 100%; display: block;
+}
+#autoGrid .file-card-thumb video { background: #000; }
+#autoGrid .file-card-spinner {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); z-index: 1;
+}
+#autoGrid .file-card-spinner::after {
+  content: ''; width: 24px; height: 24px;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: fileCardSpin .6s linear infinite;
+}
+@keyframes fileCardSpin { to { transform: rotate(360deg); } }
+#autoGrid .file-card-video-badge {
+  position: absolute; bottom: 6px; right: 6px; width: 24px; height: 24px;
+  color: #fff; filter: drop-shadow(0 1px 3px var(--shadow)); opacity: .85;
+}
+
+#autoGrid .file-card-body {
+  position: relative; overflow: hidden;
+}
+#autoGrid .file-card-bg {
+  position: absolute; inset: -30px;
+  background-size: cover;
+  background-position: var(--bg-pos, center bottom);
+  filter: blur(16px);
+  opacity: .85;
+  transition: opacity .3s;
+  z-index: 0;
+}
+#autoGrid .file-card-body:not(:has(.file-card-bg[style*="--thumb"])) .file-card-bg {
+  opacity: 0;
+}
+#autoGrid .file-card-content {
+  position: relative; z-index: 1;
+  padding: 5px 8px;
+  min-height: 32px;
+}
+#autoGrid .file-card-name {
+  font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text2); line-height: 1.4;
+}
+#autoGrid .file-card-tags {
+  display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;
+}
+#autoGrid .file-card-tags .tag-chip {
+  font-size: 10px; padding: 1px 5px; border-radius: 4px;
+}
+
+/* Orientation-based background positions */
+#autoGrid .file-card[data-orient="landscape"] .file-card-bg { --bg-pos: center bottom; }
+#autoGrid .file-card[data-orient="square"] .file-card-bg { --bg-pos: center; }
+
+/* ─── MANUAL PAGE FILE BROWSER ─── */
+#browseBrowser {
+  display: flex; flex-direction: column; gap: 2px; padding: 4px 0;
+}
+#browseBrowser .path-item { width: 100%; }

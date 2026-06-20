@@ -145,5 +145,5 @@
 | `docs/new-features.md` | Полный план new-features |
 | `docs/sites-api-in-MV.md` | Интеграция с внешними сайтами |
 | `static/shared/icons.js` | Site icons (window.SiteIcons) |
-| `static/shared/icons/*.svg` | SVG иконки для 5 сайтов |
+| `static/shared/icons/*.svg` | SVG иконки для 6 сайтов |
 | `templates/franchise_search.html` | Страница франчайз-поиска |

@@ -42,6 +42,10 @@ class GalleryDlBackend:
         gconfig.set(('extractor', 'nhentai'), 'per-page', 25)
         gconfig.set(('extractor', 'nhentai'), 'page-limit', 1)
         gconfig.set(('extractor', 'nhentai'), 'request-interval', 0)
+        # E-Hentai config (optional auth via cookies in gallery-dl config)
+        gconfig.set(('extractor', 'e-hentai'), 'per-page', 25)
+        gconfig.set(('extractor', 'e-hentai'), 'page-limit', 1)
+        gconfig.set(('extractor', 'e-hentai'), 'request-interval', 1)
 
     @staticmethod
     def _gd_extract(extr, limit=0):
@@ -68,7 +72,9 @@ class GalleryDlBackend:
         elif site == 'rule34':
             return self._fetch_rule34(md5, settings)
         elif site == 'nhentai':
-            # NHentai doesn't expose MD5; handled via fetch_by_url()
+            return {}
+        elif site == 'ehentai':
+            # MD5 not supported for e-hentai; use fetch_by_url()
             return {}
         return {}  # kemono/coomer: handled via existing get_info()
 
@@ -184,6 +190,9 @@ class GalleryDlBackend:
         elif site == 'nhentai':
             self._apply_gd_config(settings or {})
             return self._search_nhentai(query, page)
+        elif site == 'ehentai':
+            self._apply_gd_config(settings or {})
+            return self._search_ehentai(query, page)
         return {'results': [], 'total': 0}
 
     def _search_danbooru(self, query, page, settings):
@@ -308,6 +317,51 @@ class GalleryDlBackend:
             import traceback
             print(f'[NHentai Debug] search ERROR: {e}', file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
+        return {'results': [], 'total': 0}
+
+    def _search_ehentai(self, query, page):
+        """Search E-Hentai via gallery-dl native e-hentai extractor."""
+        try:
+            from gallery_dl.extractor import find
+            tags_q = requests.utils.quote(query)
+            extr = find(f'https://e-hentai.org/?q={tags_q}')
+            if not extr:
+                return {'results': [], 'total': 0}
+            start = (page - 1) * 25
+            current = 0
+            results = []
+            for _path, _prefix, data in self._gd_extract(extr):
+                current += 1
+                if current <= start:
+                    continue
+                if len(results) >= 25:
+                    break
+                gid = data.get('gallery_id') or data.get('id')
+                token = data.get('token') or ''
+                thumb = data.get('thumbnail') or ''
+                tags = list(data.get('tags', []))
+                # gallery-dl returns tags as strings, keep them
+                results.append({
+                    'id': str(gid) if gid else '',
+                    'token': str(token) if token else '',
+                    'title': data.get('title', ''),
+                    'title_jpn': data.get('title_jpn', ''),
+                    'category': data.get('category', ''),
+                    'thumbnail': thumb,
+                    'preview_url': thumb,
+                    'file_url': thumb,
+                    'tags': tags,
+                    'tags_raw': tags,
+                    'pages': data.get('filecount', 0) or data.get('count', 0) or 0,
+                    'rating': data.get('rating', ''),
+                    'uploader': data.get('uploader', ''),
+                    'source': 'ehentai',
+                })
+            total = current
+            return {'results': results, 'total': total}
+        except Exception as e:
+            import sys
+            print(f'[EHentai] search ERROR: {e}', file=sys.stderr)
         return {'results': [], 'total': 0}
 
     # ── Legacy: Kemono/Coomer via CLI ─────────────────────────────

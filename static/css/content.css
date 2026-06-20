@@ -218,40 +218,90 @@ body { overflow: hidden; }
 .cm-files-gallery.scroll {
   display: flex; flex-direction: column; gap: 3px;
 }
-.cm-files-gallery.scroll .cm-files-gallery-item {
+.cm-files-gallery.scroll .file-card {
   display: flex; align-items: center; gap: 8px;
   border-radius: 6px; border: 1px solid var(--border); padding: 4px 8px;
   background: var(--surface); margin-bottom: 0;
 }
-.cm-files-gallery.scroll .cm-files-gallery-item:hover { border-color: var(--accent); }
-.cm-files-gallery.scroll .cm-files-gallery-item .cm-files-thumb { width: 50px; height: 50px; flex-shrink: 0; }
-.cm-files-gallery.scroll .cm-files-gallery-item .cm-files-thumb img,
-.cm-files-gallery.scroll .cm-files-gallery-item .cm-files-thumb video { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
-.cm-files-gallery.scroll .cm-files-gallery-item .cm-files-gallery-name { flex: 1; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cm-files-gallery-item {
+.cm-files-gallery.scroll .file-card:hover { border-color: var(--accent); }
+.cm-files-gallery.scroll .file-card .file-card-thumb { width: 50px; height: 50px; flex-shrink: 0; }
+.cm-files-gallery.scroll .file-card .file-card-thumb img,
+.cm-files-gallery.scroll .file-card .file-card-thumb video { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+.cm-files-gallery.scroll .file-card .file-card-name { flex: 1; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-files-gallery .file-card-thumb svg { display: block; padding: 20px; }
+.cm-files-gallery .file-card-name {
+  padding: 4px 8px; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2);
+}
+
+/* ─── FILE CARD ─── */
+.file-card {
   border-radius: 8px; border: 1px solid var(--border); overflow: hidden;
   cursor: pointer; background: var(--surface); transition: all .15s;
   break-inside: avoid; margin-bottom: 10px; position: relative;
 }
-.cm-files-gallery-item:hover { border-color: var(--accent); box-shadow: 0 2px 8px var(--shadow); }
-.cm-files-gallery-item.tag-dragover { outline: 3px solid var(--accent); outline-offset: -3px; }
-.cm-files-gallery-item .cm-files-thumb {
+.file-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px var(--shadow); }
+.file-card.tag-dragover { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+.file-card-thumb {
   display: flex; align-items: center; justify-content: center;
   background: var(--surface2); overflow: hidden; line-height: 0;
+  position: relative; min-height: 60px;
 }
-.cm-files-gallery-item .cm-files-thumb img, .cm-files-gallery-item .cm-files-thumb video {
+.file-card-thumb img, .file-card-thumb video {
   width: 100%; display: block;
 }
-.cm-files-gallery-item .cm-files-thumb video { background: #000; }
-.cm-video-thumb { position: relative; }
-.cm-video-badge {
+.file-card-thumb video { background: #000; }
+.file-card-spinner {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); z-index: 1;
+}
+.file-card-spinner::after {
+  content: ''; width: 24px; height: 24px;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: fileCardSpin .6s linear infinite;
+}
+@keyframes fileCardSpin { to { transform: rotate(360deg); } }
+.file-card-video-badge {
   position: absolute; bottom: 6px; right: 6px; width: 24px; height: 24px;
   color: #fff; filter: drop-shadow(0 1px 3px var(--shadow)); opacity: .85;
 }
-.cm-files-gallery-item .cm-files-thumb svg { display: block; padding: 20px; }
-.cm-files-gallery-name {
-  padding: 4px 8px; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2);
+
+/* Card body: blurred background + content */
+.file-card-body {
+  position: relative; overflow: hidden;
 }
+.file-card-bg {
+  position: absolute; inset: -30px;
+  background-size: cover;
+  background-position: var(--bg-pos, center bottom);
+  filter: blur(16px);
+  opacity: .85;
+  transition: opacity .3s;
+  z-index: 0;
+}
+.file-card-body:not(:has(.file-card-bg[style*="--thumb"])) .file-card-bg {
+  opacity: 0;
+}
+.file-card-content {
+  position: relative; z-index: 1;
+  padding: 5px 8px;
+  min-height: 32px;
+}
+.file-card-name {
+  font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text2); line-height: 1.4;
+}
+.file-card-tags {
+  display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;
+}
+.file-card-tags .tag-chip {
+  font-size: 10px; padding: 1px 5px; border-radius: 4px;
+}
+
+/* Orientation-based background positions */
+.file-card[data-orient="landscape"] .file-card-bg { --bg-pos: center bottom; }
+.file-card[data-orient="portrait"] .file-card-bg { --bg-pos: right center; }
+.file-card[data-orient="square"] .file-card-bg { --bg-pos: center; }
 .cm-files-gallery-empty { color: var(--text2); font-size: 12px; text-align: center; padding: 20px; }
 .cm-files-pagination {
   display: flex; align-items: center; justify-content: center; gap: 10px;

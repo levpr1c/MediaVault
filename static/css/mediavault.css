@@ -24,7 +24,7 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 #mvSidebar.collapsed #mvSidebar-inner{opacity:0;transition:opacity .1s ease}
 
 /* ─── КОНТЕНТ И СТАТУС-БАР ─── */
-#mvMain{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;min-height:0;overflow-anchor:none}
+#mvMain{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px;display:flex;flex-direction:column;min-height:0;overflow-anchor:none}
 #mvBottomLinks{display:none}
 #mvBottomSection{display:none}
 #langToggle:focus{outline:none}
@@ -58,42 +58,104 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 
 /* ─── ГАЛЕРЕЯ ─── */
 #gallery{--shared-grid-col-width:var(--thumb-col-width,220px)}
-#gallery.shared-grid{column-width:var(--thumb-col-width,220px);column-gap:8px;flex:1;align-content:flex-start}
+#gallery.shared-grid{column-width:var(--thumb-col-width,220px);column-gap:8px;flex:none;align-content:flex-start}
+#gallery.shared-grid .file-card{display:inline-block;width:100%;margin-bottom:8px;break-inside:avoid}
 #gallery.shared-grid.shared-grid-fixed{column-width:auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-#gallery.shared-grid.shared-grid-fixed .shared-grid-item{width:var(--thumb-col-width,220px);margin-bottom:0}
-#gallery.shared-grid .shared-grid-item{display:inline-block;width:100%;margin-bottom:8px;break-inside:avoid}
-#gallery.few-items.shared-grid .shared-grid-item{width:var(--thumb-col-width,220px);margin-bottom:0}
-#gallery.few-items.shared-grid.shared-grid-fixed .shared-grid-item{width:var(--thumb-col-width,220px)}
-#gallery.few-items.shared-grid .shared-grid-item .gallery-item{margin-bottom:0;width:auto}
+#gallery.shared-grid.shared-grid-fixed .file-card{width:var(--thumb-col-width,220px);margin-bottom:0}
+#gallery.few-items.shared-grid .file-card{width:var(--thumb-col-width,220px);margin-bottom:0}
+#gallery.few-items.shared-grid.shared-grid-fixed .file-card{width:var(--thumb-col-width,220px)}
 .gallery-empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text2)}
 .gallery-empty h2{font-size:20px;margin-bottom:8px;font-weight:500;font-family:var(--font-heading)}
 .gallery-empty p{font-size:14px}
-.gallery-item{display:inline-block;width:100%;margin-bottom:8px;overflow:hidden;cursor:pointer;background:var(--surface);border-radius:8px;break-inside:avoid;animation:fadeSlide .3s ease both}
-.gallery-item:hover{opacity:.9}
-@media(hover:none){.gallery-item:hover{opacity:1}}
-.gallery-item.selected{position:relative}
-.gallery-item.selected::after{content:'';position:absolute;inset:0;border:3px solid var(--accent);border-radius:8px;pointer-events:none;z-index:var(--z-overlay)}
-.gallery-item .select-overlay{position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:50%;background:transparent;border:2px solid rgba(255,255,255,.7);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:var(--z-dropdown);opacity:.7;pointer-events:none}
-.gallery-item.selected .select-overlay{background:var(--accent);border-color:var(--accent);opacity:1}
+/* ─── FILE CARD ─── */
+.file-card {
+  border-radius: 8px; border: 1px solid var(--border); overflow: hidden;
+  cursor: pointer; background: var(--surface); transition: all .15s;
+  break-inside: avoid; margin-bottom: 10px; position: relative;
+}
+.file-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px var(--shadow); }
+.file-card.tag-dragover { outline: 3px solid var(--accent); outline-offset: -3px; }
 
-.gallery-thumb{display:flex;align-items:center;justify-content:center;font-size:48px;background:var(--surface2);color:var(--text2);overflow:hidden;min-height:80px;position:relative}
+.file-card-thumb {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); overflow: hidden; line-height: 0;
+  position: relative; min-height: 60px;
+}
+.file-card-thumb img, .file-card-thumb video {
+  width: 100%; display: block;
+}
+.file-card-thumb video { background: #000; }
+.file-card-spinner {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); z-index: 1;
+}
+.file-card-spinner::after {
+  content: ''; width: 24px; height: 24px;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: fileCardSpin .6s linear infinite;
+}
+@keyframes fileCardSpin { to { transform: rotate(360deg); } }
+.file-card-video-badge {
+  position: absolute; bottom: 6px; right: 6px; width: 24px; height: 24px;
+  color: #fff; filter: drop-shadow(0 1px 3px var(--shadow)); opacity: .85;
+}
+
+/* Card body: blurred background + content */
+.file-card-body {
+  position: relative; overflow: hidden;
+}
+.file-card-bg {
+  position: absolute; inset: -30px;
+  background-size: cover;
+  background-position: var(--bg-pos, center bottom);
+  filter: blur(16px);
+  opacity: .85;
+  transition: opacity .3s;
+  z-index: 0;
+}
+.file-card-body:not(:has(.file-card-bg[style*="--thumb"])) .file-card-bg {
+  opacity: 0;
+}
+.file-card-content {
+  position: relative; z-index: 1;
+  padding: 5px 8px;
+  min-height: 32px;
+}
+.file-card-name {
+  font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text2); line-height: 1.4;
+}
+.file-card-tags {
+  display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;
+}
+.file-card-tags .tag-chip {
+  font-size: 10px; padding: 1px 5px; border-radius: 4px;
+}
+
+/* Orientation-based background positions */
+.file-card[data-orient="landscape"] .file-card-bg { --bg-pos: center bottom; }
+.file-card[data-orient="portrait"] .file-card-bg { --bg-pos: right center; }
+.file-card[data-orient="square"] .file-card-bg { --bg-pos: center; }
+
+/* Selection overlay (MV Gallery) */
+.file-card.selected::after {
+  content: ''; position: absolute; inset: 0;
+  border: 3px solid var(--accent); border-radius: 8px;
+  pointer-events: none; z-index: var(--z-overlay);
+}
+.file-card .select-overlay {
+  position: absolute; top: 6px; left: 6px; width: 22px; height: 22px;
+  border-radius: 50%; background: transparent;
+  border: 2px solid rgba(255,255,255,.7); color: #fff;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  z-index: var(--z-dropdown); opacity: .7; pointer-events: none;
+}
+.file-card.selected .select-overlay { background: var(--accent); border-color: var(--accent); opacity: 1; }
+
+/* ─── HOVER-ПРЕВЬЮ (full-res при наведении) ─── */
 .gallery-thumb-preview{position:absolute;inset:0;z-index:var(--z-dropdown);background:var(--surface)}
-.gallery-thumb-preview img,.gallery-thumb-preview video{width:100%;height:100%;object-fit:cover;display:block}
-.gallery-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-
-.gallery-overlay-info{position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(transparent,rgba(0,0,0,.7));backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:#fff}
-.gallery-item:hover .gallery-overlay-info{background:linear-gradient(transparent,rgba(0,0,0,.75));backdrop-filter:blur(6px)}
-@media(hover:none){.gallery-overlay-info{background:linear-gradient(transparent,rgba(0,0,0,.55))}}
-.gallery-item.selected .gallery-overlay-info{}
-.gallery-name{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;color:#fff}
-.gallery-tags{display:flex;flex-wrap:wrap;gap:3px;pointer-events:none;max-height:36px;overflow:hidden}
-.gallery-item:hover .gallery-tags{pointer-events:auto;max-height:none}
-@media(hover:none){.gallery-tags{pointer-events:auto}}
-.gallery-tags .tag-chip{color:#fff!important;background:rgba(255,255,255,.15)!important}
-.video-label{font-size:11px;opacity:.8}
-
-.gallery-spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;position:absolute}
-
+.gallery-thumb-preview img,.gallery-thumb-preview video{width:100%;height:100%;object-fit:contain;display:block}
 
 /* ─── ПАГИНАЦИЯ ─── */
 #galleryPagination{display:flex;justify-content:center;align-items:center;gap:8px}
@@ -101,12 +163,12 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 
 /* ─── СЕТКА (GRID/SCROLL) ─── */
 #gallery.fixed{column-width:auto;display:grid;grid-template-columns:repeat(var(--grid-cols,4),1fr);gap:12px;justify-items:center}
-#gallery.fixed .gallery-item{margin-bottom:0;max-width:280px;width:100%}
+#gallery.fixed .file-card{margin-bottom:0;max-width:280px;width:100%}
 #gallery.scroll{column-width:auto;display:flex;flex-direction:column;gap:6px}
-#gallery.scroll .gallery-item{width:100%;margin-bottom:0;display:flex;gap:10px;align-items:flex-start}
-#gallery.scroll .gallery-thumb{width:var(--thumb-col-width,220px);min-height:100px;flex-shrink:0}
-#gallery.scroll .gallery-info{flex:1;padding:8px;display:flex;flex-direction:column;gap:4px}
-#gallery.scroll .gallery-name{font-size:13px;white-space:normal;word-break:break-all;margin-bottom:0}
+#gallery.scroll .file-card{width:100%;margin-bottom:0;display:flex;gap:10px;align-items:flex-start}
+#gallery.scroll .file-card-thumb{width:var(--thumb-col-width,220px);min-height:100px;flex-shrink:0}
+#gallery.scroll .file-card-body{flex:1;padding:8px;display:flex;flex-direction:column;gap:4px}
+#gallery.scroll .file-card-name{font-size:13px;white-space:normal;word-break:break-all;margin-bottom:0}
 
 /* ─── ЛАЙТБОКС (shared/lightbox.js injected) ─── */
 @keyframes lbPulse{0%{transform:scale(1)}50%{transform:scale(1.015)}100%{transform:scale(1)}}
@@ -189,27 +251,25 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
   #galleryToolbar{flex-wrap:wrap;gap:6px;padding-bottom:8px}
   .tool-btn{padding:4px 8px;font-size:12px;min-height:28px}
   .tool-btn-icon{padding:4px;min-width:28px}
-  .gallery-item{border-radius:6px}
-  .gallery-item.selected::after{border-radius:6px}
-  #gallery.shared-grid{column-width:140px;column-gap:6px}
-  #gallery.few-items.shared-grid .shared-grid-item{width:140px}
-  #gallery.scroll .gallery-thumb{width:120px;min-height:80px}
-  .gallery-thumb{min-height:60px;font-size:32px}
-  .gallery-overlay-info{padding:4px 6px}
-  .gallery-name{font-size:11px}
+  .file-card{border-radius:6px}
+  .file-card.selected::after{border-radius:6px}
+  #gallery.shared-grid .file-card{width:140px !important}
+  #gallery.scroll .file-card-thumb{width:120px;min-height:80px}
+  .file-card-thumb{min-height:60px;font-size:32px}
+  .file-card-content{padding:4px 6px}
+  .file-card-name{font-size:11px}
   #galleryPagination{gap:4px}
   #galleryPaginationTop{gap:4px;margin-bottom:6px}
 }
 /* ═══════════════════════════════════════ МОБИЛЬНАЯ ВЁРСТКА (<480px) — компактная галерея ═══════════════════════════════════════ */
 @media(max-width:480px){
-  #gallery.shared-grid{column-width:120px;column-gap:4px}
-  #gallery.scroll .gallery-thumb{width:100px;min-height:70px}
-  .gallery-thumb{min-height:40px;font-size:24px}
-  #gallery.few-items.shared-grid .shared-grid-item{width:120px}
+  #gallery.shared-grid .file-card{width:120px !important}
+  #gallery.scroll .file-card-thumb{width:100px;min-height:70px}
+  .file-card-thumb{min-height:40px;font-size:24px}
 }
 
 /* ─── АНИМАЦИЯ СТРАНИЦ ─── */
-.gallery-item{animation:pageFadeIn .25s ease both}
+.file-card{animation:pageFadeIn .25s ease both}
 @keyframes pageFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 /* ─── НОМЕРА СТРАНИЦ ─── */
@@ -226,3 +286,11 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 /* ─── СТРАНИЦЫ MEDIAVAULT ─── */
 .mv-page{display:none}
 .mv-page.active{display:flex;flex-direction:column;flex:1;min-height:0}
+
+/* ─── FOLDER CHECKBOXES ─── */
+.folder-checkboxes{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.folder-cb{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text2);transition:all .15s;white-space:nowrap;background:transparent;border:1px solid transparent;user-select:none;line-height:1}
+.folder-cb:hover{background:rgba(255,255,255,.08);color:var(--text)}
+.folder-cb.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.folder-cb input[type="checkbox"]{accent-color:var(--accent);margin:0;width:13px;height:13px;cursor:pointer}
+.folder-cb-count{opacity:.6;font-size:10px}

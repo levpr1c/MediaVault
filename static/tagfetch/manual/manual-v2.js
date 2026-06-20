@@ -74,7 +74,7 @@ var ManualTagfetch = (function() {
   }
 
   function applyFilter() {
-    document.querySelectorAll('.path-item[data-path]').forEach(function(el) {
+    document.querySelectorAll('[data-path]').forEach(function(el) {
       var s = el.dataset.status || '';
       if (st.filterMode === 'all') { el.style.display = ''; return; }
       if (!s) { el.style.display = 'none'; return; }
@@ -84,8 +84,8 @@ var ManualTagfetch = (function() {
 
   function filterFiles(query) {
     var q = query.toLowerCase().trim();
-    document.querySelectorAll('#browseBrowser .path-item[data-path]').forEach(function(el) {
-      var name = (el.querySelector('.pname') || {}).textContent || '';
+    document.querySelectorAll('#browseBrowser [data-path]').forEach(function(el) {
+      var name = (el.querySelector('.file-card-name, .pname') || {}).textContent || '';
       var match = !q || name.toLowerCase().indexOf(q) !== -1;
       el.style.display = match ? '' : 'none';
     });
@@ -112,7 +112,7 @@ var ManualTagfetch = (function() {
   function sortBrowserItems() {
     if (st.sortMode === 'name') return;
     var container = document.getElementById('browseBrowser');
-    var items = Array.prototype.slice.call(container.querySelectorAll('.path-item[data-mtime]'));
+    var items = Array.prototype.slice.call(container.querySelectorAll('[data-mtime]'));
     items.sort(function(a, b) {
       var ma = parseInt(a.dataset.mtime, 10) || 0;
       var mb = parseInt(b.dataset.mtime, 10) || 0;
@@ -156,12 +156,13 @@ var ManualTagfetch = (function() {
           mediaPaths.push(rp);
           var sel = rp === st.currentFileRelPath ? ' selected' : '';
           var mt = e.mtime ? ' data-mtime="' + e.mtime + '"' : '';
-          html += '<div class="path-item path-item-droppable' + sel + '" data-path="' + Shared.esc(rp) + '"' + mt + ' data-status="" ' +
-            'ondragover="event.preventDefault();this.classList.add(\'drag-over\')" ' +
-            'ondragleave="this.classList.remove(\'drag-over\')" ' +
-            'ondrop="ManualTagfetch.onTagDrop(event,\'' + rp.replace(/'/g, "\\'") + '\')" ' +
-            'onclick="ManualTagfetch.selectFile(\'' + e.path.replace(/'/g, "\\'") + '\',\'' + rp.replace(/'/g, "\\'") + '\',\'' + e.name.replace(/'/g, "\\'") + '\')">' +
-            '<span class="icon">' + getIcon(e.name) + '</span><span class="pname">' + Shared.esc(e.name) + '</span></div>';
+          html += '<div class="path-item' + sel + '" data-path="' + Shared.esc(rp) + '"' + mt + ' data-status=""' +
+            ' ondragover="event.preventDefault();this.classList.add(\'drag-over\')"' +
+            ' ondragleave="this.classList.remove(\'drag-over\')"' +
+            ' ondrop="ManualTagfetch.onTagDrop(event,\'' + rp.replace(/'/g, "\\'") + '\')"' +
+            ' onclick="ManualTagfetch.selectFile(\'' + e.path.replace(/'/g, "\\'") + '\',\'' + rp.replace(/'/g, "\\'") + '\',\'' + e.name.replace(/'/g, "\\'") + '\')">' +
+            '<span class="icon">' + getIcon(e.name) + '</span>' +
+            '<span class="pname">' + Shared.esc(e.name) + '</span></div>';
         }
       });
       if (!html) {
@@ -178,15 +179,15 @@ var ManualTagfetch = (function() {
             var s = statuses[e.rel_path];
             if (s) {
               e._status = s.status;
-              var el = document.querySelector('.path-item[data-path="' + Shared.esc(e.rel_path) + '"]');
+              var el = document.querySelector('[data-path="' + Shared.esc(e.rel_path) + '"]');
               if (el) {
                 el.dataset.status = s.status;
-                var pn = el.querySelector('.pname');
+                var nameEl = el.querySelector('.file-card-name') || el.querySelector('.pname');
                 var icon = s.status === 'db' ? '💾'
                   : s.status === 'found' ? '🔍'
                   : s.status === 'not_found' ? '🚫'
                   : '❌';
-                pn.innerHTML = icon + ' ' + Shared.esc(e.name);
+                if (nameEl) nameEl.innerHTML = '<span class="status-icon" style="margin-right:2px">' + icon + '</span>' + Shared.esc(e.name);
               }
             }
           });
@@ -204,8 +205,8 @@ var ManualTagfetch = (function() {
   function selectFile(absPath, relPath, name) {
     st.currentFileAbsPath = absPath;
     st.currentFileRelPath = relPath;
-    document.querySelectorAll('.path-item').forEach(function(el) { el.classList.remove('selected'); });
-    var match = document.querySelector('.path-item[data-path="' + Shared.esc(relPath) + '"]');
+    document.querySelectorAll('.file-card.selected, .path-item.selected').forEach(function(el) { el.classList.remove('selected'); });
+    var match = document.querySelector('[data-path="' + Shared.esc(relPath) + '"]');
     if (match) match.classList.add('selected');
 
     document.getElementById('fileInfo').innerHTML = '<div class="path">' + Shared.esc(relPath) + '</div><div class="meta"><span>Loading preview…</span></div>';
@@ -245,14 +246,16 @@ var ManualTagfetch = (function() {
   }
 
   function updateFileStatus(path, status) {
-    var el = document.querySelector('.path-item[data-path="' + Shared.esc(path) + '"]');
+    var el = document.querySelector('[data-path="' + Shared.esc(path) + '"]');
     if (!el) return;
     el.dataset.status = status;
-    var pn = el.querySelector('.pname');
+    var nameEl = el.querySelector('.file-card-name') || el.querySelector('.pname');
     var entry = st.fileEntries.find(function(f) { return f.rel_path === path || f.path === path; });
-    var name = entry ? entry.name : '';
-    var icon = status === 'db' ? '💾' : status === 'found' ? '🔍' : status === 'not_found' ? '🚫' : '❌';
-    pn.innerHTML = icon + ' ' + Shared.esc(name);
+    if (nameEl && entry) {
+      var icons = {db:'💾', found:'🔍', not_found:'🚫', no_tags:'❌'};
+      var icon = icons[status] || '❌';
+      nameEl.innerHTML = '<span class="status-icon" style="margin-right:2px">' + icon + '</span>' + Shared.esc(entry.name);
+    }
   }
 
   // ── Fetch tags ──
@@ -474,7 +477,7 @@ var ManualTagfetch = (function() {
 
   function onTagDrop(e, relPath) {
     e.preventDefault();
-    document.querySelectorAll('.path-item').forEach(function(el) { el.classList.remove('drag-over'); });
+    document.querySelectorAll('.file-card.drag-over, .path-item.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
     var tag = e.dataTransfer.getData('text/plain');
     var src = e.dataTransfer.getData('application/x-source') || 'manual';
     if (!tag || !relPath) return;
@@ -605,10 +608,10 @@ var ManualTagfetch = (function() {
       if (!browser || browser.style.display === 'none') return;
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-      var items = browser.querySelectorAll('.path-item[data-path]');
+      var items = browser.querySelectorAll('[data-path]');
       if (!items.length) return;
       e.preventDefault();
-      var sel = browser.querySelector('.path-item.selected');
+      var sel = browser.querySelector('.file-card.selected, .path-item.selected');
       var idx = -1;
       if (sel) { for (var i = 0; i < items.length; i++) { if (items[i] === sel) { idx = i; break; } } }
       if (e.key === 'ArrowDown') idx = Math.min(idx + 1, items.length - 1);

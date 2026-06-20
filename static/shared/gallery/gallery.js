@@ -121,9 +121,9 @@ var MediaVaultGallery = (function() {
       });
     }
     var isAll = !selected_folders || selected_folders.includes('all');
-    var labels = { 'all': 'All', 'gallery': 'Gallery', 'comics': 'Comics', 'downloads': 'D/L' };
+    var labels = { 'all': 'All', 'gallery': 'Gallery', 'comics': 'Comics', 'downloads': 'D/L', 'nhentai': 'nH' };
     var html = '<label class="folder-cb' + (isAll ? ' active' : '') + '"><input type="checkbox" data-folder="all"' + (isAll ? ' checked' : '') + '> ' + labels['all'] + '</label>';
-    ['gallery', 'comics', 'downloads'].forEach(function(ft) {
+    ['gallery', 'comics', 'downloads', 'nhentai'].forEach(function(ft) {
       if (folder_counts && folder_counts[ft] > 0) {
         var checked = selected_folders && selected_folders.includes(ft);
         html += '<label class="folder-cb' + (checked ? ' active' : '') + '"><input type="checkbox" data-folder="' + ft + '"' + (checked ? ' checked' : '') + '> ' + labels[ft] + ' <span class="folder-cb-count">' + folder_counts[ft] + '</span></label>';

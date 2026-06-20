@@ -157,6 +157,7 @@ var Lightbox = (function() {
     document.addEventListener('keydown', function(e) {
       var lb = document.getElementById(self._id('Overlay'));
       if (!lb || !lb.classList.contains('open')) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key === 'Escape') { self.close(); return; }
       if (e.key === 'ArrowLeft') { e.preventDefault(); self._prev(); }
       if (e.key === 'ArrowRight') { e.preventDefault(); self._next(); }

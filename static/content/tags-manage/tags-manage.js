@@ -346,15 +346,6 @@ function assignTag(path, tag) {
 
 /* ─── KEYBOARD ─── */
 
-document.addEventListener('keydown', function(e) {
-  if (!_lbInstance) return;
-  var overlay = document.getElementById('cmOverlay');
-  if (!overlay || !overlay.classList.contains('open')) return;
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.key === 'ArrowLeft') { e.preventDefault(); _lbInstance._prev(); }
-  if (e.key === 'ArrowRight') { e.preventDefault(); _lbInstance._next(); }
-});
-
 /* ─── LIGHTBOX ─── */
 
 function viewFile(path) {

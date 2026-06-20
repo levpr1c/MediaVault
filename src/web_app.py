@@ -2896,7 +2896,7 @@ def api_gallery():
             offset = (page - 1) * per_page
             rows = db.execute(f'SELECT path, name, tags, type, width, height, mtime FROM files{where_sql} ORDER BY name ASC LIMIT ? OFFSET ?', params + [per_page, offset]).fetchall()
         else:
-            rows = db.execute(f'SELECT path, name, tags, type, width, height, mtime FROM files{where_sql} ORDER BY name ASC').fetchall()
+            rows = db.execute(f'SELECT path, name, tags, type, width, height, mtime FROM files{where_sql} ORDER BY name ASC', params).fetchall()
         tag_colors, _ = _get_tag_categories()
         categories = tag_colors
         seen = set()

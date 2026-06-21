@@ -10,6 +10,6 @@ pkgbase = mediavault-bin
 	provides = mediavault
 	conflicts = mediavault
 	source = mediavault-v1.1.0-linux-amd64::https://github.com/levpr1c/MediaVault/releases/download/v1.1.0/mediavault-linux-amd64
-	sha256sums = 1df953661abfd683a49d1efe0bb9036811c0424ad08e8ef7e93b27711263e359
+	sha256sums = 3fd39a93f85c6e5cccddf09451f8b44a7faec47445fece4c0f0e641e02acbee4
 
 pkgname = mediavault-bin

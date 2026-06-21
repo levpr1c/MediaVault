@@ -636,12 +636,20 @@ LOCALE = {
     },
 }
 
+# Глобальная _() для API роутов (вне контекста шаблонов)
+def _(key):
+    lang = 'en'
+    try:
+        from flask import request as _req
+        if _req:
+            lang = _req.cookies.get('mediavault_lang', 'en')
+    except RuntimeError:
+        pass
+    return LOCALE.get(lang, {}).get(key, LOCALE['en'].get(key, key))
+
 # Добавляет функцию _() в шаблоны для интернационализации
 @app.context_processor
 def inject_i18n():
-    def _(key):
-        lang = request.cookies.get('mediavault_lang', 'en')
-        return LOCALE.get(lang, {}).get(key, LOCALE['en'].get(key, key))
     return dict(_=_)
 
 @app.context_processor

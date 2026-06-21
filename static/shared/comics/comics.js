@@ -148,10 +148,8 @@ var ComicsPicker = (function() {
 
     var prev = document.getElementById('comicPreviewOverlay');
     if (prev) prev.classList.remove('preview-open');
-    var inner = document.getElementById('modalInner');
-    if (inner) inner.classList.remove('preview-expanded');
     var toggle = document.getElementById('previewToggleBtn') || document.getElementById('comicPreviewToggle');
-    if (toggle) toggle.querySelector('svg').innerHTML = '<path d="M9 18l6-6-6-6"/>';
+    if (toggle) toggle.querySelector('svg').innerHTML = '<path d="M15 18l-6-6 6-6"/>';
 
     _updateSelected();
     fetch('/api/gallery').then(function(r) { return r.json(); }).then(function(data) {
@@ -191,12 +189,10 @@ var ComicsPicker = (function() {
     var inner = document.getElementById('modalInner');
     if (_previewOpen) {
       prev.classList.add('preview-open');
-      if (inner) inner.classList.add('preview-expanded');
-      toggle.querySelector('svg').innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+      toggle.querySelector('svg').innerHTML = '<path d="M9 18l6-6-6-6"/>';
     } else {
       prev.classList.remove('preview-open');
-      if (inner) inner.classList.remove('preview-expanded');
-      toggle.querySelector('svg').innerHTML = '<path d="M9 18l6-6-6-6"/>';
+      toggle.querySelector('svg').innerHTML = '<path d="M15 18l-6-6 6-6"/>';
     }
   }
 

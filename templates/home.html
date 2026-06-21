@@ -44,7 +44,6 @@
 .hm-block-grid{display:flex;flex-direction:column;gap:8px;flex:1}
 .hm-block-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;text-decoration:none;color:var(--text);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);transition:all .2s ease;font-size:14px;font-weight:600;min-height:44px;height:auto;font-family:var(--font-btn);box-sizing:border-box}
 .hm-block-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.15)}
-.hm-block[data-block="mv"] .hm-cm-grid{grid-template-columns:repeat(2,1fr)}
 .hm-block[data-block="mv"] .hm-block-btn:hover{background:#6366f1;border-color:#6366f1;box-shadow:0 4px 14px rgba(99,102,241,.35)}
 .hm-block[data-block="cm"] .hm-block-btn:hover{background:#f59e0b;border-color:#f59e0b;box-shadow:0 4px 14px rgba(245,158,11,.35)}
 .hm-block[data-block="admin"] .hm-block-btn:hover{background:#34d399;border-color:#34d399;box-shadow:0 4px 14px rgba(52,211,153,.35)}
@@ -53,6 +52,10 @@
 .hm-block-btn span{white-space:normal;line-height:1.3}
 .hm-cm-grid>div{display:flex;flex-direction:column}
 .hm-cm-grid .hm-block-btn{width:100%;min-width:0}
+.hm-block[data-block="mv"] .hm-cm-grid>div,
+.hm-block[data-block="admin"] .hm-cm-grid>div{display:flex;flex-direction:column;flex:1}
+.hm-block[data-block="mv"] .hm-cm-grid>div .hm-block-btn,
+.hm-block[data-block="admin"] .hm-cm-grid>div .hm-block-btn{flex:1;justify-content:center}
 .hm-block-grid--centered{justify-content:center}
 .hm-block-desc{margin-top:auto;font-size:12px;color:var(--text2);text-align:center;line-height:1.4;padding-top:10px;letter-spacing:.3px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
 
@@ -79,11 +82,9 @@
   .hm-cm-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:768px){
-  .hm-blocks{flex-direction:column;align-items:center}
-  .hm-block{width:100%;max-width:520px;flex:1 1 auto}
-  .hm-block[data-block="cm"]{flex:none;width:100%}
-  .hm-title{font-size:24px;margin-bottom:24px}
-  .hm-cm-grid{grid-template-columns:repeat(2,1fr)}
+  .hm-block-btn{min-height:36px;padding:6px 10px;font-size:12px}
+  .hm-title{font-size:20px;padding:8px 16px;margin-bottom:16px}
+  .hm-block{padding:10px 8px}
 }
 @media(max-width:500px){
   .hm-cm-grid{grid-template-columns:1fr}
@@ -126,15 +127,15 @@
         <div class="hm-block-title" data-i18n="mvHeader">MEDIAVAULT</div>
       </div>
       <div class="hm-block-grid">
-        <div class="hm-cm-grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="hm-cm-grid" style="grid-template-columns:1fr;grid-template-rows:1fr 1fr;flex:1">
           <div>
-            <a href="/mediavault/gallery" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+            <a href="/mediavault/gallery" class="hm-block-btn" style="flex-direction:column;gap:6px;height:100%;justify-content:center;text-align:center">
               <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
               <span data-i18n="mvGallery">{{ _('mvGallery') }}</span>
             </a>
           </div>
           <div>
-            <a href="/mediavault/comics" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+            <a href="/mediavault/comics" class="hm-block-btn" style="flex-direction:column;gap:6px;height:100%;justify-content:center;text-align:center">
               <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
               <span data-i18n="mvComics">{{ _('mvComics') }}</span>
             </a>
@@ -223,27 +224,27 @@
       </div>
       <div class="hm-block-grid">
         {% if session.role == 'admin' %}
-        <div class="hm-cm-grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="hm-cm-grid" style="grid-template-columns:1fr;grid-template-rows:1fr 1fr;flex:1">
           <div>
-            <a href="/settings" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+            <a href="/settings" class="hm-block-btn" style="flex-direction:column;gap:6px;height:100%;justify-content:center;text-align:center">
               <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
               <span data-i18n="settings">{{ _('settings') }}</span>
             </a>
           </div>
           <div>
-            <a href="/admin" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center">
+            <a href="/admin" class="hm-block-btn" style="flex-direction:column;gap:6px;height:100%;justify-content:center;text-align:center">
               <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
               <span data-i18n="adminPanel">{{ _('adminPanel') }}</span>
             </a>
           </div>
         </div>
         {% else %}
-        <div style="display:flex;justify-content:center">
-          <a href="/settings" class="hm-block-btn" style="flex-direction:column;gap:4px;padding:8px 4px;font-size:10px;min-height:44px;text-align:center;width:auto;min-width:140px">
+        <div style="display:flex;align-items:center;justify-content:center;flex:1">
+          <a href="/settings" class="hm-block-btn" style="flex-direction:column;gap:6px;height:100%;justify-content:center;text-align:center;width:auto;min-width:140px">
             <div class="hm-block-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
-              <span data-i18n="settings">{{ _('settings') }}</span>
-            </a>
-          </div>
+            <span data-i18n="settings">{{ _('settings') }}</span>
+          </a>
+        </div>
         {% endif %}
       </div>
       <div class="hm-block-desc" data-i18n="adminDesc">{{ _('adminDesc') }}</div>

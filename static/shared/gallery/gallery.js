@@ -101,33 +101,35 @@ var MediaVaultGallery = (function() {
 
   // Отрисовка кнопок для фильтрации по типу папки (мультиселект, кроме All)
   function _renderFolderButtons(folder_counts, selected_folders) {
-    var toolbar = document.getElementById('galleryToolbar');
-    if (!toolbar) return;
-    var container = document.getElementById('folderButtons');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'folderButtons';
-      container.className = 'folder-buttons';
-      var toggle = document.getElementById('sidebarToggle');
-      if (toggle && toggle.nextSibling) {
-        toolbar.insertBefore(container, toggle.nextSibling);
-      } else {
-        toolbar.insertBefore(container, toolbar.firstChild);
-      }
-      container.addEventListener('click', function(e) {
-        var btn = e.target.closest('[data-folder]');
-        if (!btn) return;
-        _toggleFolder(btn.dataset.folder);
-      });
-    }
     var labels = { 'all': 'All', 'gallery': 'Gallery', 'comics': 'Comics', 'downloads': 'D/L' };
     var html = '';
     ['all', 'gallery', 'comics', 'downloads'].forEach(function(ft) {
       var active = selected_folders && selected_folders.includes(ft) ? ' active' : '';
       var count = (folder_counts && folder_counts[ft] > 0) ? ' <span class="folder-btn-count">' + folder_counts[ft] + '</span>' : '';
-      html += '<button class="folder-btn' + active + '" data-folder="' + ft + '">' + labels[ft] + count + '</button>';
+      html += '<button class="tool-btn' + active + '" data-folder="' + ft + '">' + labels[ft] + count + '</button>';
     });
-    container.innerHTML = html;
+    ['galleryFolderFilters', 'drawerFolderButtons'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    });
+  }
+
+  var _drawerFolderEl = document.getElementById('drawerFolderButtons');
+  if (_drawerFolderEl) {
+    _drawerFolderEl.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-folder]');
+      if (!btn) return;
+      _toggleFolder(btn.dataset.folder);
+    });
+  }
+
+  var _galleryFolderEl = document.getElementById('galleryFolderFilters');
+  if (_galleryFolderEl) {
+    _galleryFolderEl.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-folder]');
+      if (!btn) return;
+      _toggleFolder(btn.dataset.folder);
+    });
   }
 
   // Построение индекса путь → {row} для быстрого доступа

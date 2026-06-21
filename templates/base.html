@@ -48,7 +48,7 @@ var CONFIG = {
 {% if request.path.startswith('/content-mgmt/') or request.path == '/content-search' %}
       <div class="cm-hdr-left">
         <div class="cm-hdr-tf" id="cmHdrTf">
-          <button class="cm-hdr-tf-btn" onclick="CMHeader.toggle(event, 'cmHdrTf')">
+          <button class="cm-hdr-tf-btn{% if 'manual' in request.path or 'auto' in request.path %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrTf')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             TAGFETCH
           </button>
@@ -65,7 +65,7 @@ var CONFIG = {
         </div>
         <span class="cm-hdr-sep"></span>
         <div class="cm-hdr-tf" id="cmHdrTags">
-          <button class="cm-hdr-tf-btn" onclick="CMHeader.toggle(event, 'cmHdrTags')">
+          <button class="cm-hdr-tf-btn{% if 'manage' in request.path or 'group' in request.path %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrTags')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             TAGS
           </button>
@@ -81,27 +81,39 @@ var CONFIG = {
           </div>
         </div>
         <span class="cm-hdr-sep"></span>
-          <div class="cm-hdr-tf" id="cmHdrComics">
-            <button class="cm-hdr-tf-btn" onclick="CMHeader.toggle(event, 'cmHdrComics')">
+        <div class="cm-hdr-tf" id="cmHdrComics">
+          <button class="cm-hdr-tf-btn{% if 'comics-edit' in request.path or 'comics-tags' in request.path %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrComics')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            COMICS
+          </button>
+          <div class="cm-hdr-tf-items">
+            <a href="/content-mgmt/comics-edit" class="cm-hdr-tf-item{% if 'comics-edit' in request.path %} active{% endif %}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-              COMICS
-            </button>
-            <div class="cm-hdr-tf-items">
-              <a href="/content-mgmt/comics-edit" class="cm-hdr-tf-item{% if 'comics-edit' in request.path %} active{% endif %}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                <span>Editor</span>
-              </a>
-              <a href="/content-mgmt/comics-tags" class="cm-hdr-tf-item{% if 'comics-tags' in request.path %} active{% endif %}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                <span>Comics Tags</span>
-              </a>
-            </div>
+              <span>Editor</span>
+            </a>
+            <a href="/content-mgmt/comics-tags" class="cm-hdr-tf-item{% if 'comics-tags' in request.path %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              <span>Comics Tags</span>
+            </a>
           </div>
+        </div>
         <span class="cm-hdr-sep"></span>
-        <a href="/content-search" class="cm-hdr-tf-btn{% if request.path == '/content-search' %} active{% endif %}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <span data-i18n="contentSearch">Search</span>
-        </a>
+        <div class="cm-hdr-tf" id="cmHdrSearch">
+          <button class="cm-hdr-tf-btn{% if request.path == '/content-search' %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrSearch')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            SEARCH
+          </button>
+          <div class="cm-hdr-tf-items">
+            <a href="/content-search" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              <span>Images</span>
+            </a>
+            <a href="/content-search?site=nhentai" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <span>Comics</span>
+            </a>
+          </div>
+        </div>
       </div>
 {% else %}
 <div class="hdr-group">
@@ -165,6 +177,67 @@ var CONFIG = {
         <a href="/mediavault/comics" class="mv-mh-icon" title="Comics">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         </a>
+{% else %}
+        <div class="cm-hdr-tf" id="cmHdrTfMob">
+          <button class="cm-hdr-tf-btn{% if 'manual' in request.path or 'auto' in request.path %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrTfMob')" title="Tagfetch">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <div class="cm-hdr-tf-items">
+            <a href="/content-mgmt/tags-manual" class="cm-hdr-tf-item{% if 'manual' in request.path %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span>Manual</span>
+            </a>
+            <a href="/content-mgmt/tags-auto" class="cm-hdr-tf-item{% if 'auto' in request.path %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Auto</span>
+            </a>
+          </div>
+        </div>
+        <div class="cm-hdr-tf" id="cmHdrTagsMob">
+          <button class="cm-hdr-tf-btn{% if 'manage' in request.path or 'group' in request.path %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrTagsMob')" title="Tags">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+          <div class="cm-hdr-tf-items">
+            <a href="/content-mgmt/tags-manage" class="cm-hdr-tf-item{% if 'manage' in request.path %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span>Manage</span>
+            </a>
+            <a href="/content-mgmt/tags-group" class="cm-hdr-tf-item{% if 'group' in request.path %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <span>Groups</span>
+            </a>
+          </div>
+        </div>
+        <div class="cm-hdr-tf" id="cmHdrComicsMob">
+          <button class="cm-hdr-tf-btn{% if 'comics-edit' in request.path or 'comics-tags' in request.path %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrComicsMob')" title="Comics">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </button>
+          <div class="cm-hdr-tf-items">
+            <a href="/content-mgmt/comics-edit" class="cm-hdr-tf-item{% if 'comics-edit' in request.path %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <span>Editor</span>
+            </a>
+            <a href="/content-mgmt/comics-tags" class="cm-hdr-tf-item{% if 'comics-tags' in request.path %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              <span>Tags</span>
+            </a>
+          </div>
+        </div>
+        <div class="cm-hdr-tf" id="cmHdrSearchMob">
+          <button class="cm-hdr-tf-btn{% if request.path == '/content-search' %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrSearchMob')" title="Search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+          <div class="cm-hdr-tf-items">
+            <a href="/content-search" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              <span>Images</span>
+            </a>
+            <a href="/content-search?site=nhentai" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <span>Comics</span>
+            </a>
+          </div>
+        </div>
 {% endif %}
       {% endblock %}</nav>
       <div class="mv-mh-spacer"></div>
@@ -182,37 +255,7 @@ var CONFIG = {
   </div>
   <div class="mv-drawer" id="mobileDrawer">{% block hdr_drawer %}
     <div class="mv-drawer-body">
-      <div class="mv-drawer-nav">
-        <div class="mv-drawer-group">
-          <span class="hdr-group-label" data-i18n="navMediaVault">MediaVault</span>
-          <a href="/mediavault/gallery" class="hdr-link" data-i18n="mvGallery">Gallery</a>
-          <a href="/mediavault/comics" class="hdr-link" data-i18n="mvComics">Comics</a>
-        </div>
-        <div class="mv-drawer-group">
-          <span class="hdr-group-label" data-i18n="navSearch">Search</span>
-          <a href="/content-search" class="hdr-link" data-i18n="contentSearch">Search</a>
-        </div>
-        <div class="mv-drawer-group">
-          <span class="hdr-group-label">Tagfetch</span>
-          <a href="/content-mgmt/tags-auto" class="hdr-link" data-i18n="autoFetch">Auto</a>
-          <a href="/content-mgmt/tags-manual" class="hdr-link" data-i18n="manualFetch">Manual</a>
-        </div>
-        <div class="mv-drawer-group">
-          <span class="hdr-group-label">Tags</span>
-          <a href="/content-mgmt/tags-manage" class="hdr-link" data-i18n="mvManageTags">Manage</a>
-          <a href="/content-mgmt/tags-group" class="hdr-link" data-i18n="navGroups">Groups</a>
-        </div>
-        <div class="mv-drawer-group">
-          <span class="hdr-group-label">Comics</span>
-          <a href="/content-mgmt/comics-edit" class="hdr-link" data-i18n="navEditor">Editor</a>
-          <a href="/content-mgmt/comics-tags" class="hdr-link">Comics Tags</a>
-        </div>
-        <div class="mv-drawer-group">
-          <a href="/settings" class="hdr-link" data-i18n="settings">Settings</a>
-          <a href="/admin" class="hdr-link" data-i18n="navAdmin">Admin</a>
-        </div>
-      </div>
-      <hr class="mv-drawer-sep">
+
       <div class="mv-drawer-row" id="drawerLayout">
         <button class="tool-btn tool-btn-icon active" data-layout="columns" title="Masonry">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -231,7 +274,7 @@ var CONFIG = {
         </button>
       </div>
       <div class="mv-drawer-row" id="drawerPageSize">
-        <span class="mv-drawer-label" style="line-height:28px" data-i18n="mvPageSize">Page:</span>
+        <span class="mv-drawer-label" data-i18n="mvPageSize">Page:</span>
         <button class="tool-btn" data-pagesize="0" data-i18n="tfFilterAll">All</button>
         <button class="tool-btn" data-pagesize="30">30</button>
         <button class="tool-btn" data-pagesize="60">60</button>
@@ -243,6 +286,7 @@ var CONFIG = {
           <span data-i18n="navTags">Tagged</span>
         </button>
       </div>
+      <div class="mv-drawer-row" id="drawerFolderButtons"></div>
     </div>
   {% endblock %}</div>
 </div>

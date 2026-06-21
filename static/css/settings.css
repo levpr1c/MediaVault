@@ -105,6 +105,23 @@
   color: #fff;
 }
 
+/* ─── Settings action buttons ─── */
+.settings-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+@media (max-width: 600px) {
+  .settings-actions {
+    flex-direction: column;
+  }
+  .settings-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+}
+
 /* ─── Blinking mount dot ─── */
 .mount-dot {
   display: inline-block;

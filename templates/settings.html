@@ -56,7 +56,7 @@
                 <div class="admin-field"><label class="admin-field-label">{{ _('adminComicsDir') }}</label><input class="admin-field-input" id="comicsDir" value="{{ s.get('comics_dir', 'Comics') }}" placeholder="Comics"></div>
                 <div class="admin-field"><label class="admin-field-label" data-i18n="settingsDownloadsDir">{{ _('settingsDownloadsDir') }}</label><input class="admin-field-input" id="downloadsDir" value="{{ s.get('downloads_dir', 'Downloads') }}" placeholder="Downloads"></div>
               </div>
-              <div style="display:flex;gap:8px;margin-top:12px">
+              <div class="settings-actions">
                 <button class="btn btn-primary" onclick="SettingsApp.saveMediaDir()" data-i18n="save">{{ _('save') }}</button>
                 <button class="btn" onclick="SettingsApp.scanFolder()" data-i18n="settingsScan">{{ _('settingsScan') }}</button>
                 <button class="btn" onclick="SettingsApp.createFolders()" data-i18n="settingsCreateFolders">{{ _('settingsCreateFolders') }}</button>

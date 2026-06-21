@@ -233,75 +233,6 @@ body { overflow: hidden; }
   padding: 4px 8px; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2);
 }
 
-/* ─── FILE CARD ─── */
-.file-card {
-  border-radius: 8px; border: 1px solid var(--border); overflow: hidden;
-  cursor: pointer; background: var(--surface); transition: all .15s;
-  break-inside: avoid; margin-bottom: 10px; position: relative;
-}
-.file-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px var(--shadow); }
-.file-card.tag-dragover { outline: 3px solid var(--accent); outline-offset: -3px; }
-
-.file-card-thumb {
-  display: flex; align-items: center; justify-content: center;
-  background: var(--surface2); overflow: hidden; line-height: 0;
-  position: relative; min-height: 60px;
-}
-.file-card-thumb img, .file-card-thumb video {
-  width: 100%; display: block;
-}
-.file-card-thumb video { background: #000; }
-.file-card-spinner {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: var(--surface2); z-index: 1;
-}
-.file-card-spinner::after {
-  content: ''; width: 24px; height: 24px;
-  border: 2px solid var(--border); border-top-color: var(--accent);
-  border-radius: 50%; animation: fileCardSpin .6s linear infinite;
-}
-@keyframes fileCardSpin { to { transform: rotate(360deg); } }
-.file-card-video-badge {
-  position: absolute; bottom: 6px; right: 6px; width: 24px; height: 24px;
-  color: #fff; filter: drop-shadow(0 1px 3px var(--shadow)); opacity: .85;
-}
-
-/* Card body: blurred background + content */
-.file-card-body {
-  position: relative; overflow: hidden;
-}
-.file-card-bg {
-  position: absolute; inset: -30px;
-  background-size: cover;
-  background-position: var(--bg-pos, center bottom);
-  filter: blur(16px);
-  opacity: .85;
-  transition: opacity .3s;
-  z-index: 0;
-}
-.file-card-body:not(:has(.file-card-bg[style*="--thumb"])) .file-card-bg {
-  opacity: 0;
-}
-.file-card-content {
-  position: relative; z-index: 1;
-  padding: 5px 8px;
-  min-height: 32px;
-}
-.file-card-name {
-  font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--text2); line-height: 1.4;
-}
-.file-card-tags {
-  display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;
-}
-.file-card-tags .tag-chip {
-  font-size: 10px; padding: 1px 5px; border-radius: 4px;
-}
-
-/* Orientation-based background positions */
-.file-card[data-orient="landscape"] .file-card-bg { --bg-pos: center bottom; }
-.file-card[data-orient="portrait"] .file-card-bg { --bg-pos: right center; }
-.file-card[data-orient="square"] .file-card-bg { --bg-pos: center; }
 .cm-files-gallery-empty { color: var(--text2); font-size: 12px; text-align: center; padding: 20px; }
 .cm-files-pagination {
   display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -421,16 +352,17 @@ body { overflow: hidden; }
   padding: 14px 20px; border-top: 1px solid var(--border);
 }
 
-/* ─── COMIC PREVIEW (right panel) ─── */
+/* ─── COMIC PREVIEW (right panel) — slides out without affecting grid ─── */
 #comicPreviewOverlay {
+  position: absolute; right: 0; top: 0; height: 100%;
   width: 0; overflow: hidden; background: var(--surface);
   display: flex; flex-direction: column;
-  transition: width .4s cubic-bezier(0.4, 0, 0.2, 1), opacity .3s ease;
-  opacity: 0; flex-shrink: 0; padding: 0;
+  transition: width .25s ease;
+  border-radius: 0 12px 12px 0; z-index: 2;
 }
 #comicPreviewOverlay.preview-open {
-  width: 480px; opacity: 1; border-right: 1px solid var(--border);
-  padding: 16px; overflow-y: auto;
+  width: 480px; padding: 16px; overflow-y: auto;
+  border-left: 1px solid var(--border);
 }
 #previewToggleBtn {
   flex: 0 0 28px; width: 28px; align-self: stretch; border: none;
@@ -438,7 +370,7 @@ body { overflow: hidden; }
   border-right: 1px solid var(--border); color: var(--text2);
   cursor: pointer; display: flex; align-items: center;
   justify-content: center; padding: 0;
-  transition: background .15s, color .15s; flex-shrink: 0;
+  transition: background .15s, color .15s; flex-shrink: 0; z-index: 3;
 }
 #previewToggleBtn:hover { background: var(--surface2); color: var(--text); }
 
@@ -587,7 +519,9 @@ body { overflow: hidden; }
   color: var(--text2); font-size: 13px; font-weight: 600;
   cursor: pointer; font-family: var(--font-btn); transition: all .15s;
   white-space: nowrap; flex-shrink: 0; line-height: 1;
+  text-decoration: none;
 }
+.cm-hdr-tf-btn.active { color: var(--accent); background: var(--accent-glow); }
 .cm-hdr-tf-btn:hover { background: var(--surface2); color: var(--text); }
 .cm-hdr-tf-items {
   display: flex; overflow: hidden; white-space: nowrap;
@@ -632,11 +566,32 @@ body { overflow: hidden; }
   .cm-comic-add-card { flex-basis: 160px; }
   #comicsModalOverlay.open { padding: 10px; flex-direction: column-reverse; }
   #modalInner { flex-direction: column; width: 100%; max-height: 95vh; }
-  #modalInner.preview-expanded { width: 100%; }
-  #comicPreviewOverlay.preview-open { width: 100%; max-height: 350px; }
-  #comicPreviewOverlay { transition: width .3s ease, max-height .3s ease; }
+  #comicPreviewOverlay {
+    position: relative; right: auto; top: auto; height: auto;
+    width: 0; border-left: none; border-radius: 0;
+  }
+  #comicPreviewOverlay.preview-open { width: 100%; max-height: 350px; border-left: none; }
   #previewToggleBtn { display: none; }
   #cpageGrid .cpage-item { width: calc(33.33% - 6px); }
+  /* ─── MOBILE CM HEADER DROPDOWNS ─── */
+  .hdr-mobile .cm-hdr-tf {
+    position: relative; overflow: visible;
+  }
+  .hdr-mobile .cm-hdr-tf-btn { padding: 6px; }
+  .hdr-mobile .cm-hdr-tf-items {
+    position: absolute; top: 100%; left: 0; z-index: 1000;
+    max-width: none; width: auto; min-width: 130px;
+    opacity: 0; visibility: hidden;
+    transition: opacity .15s ease, visibility .15s ease;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 4px;
+    box-shadow: 0 4px 20px var(--shadow);
+    flex-direction: column; gap: 2px; white-space: nowrap;
+    overflow: visible;
+  }
+  .hdr-mobile .cm-hdr-tf.open .cm-hdr-tf-items {
+    opacity: 1; visibility: visible; max-width: none;
+  }
 }
 
 /* ─── COMICS TAG MANAGEMENT ─── */

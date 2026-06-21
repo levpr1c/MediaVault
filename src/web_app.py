@@ -1742,15 +1742,14 @@ def api_content_search():
     total = 0
     log_debug('[ContentSearch API] query="%s" sites=%s page=%d filter_ai=%d', q, sites, page, filter_ai)
     settings = load_settings()
-    # NHentai API key check (for api_raw backend)
+    # NHentai API v2 is public — no key needed
     nh_has_key = bool(settings.get('credentials', {}).get('nhentai', {}).get('key', ''))
     nh_key_warning = False
     if 'nhentai' in sites:
         fb = settings.get('fetch_backend', {})
         nh_backend = fb.get('nhentai') or 'gallerydl'
-        if nh_backend == 'api_raw' and not nh_has_key:
-            nh_key_warning = True
-            log_warning('[NHentai] api_raw backend selected but no nhentai API key configured')
+        if nh_backend == 'api_raw':
+            log_debug('[NHentai] using api_raw backend (public API v2)')
         log_debug('[NHentai] key_exists=%s backend=%s', nh_has_key, nh_backend)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(sites)) as exc:
@@ -1782,6 +1781,8 @@ def api_content_search():
         'tag_copyright': 'copyright',
         'tag_general': 'general',
         'tag_meta': 'meta',
+        'tag_language': 'language',
+        'tag_category': 'category',
     }
     cat_colors = {
         'artist': '#ff4444',
@@ -1789,6 +1790,8 @@ def api_content_search():
         'copyright': '#4488ff',
         'general': '#cccccc',
         'meta': '#999999',
+        'language': '#ffaa00',
+        'category': '#aa66ff',
         'uncategorized': '#666666',
     }
     # Load DB categories for merging
@@ -1832,6 +1835,28 @@ def api_content_search():
     if nh_key_warning:
         resp['nhentai_warning'] = True
     return jsonify(resp)
+
+@app.route('/api/content-search/nhentai-gallery')
+@admin_required
+@api_error_handler
+def api_content_search_nhentai_gallery():
+    """Fetch full NHentai gallery metadata (tags by category + page URLs)."""
+    gid = request.args.get('gid', '').strip()
+    if not gid or not gid.isdigit():
+        return jsonify({'error': 'invalid gid'}), 400
+    settings = load_settings()
+    backend_name = (settings.get('fetch_backend', {}) or {}).get('nhentai', 'api_raw')
+    if backend_name == 'gallerydl':
+        from backends.gallerydl import GalleryDlBackend
+        backend = GalleryDlBackend()
+        meta = backend.fetch_gallery(gid, settings)
+    else:
+        from backends.api_raw import ApiRawBackend
+        backend = ApiRawBackend()
+        meta = backend._fetch_nhentai(gid, settings)
+    if not meta or not meta.get('media_id'):
+        return jsonify({'error': 'gallery not found'}), 404
+    return jsonify(meta)
 
 @app.route('/api/content-search/download', methods=['GET', 'POST'])
 @auth_required
@@ -1963,6 +1988,7 @@ def api_content_search_download():
 @api_error_handler
 def api_content_search_download_manga():
     """Download all pages of an NHentai gallery into a subfolder."""
+    import re
     data = request.get_json()
     if data is None:
         return jsonify({'error': 'no data'}), 400
@@ -1985,16 +2011,20 @@ def api_content_search_download_manga():
     if not os.path.isdir(media_dir) or not os.listdir(media_dir):
         return jsonify({'error': 'storage_empty', 'message': _('contentSearchStorageEmpty')}), 400
 
-    # Folder: <media_dir>/<downloads_dir>/nhentai/<gid>/
+    # Folder: <media_dir>/<downloads_dir>/nhentai/<title_slug>_<gid>/
     dl_dir = settings.get('downloads_dir', 'Downloads')
-    target_dir = os.path.join(media_dir, dl_dir, 'nhentai', str(gid))
+    folder_name = str(gid)
+    if title:
+        safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')[:80]
+        if safe_title:
+            folder_name = safe_title + '_' + str(gid)
+    target_dir = os.path.join(media_dir, dl_dir, 'nhentai', folder_name)
     try:
         os.makedirs(target_dir, exist_ok=True)
     except Exception as e:
         return jsonify({'error': 'Cannot create directory: ' + str(e)}), 500
 
     import requests as req_lib
-    import re
 
     _ensure_db_schema()
     gd = settings.get('gallery_dir', 'Gallery')
@@ -2009,30 +2039,42 @@ def api_content_search_download_manga():
     base_url = 'https://i.nhentai.net/galleries/' + str(media_id)
 
     for n in range(1, num_pages + 1):
-        page_url = base_url + '/' + str(n) + '.jpg'
-        filename = str(n) + '.jpg'
-        target_path = os.path.join(target_dir, filename)
+        # Try .webp first (new galleries), fallback to .jpg (older ones)
+        exts = ['webp', 'jpg']
+        downloaded = False
+        for ext in exts:
+            page_url = base_url + '/' + str(n) + '.' + ext
+            filename = str(n) + '.' + ext
+            target_path = os.path.join(target_dir, filename)
 
-        if os.path.exists(target_path):
-            log_debug('[ContentSearch] manga page %d/%d: already exists', n, num_pages)
-            count += 1
-            continue
+            if os.path.exists(target_path):
+                log_debug('[ContentSearch] manga page %d/%d: already exists', n, num_pages)
+                count += 1
+                downloaded = True
+                break
 
-        log_info('[ContentSearch] manga page %d/%d: downloading %s', n, num_pages, page_url)
+            log_info('[ContentSearch] manga page %d/%d: trying %s', n, num_pages, page_url)
 
-        try:
-            r = req_lib.get(page_url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
-            r.raise_for_status()
-            with open(target_path, 'wb') as f:
-                f.write(r.content)
-        except Exception as e:
-            log_error('[ContentSearch] manga page %d/%d FAILED: %s', n, num_pages, e)
+            try:
+                r = req_lib.get(page_url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
+                r.raise_for_status()
+                with open(target_path, 'wb') as f:
+                    f.write(r.content)
+                downloaded = True
+                break
+            except Exception:
+                continue
+        if not downloaded:
+            log_error('[ContentSearch] manga page %d/%d FAILED (tried webp+jpg)', n, num_pages)
             errors += 1
             continue
 
+        # Read filename/target_path from the last successful download
+        filename = str(n) + '.' + ext
+        target_path = os.path.join(target_dir, filename)
+
         # Index in DB with gallery tags
         rel_path = os.path.relpath(target_path, media_dir)
-        ext = '.jpg'
         ftype = 'image'
         auto_tags = _get_auto_tags(target_path)
         auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
@@ -2078,17 +2120,16 @@ def api_content_search_download_manga():
     if count > 0:
         try:
             db = _db_conn()
-            cover_rel = os.path.relpath(os.path.join(target_dir, '1.jpg'), media_dir)
             pages_rel = sorted(
                 os.path.relpath(os.path.join(target_dir, f), media_dir)
                 for f in os.listdir(target_dir)
-                if f.lower().endswith('.jpg') and os.path.isfile(os.path.join(target_dir, f))
+                if os.path.isfile(os.path.join(target_dir, f))
             )
             pages_rel.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
             comics_title = title or 'NHentai #' + str(gid)
+            cover = pages_rel[0] if pages_rel else None
             c = db.execute('INSERT INTO comics (title, cover_path, source, source_id) VALUES (?, ?, ?, ?)',
-                           [comics_title, cover_rel if os.path.exists(os.path.join(target_dir, '1.jpg')) else (pages_rel[0] if pages_rel else None),
-                            'nhentai', str(gid)])
+                           [comics_title, cover, 'nhentai', str(gid)])
             comics_id = c.lastrowid
             for i, p in enumerate(pages_rel):
                 db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)',

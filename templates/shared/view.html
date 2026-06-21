@@ -31,9 +31,10 @@ body{padding-top:44px}
 #tagHint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:20;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:6px 14px;border-radius:16px;pointer-events:none;opacity:0;transition:opacity .4s}
 #tagHint.show{opacity:1}
 #content{overflow:visible}
-#scrollView{padding:0;max-width:100%;margin:0 auto}
-#scrollView .page-wrap{display:block;text-align:center;margin:0 auto}
-#scrollView .page-wrap img{display:inline-block;max-width:100%;height:auto;vertical-align:top;width:auto}
+#scrollView{display:flex;align-items:center;justify-content:center;width:100%;height:calc(100vh - 44px);overflow:hidden;background:var(--bg)}
+#scrollView .page-wrap{display:none;flex:1;align-self:stretch}
+#scrollView .page-wrap.active{display:flex;align-items:center;justify-content:center;height:100%}
+#scrollView .page-wrap.active img{max-width:100%;max-height:100%;object-fit:contain;display:block;padding:0 1px}
 #lightboxView{display:none;position:fixed;top:44px;left:0;right:0;bottom:0;z-index:50;background:var(--bg);align-items:center;justify-content:center}
 #lightboxView.open{display:flex}
 #lightboxView img{max-width:100%;max-height:100%;object-fit:contain;display:block}
@@ -153,7 +154,6 @@ var _pages = {{ pages|tojson|safe }};
 var _mode = 'scroll';
 var _currentPage = 0;
 var _hideTimer = null;
-var _programmaticScroll = false, _scrollTimeout = null, _pageObserver = null;
 function showUI() {
   var pc = document.getElementById('pageCounter');
   pc.classList.remove('hidden');
@@ -163,7 +163,7 @@ function showUI() {
 var _MAX_DOTS = 9;
 function buildDots() {
   var wrap = document.getElementById('dotsWrap');
-  var total = _pages.length;
+  var total = _mode === 'lightbox' ? _pages.length : Math.ceil(_pages.length / 2);
   if (total <= 1) { wrap.innerHTML = ''; return; }
   var n = total > _MAX_DOTS ? _MAX_DOTS : total;
   var h = '';
@@ -174,44 +174,63 @@ function buildDots() {
   updateDots();
 }
 function switchToDot(dotIdx) {
-  var total = _pages.length;
-  var pageIdx;
+  var total = _mode === 'lightbox' ? _pages.length : Math.ceil(_pages.length / 2);
+  var idx;
   if (total <= _MAX_DOTS) {
-    pageIdx = dotIdx;
+    idx = dotIdx;
   } else {
-    pageIdx = Math.round(dotIdx / (_MAX_DOTS - 1) * (total - 1));
+    idx = Math.round(dotIdx / (_MAX_DOTS - 1) * (total - 1));
   }
-  switchToPage(pageIdx);
+  if (_mode !== 'lightbox') { idx = idx * 2; }
+  switchToPage(idx);
 }
 function updateDots() {
-  var total = _pages.length;
+  var total = _mode === 'lightbox' ? _pages.length : Math.ceil(_pages.length / 2);
+  var cur = _mode === 'lightbox' ? _currentPage : Math.floor(_currentPage / 2);
   var dots = document.querySelectorAll('#dotsWrap .dot');
   for (var i = 0; i < dots.length; i++) {
-    var pageIdx;
+    var dotIdx;
     if (total <= _MAX_DOTS) {
-      pageIdx = i;
+      dotIdx = i;
     } else {
-      pageIdx = Math.round(i / (_MAX_DOTS - 1) * (total - 1));
+      dotIdx = Math.round(i / (_MAX_DOTS - 1) * (total - 1));
     }
-    dots[i].classList.toggle('before', pageIdx < _currentPage);
-    dots[i].classList.toggle('active', pageIdx === _currentPage);
-    dots[i].classList.toggle('after', pageIdx > _currentPage);
-    dots[i].setAttribute('aria-label', 'Page ' + (pageIdx + 1));
+    dots[i].classList.toggle('before', dotIdx < cur);
+    dots[i].classList.toggle('active', dotIdx === cur);
+    dots[i].classList.toggle('after', dotIdx > cur);
+    dots[i].setAttribute('aria-label', _mode === 'lightbox' ? 'Page ' + (dotIdx + 1) : 'Spread ' + (dotIdx + 1));
   }
 }
 function updateCounter() {
-  document.getElementById('pageNum').textContent = _currentPage + 1;
-  document.getElementById('pageTotal').textContent = _pages.length;
-  document.getElementById('prevPageBtn').disabled = _currentPage <= 0;
-  document.getElementById('nextPageBtn').disabled = _currentPage >= _pages.length - 1;
+  if (_mode === 'lightbox') {
+    document.getElementById('pageNum').textContent = _currentPage + 1;
+    document.getElementById('pageTotal').textContent = _pages.length;
+    document.getElementById('prevPageBtn').disabled = _currentPage <= 0;
+    document.getElementById('nextPageBtn').disabled = _currentPage >= _pages.length - 1;
+  } else {
+    var left = _currentPage + 1;
+    var right = Math.min(_currentPage + 2, _pages.length);
+    document.getElementById('pageNum').textContent = left + '-' + right;
+    document.getElementById('pageTotal').textContent = _pages.length;
+    document.getElementById('prevPageBtn').disabled = _currentPage <= 0;
+    document.getElementById('nextPageBtn').disabled = _currentPage >= _pages.length - 2;
+  }
   updateDots();
   showUI();
 }
 function prevPage() {
-  if (_currentPage > 0) switchToPage(_currentPage - 1);
+  if (_mode === 'lightbox') {
+    if (_currentPage > 0) switchToPage(_currentPage - 1);
+  } else {
+    if (_currentPage > 1) switchToPage(_currentPage - 2);
+  }
 }
 function nextPage() {
-  if (_currentPage < _pages.length - 1) switchToPage(_currentPage + 1);
+  if (_mode === 'lightbox') {
+    if (_currentPage < _pages.length - 1) switchToPage(_currentPage + 1);
+  } else {
+    if (_currentPage < _pages.length - 2) switchToPage(_currentPage + 2);
+  }
 }
 function switchToPage(idx) {
   if (idx < 0 || idx >= _pages.length) return;
@@ -225,12 +244,9 @@ function switchToPage(idx) {
     if (idx < _pages.length - 1) { nextLink.href = 'javascript:switchToPage(' + (idx + 1) + ')'; nextLink.style.cursor = 'pointer'; }
     else { nextLink.removeAttribute('href'); nextLink.style.cursor = 'default'; }
   } else {
-    var el = document.getElementById('page-' + idx);
-    if (el) {
-      _programmaticScroll = true;
-      el.scrollIntoView({behavior: 'smooth', block: 'start'});
-      clearTimeout(_scrollTimeout);
-      _scrollTimeout = setTimeout(function() { _programmaticScroll = false; }, 1000);
+    for (var i = 0; i < _pages.length; i++) {
+      var el = document.getElementById('page-' + i);
+      if (el) el.classList.toggle('active', i === idx || i === idx + 1);
     }
   }
   updateCounter();
@@ -238,19 +254,19 @@ function switchToPage(idx) {
 function toggleMode() {
   var scrollView = document.getElementById('scrollView');
   var lightboxView = document.getElementById('lightboxView');
+  var btn = document.getElementById('toggleModeBtn');
   if (_mode === 'scroll') {
     _mode = 'lightbox';
     scrollView.style.display = 'none';
     lightboxView.classList.add('open');
-    if (_pageObserver) _pageObserver.disconnect();
     switchToPage(_currentPage);
-    document.getElementById('toggleModeBtn').classList.add('active');
+    if (btn) btn.classList.add('active');
   } else {
     _mode = 'scroll';
-    scrollView.style.display = 'block';
+    scrollView.style.display = 'flex';
     lightboxView.classList.remove('open');
-    _setupPageObserver();
-    document.getElementById('toggleModeBtn').classList.remove('active');
+    switchToPage(_currentPage);
+    if (btn) btn.classList.remove('active');
   }
   showUI();
 }
@@ -258,79 +274,13 @@ function buildPages() {
   var container = document.getElementById('scrollView');
   var html = '';
   for (var i = 0; i < _pages.length; i++) {
-    html += '<div class="page-wrap" id="page-' + i + '"><img src="/api/media?path=' + _pages[i].path + '" alt="Page ' + (i + 1) + '" loading="lazy"></div>';
+    html += '<div class="page-wrap" id="page-' + i + '"><img src="/api/media?path=' + _pages[i].path + '" alt="Page ' + (i + 1) + '"></div>';
   }
   container.innerHTML = html;
 }
-var _scrollRaf = null;
-function _findCurrentPage() {
-  var wraps = document.querySelectorAll('#scrollView .page-wrap');
-  var bestIdx = 0;
-  var bestDist = Infinity;
-  var vpCenter = window.innerHeight / 2;
-  for (var i = 0; i < wraps.length; i++) {
-    var rect = wraps[i].getBoundingClientRect();
-    var pageCenter = rect.top + rect.height / 2;
-    var dist = Math.abs(pageCenter - vpCenter);
-    if (dist < bestDist) {
-      bestDist = dist;
-      bestIdx = i;
-    }
-  }
-  return bestIdx;
-}
-function _setupPageObserver() {
-  if (_pageObserver) _pageObserver.disconnect();
-  var wraps = document.querySelectorAll('#scrollView .page-wrap');
-  if (!wraps.length || typeof IntersectionObserver === 'undefined') return;
-  _pageObserver = new IntersectionObserver(function(entries) {
-    if (_mode !== 'scroll' || _programmaticScroll) return;
-    var best = null, bestRatio = 0;
-    for (var i = 0; i < entries.length; i++) {
-      if (entries[i].intersectionRatio > bestRatio) {
-        bestRatio = entries[i].intersectionRatio;
-        best = entries[i];
-      }
-    }
-    if (best && bestRatio > 0) {
-      var idx = parseInt(best.target.id.replace('page-', ''), 10);
-      if (!isNaN(idx) && idx !== _currentPage) {
-        _currentPage = idx;
-        updateCounter();
-      }
-    }
-  }, {threshold: 0});
-  for (var i = 0; i < wraps.length; i++) {
-    _pageObserver.observe(wraps[i]);
-  }
-}
-window.addEventListener('scroll', function() {
-  if (_mode !== 'scroll') return;
-  showUI();
-  if (_scrollRaf) return;
-  _scrollRaf = requestAnimationFrame(function() {
-    _scrollRaf = null;
-    if (_programmaticScroll) return;
-    var idx = _findCurrentPage();
-    if (idx !== _currentPage) {
-      _currentPage = idx;
-      updateCounter();
-    }
-  });
-}, {passive: true});
-window.addEventListener('scrollend', function() {
-  if (_mode !== 'scroll') return;
-  _programmaticScroll = false;
-  clearTimeout(_scrollTimeout);
-  var idx = _findCurrentPage();
-  if (idx !== _currentPage) {
-    _currentPage = idx;
-    updateCounter();
-  }
-});
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowLeft') { e.preventDefault(); prevPage(); }
-  else if (e.key === 'ArrowRight') { e.preventDefault(); nextPage(); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevPage(); }
+  else if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); nextPage(); }
   else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleMode(); }
 });
 var _touchStartX = 0;
@@ -347,7 +297,6 @@ document.addEventListener('touchend', function(e) {
 }, {passive: true});
 document.addEventListener('mousemove', showUI);
 buildPages();
-_setupPageObserver();
 buildDots();
 switchToPage(0);
 {% if preview %}

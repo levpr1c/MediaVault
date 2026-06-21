@@ -58,6 +58,8 @@ var Lightbox = (function() {
     this._galleryRefreshFn = opts.galleryRefreshFn || null;
     this._gallerySetSearchFn = opts.gallerySetSearchFn || null;
     this._galleryApplyFilterFn = opts.galleryApplyFilterFn || null;
+    this._onRenderMedia = opts.onRenderMedia || null;
+    this._onOpenSource = opts.onOpenSource || null;
     this._eventsBound = false;
   }
 
@@ -81,6 +83,24 @@ var Lightbox = (function() {
       ? '<div class="lightbox-panel" id="' + this._id('Panel') + '"></div>'
       : '';
 
+    var toolbarBtns =
+      '<button id="' + this._id('ZoomOutBtn') + '" title="Zoom Out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
+      '<span class="zoom-level" id="' + this._id('ZoomLevel') + '">100%</span>' +
+      '<span class="lb-pos" id="' + this._id('Position') + '"></span>' +
+      '<button id="' + this._id('ZoomInBtn') + '" title="Zoom In"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><line x1="12" y1="5" x2="12" y2="19"/></svg></button>' +
+      '<button id="' + this._id('ZoomResetBtn') + '" title="Reset Zoom"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>' +
+      '<button id="' + this._id('ScrollModeBtn') + '" title="Scroll Mode"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m8 6 4-4 4 4"/><path d="M12 2v20"/><path d="m8 18 4 4 4-4"/></svg></button>';
+
+    // Show Open Source button when either tagPanel (MV gallery) or onOpenSource (content-search) is set
+    if (this._tagPanel || this._onOpenSource) {
+      toolbarBtns += '<button id="' + this._id('OpenSourceBtn') + '" title="Open source"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>';
+    }
+
+    // Hidden standalone view button kept for MV gallery compatibility
+    if (this._tagPanel) {
+      toolbarBtns += '<button id="' + this._id('StandaloneViewBtn') + '" title="Open in new tab" style="display:none"></button>';
+    }
+
     overlay.innerHTML =
       '<div class="sl-overlay-bg"></div>' +
       '<button class="lightbox-close" id="' + this._id('Close') + '">' +
@@ -91,17 +111,7 @@ var Lightbox = (function() {
           '<div class="lb-nav-zone left" id="' + this._id('NavLeft') + '"></div>' +
           '<div class="lb-nav-zone right" id="' + this._id('NavRight') + '"></div>' +
         '</div>' +
-        '<div class="lightbox-toolbar" id="' + this._id('Toolbar') + '">' +
-          '<button id="' + this._id('ZoomOutBtn') + '" title="Zoom Out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>' +
-          '<span class="zoom-level" id="' + this._id('ZoomLevel') + '">100%</span>' +
-          '<span class="lb-pos" id="' + this._id('Position') + '"></span>' +
-          '<button id="' + this._id('ZoomInBtn') + '" title="Zoom In"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><line x1="12" y1="5" x2="12" y2="19"/></svg></button>' +
-          '<button id="' + this._id('ZoomResetBtn') + '" title="Reset Zoom"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>' +
-          '<button id="' + this._id('ScrollModeBtn') + '" title="Scroll Mode"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m8 6 4-4 4 4"/><path d="M12 2v20"/><path d="m8 18 4 4 4-4"/></svg></button>' +
-          (this._tagPanel
-            ? '<button id="' + this._id('StandaloneViewBtn') + '" title="Open in new tab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>'
-            : '') +
-        '</div>' +
+        '<div class="lightbox-toolbar" id="' + this._id('Toolbar') + '">' + toolbarBtns + '</div>' +
         panelHtml +
       '</div>';
 
@@ -148,6 +158,32 @@ var Lightbox = (function() {
             var paths = self._getVisualOrderFn();
             var orderParam = paths.length > 1 ? '&order=' + encodeURIComponent(paths.join('|')).slice(0, 8000) : '';
             window.open('/mediavault/view?path=' + encodeURIComponent(path) + orderParam, '_blank');
+          }
+        });
+      }
+    }
+
+    // Open Source button — either uses _onOpenSource callback or falls back to MV gallery behavior
+    var openBtn = this._el('OpenSourceBtn');
+    if (openBtn) {
+      if (this._onOpenSource) {
+        openBtn.addEventListener('click', function() {
+          if (self._data && self._data[self._index]) {
+            var url = self._onOpenSource(self._data[self._index]);
+            if (url) window.open(url, '_blank');
+          }
+        });
+      } else {
+        // Fallback: MV gallery behavior (standalone view)
+        openBtn.addEventListener('click', function() {
+          if (self._data && self._data[self._index]) {
+            var file = self._data[self._index];
+            var path = self._tagPanel ? file.path : null;
+            if (path) {
+              var paths = self._getVisualOrderFn();
+              var orderParam = paths.length > 1 ? '&order=' + encodeURIComponent(paths.join('|')).slice(0, 8000) : '';
+              window.open('/mediavault/view?path=' + encodeURIComponent(path) + orderParam, '_blank');
+            }
           }
         });
       }
@@ -330,6 +366,23 @@ var Lightbox = (function() {
     var media = this._el('Media');
     var video = media.querySelector('video');
     if (video) { video.pause(); video.src = ''; }
+
+    // Custom media rendering (e.g. NHentai multi-page viewer)
+    if (this._onRenderMedia) {
+      var customResult = this._onRenderMedia(file, media, this);
+      if (customResult === true) {
+        // Re-bind nav events
+        var self = this;
+        setTimeout(function() {
+          var nl = document.getElementById(self._id('NavLeft'));
+          var nr = document.getElementById(self._id('NavRight'));
+          if (nl) nl.addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
+          if (nr) nr.addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+        }, 0);
+        return;
+      }
+    }
+
     media.innerHTML =
       '<div class="lb-nav-zone left" id="' + this._id('NavLeft') + '"></div>' +
       '<div class="lb-nav-zone right" id="' + this._id('NavRight') + '"></div>';
@@ -466,9 +519,9 @@ var Lightbox = (function() {
     panel.innerHTML =
       '<div class="lb-header">' +
         '<h3>' + this._esc(file.name || '') + '</h3>' +
-        (this._onDownload && file.path ? '<button class="lb-download-btn" id="' + this._id('DownloadBtn') + '" title="Download">' + (this._downloadLabelFn ? this._downloadLabelFn(file) : '\u2B07') + '</button>' : '') +
         (isAdmin && !this._readonly ? '<button id="lbDelToggle" class="' + lblClass + '" title="' + (isDel ? 'Exit delete mode' : 'Delete tags') + '">\u2715</button>' : '') +
       '</div>' +
+      (this._onDownload && file.path ? '<div style="margin-bottom:4px"><button class="lb-download-btn" id="' + this._id('DownloadBtn') + '" title="Download">' + (this._downloadLabelFn ? this._downloadLabelFn(file) : '\u2B07') + '</button></div>' : '') +
       '<div class="meta">' + (file.width > 0 ? file.width + '\u00D7' + file.height : '') + '</div>' +
       (isDel && this._deleteMode && isAdmin && !this._readonly ? '<div style="font-size:11px;color:#ff4444;margin-bottom:6px">Select tags to delete</div>' : '') +
       delBarHtml +
@@ -956,7 +1009,7 @@ var Lightbox = (function() {
     '.shared-lightbox .lightbox-panel{width:300px;background:rgba(32,32,32,0.85);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;color:#e0e0e0}' +
     '.shared-lightbox .lightbox-panel h3{font-size:14px;font-weight:600;word-break:break-all;flex:1;margin:0}' +
     '.shared-lightbox .lightbox-panel .meta{font-size:12px;color:var(--text2,#888)}' +
-    '.shared-lightbox .lightbox-panel .tag-chip{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;line-height:1.5;cursor:pointer;transition:opacity .15s}' +
+    '.shared-lightbox .lightbox-panel .tag-chip{display:inline-block;padding:4px 10px;border-radius:6px;font-size:13px;line-height:1.6;cursor:pointer;transition:opacity .15s}' +
     '.shared-lightbox .lightbox-panel .tag-chip:hover{opacity:.85}' +
     '.shared-lightbox .lightbox-panel .tag-chip.sel{outline:2px solid #ff4444;outline-offset:1px;background:rgba(255,68,68,0.15)}' +
     '.shared-lightbox .lightbox-panel input[type="text"]{flex:1;width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px}' +
@@ -983,6 +1036,8 @@ var Lightbox = (function() {
     '.lb-nav-zone{display:block}' +
     '}' +
     '.shared-lightbox .lb-download-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--text);font-size:16px;line-height:1;transition:all .15s}' +
-    '.shared-lightbox .lb-download-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}';
+    '.shared-lightbox .lb-download-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}' +
+    '.shared-lightbox .lb-open-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--text);display:flex;align-items:center;transition:all .15s;text-decoration:none}' +
+    '.shared-lightbox .lb-open-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}';
   document.head.appendChild(css);
 })();

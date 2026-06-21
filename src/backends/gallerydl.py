@@ -3,7 +3,7 @@
 Supports:
   - danbooru: gallery-dl for fetch (MD5) and search (no auth required)
   - rule34:  gallery-dl for fetch (MD5) and search (needs api-key + user-id)
-  - nhentai: gallery-dl for both search and gallery fetch
+  - nhentai: gallery-dl extractor API (NhentaiSearchExtractor + NhentaiGalleryExtractor) for search and fetch
   - kemono/coomer: gallery-dl CLI for get_info/download (unchanged)
 """
 import concurrent.futures, json, os, re, subprocess, sys, threading, time, requests
@@ -42,6 +42,7 @@ class GalleryDlBackend:
         gconfig.set(('extractor', 'nhentai'), 'per-page', 25)
         gconfig.set(('extractor', 'nhentai'), 'page-limit', 1)
         gconfig.set(('extractor', 'nhentai'), 'request-interval', 0)
+        gconfig.set(('extractor', 'nhentai'), 'timeout', 15)
         # E-Hentai config (optional auth via cookies in gallery-dl config)
         gconfig.set(('extractor', 'e-hentai'), 'per-page', 25)
         gconfig.set(('extractor', 'e-hentai'), 'page-limit', 1)
@@ -128,39 +129,29 @@ class GalleryDlBackend:
     # ── NHentai gallery fetch (by gallery ID / URL) ────────────────
 
     def fetch_gallery(self, gallery_id, settings=None):
+        """Fetch NHentai gallery metadata via NhentaiGalleryExtractor (API v2)."""
         self._apply_gd_config(settings or {})
         try:
             from gallery_dl.extractor import find
-            extr = find(f'https://nhentai.net/g/{gallery_id}')
+            extr = find(f'https://nhentai.net/g/{gallery_id}/')
             if not extr:
                 return None
-            data = None
-            for _path, _prefix, d in self._gd_extract(extr, limit=1):
-                data = d
-                break
-            if data is None:
-                return None
-            # Extract num_pages from the raw API response stored by the extractor
-            num_pages = 0
-            try:
-                if hasattr(extr, 'data') and isinstance(extr.data, dict):
-                    num_pages = int(extr.data.get('num_pages', 0) or 0)
-            except Exception:
-                pass
+            extr.initialize()
+            meta = extr.metadata(None)
+            num_pages = len(extr.data.get('pages', [])) if hasattr(extr, 'data') and extr.data else 0
             return {
-                'id': data.get('id') or data.get('gallery_id'),
-                'title': data.get('title', ''),
-                'title_en': data.get('title_en', ''),
-                'title_ja': data.get('title_ja', ''),
-                'media_id': data.get('media_id'),
-                'tags': list(data.get('tags', [])),
+                'id': meta.get('gallery_id'),
+                'title': meta.get('title', ''),
+                'title_en': meta.get('title_en', ''),
+                'title_ja': meta.get('title_ja', ''),
+                'media_id': str(meta.get('media_id', '') or ''),
+                'tags': list(meta.get('tags', [])),
                 'num_pages': num_pages,
-                'num_favorites': data.get('num_favorites', 0),
-                'upload_date': str(data.get('date', '')),
+                'num_favorites': 0,
+                'upload_date': str(meta.get('date', '')),
             }
-        except Exception as e:
-            import sys
-            print(f'GalleryDlBackend: fetch_gallery error: {e}', file=sys.stderr)
+        except Exception:
+            pass
         return None
 
     def fetch_by_url(self, url):
@@ -262,50 +253,65 @@ class GalleryDlBackend:
         return {'results': [], 'total': 0}
 
     def _search_nhentai(self, query, page):
+        """Search NHentai via NhentaiSearchExtractor + parallel metadata via ThreadPoolExecutor."""
         try:
             from gallery_dl.extractor import find
-            tags_q = requests.utils.quote(query)
-            extr = find(f'https://nhentai.net/search/?q={tags_q}')
+            from gallery_dl.extractor.message import Message
+
+            extr = find(f'https://nhentai.net/search/?q={requests.utils.quote(query)}')
             if not extr:
                 return {'results': [], 'total': 0}
 
             gallery_ids = []
-            for _path, _prefix, _data in self._gd_extract(extr):
-                gid = _data.get('gallery_id')
-                if gid and gid not in gallery_ids:
-                    gallery_ids.append(gid)
+            per_page = 25
+            needed = page * per_page
+            for msg, url, data in extr:
+                if msg == Message.Queue:
+                    gid = data.get('gallery_id')
+                    if gid and gid not in gallery_ids:
+                        gallery_ids.append(gid)
+                        if len(gallery_ids) >= needed:
+                            break
+
             if not gallery_ids:
                 return {'results': [], 'total': 0}
 
-            per_page = 25
             start = (page - 1) * per_page
             page_ids = gallery_ids[start:start + per_page]
 
-            def _fetch_gd(gid):
-                return self.fetch_gallery(gid)
+            from concurrent.futures import ThreadPoolExecutor, as_completed
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as exc:
-                fetched = list(exc.map(_fetch_gd, page_ids))
+            def _fetch_one(gid):
+                try:
+                    extr2 = find(f'https://nhentai.net/g/{gid}/')
+                    if not extr2:
+                        return None
+                    extr2.initialize()
+                    meta = extr2.metadata(None)
+                    mid = str(meta.get('media_id', '') or '')
+                    return {
+                        'id': meta.get('gallery_id'),
+                        'title': meta.get('title', ''),
+                        'mid': mid,
+                        'thumbnail': f'https://t.nhentai.net/galleries/{mid}/thumb.jpg' if mid else '',
+                        'tags': list(meta.get('tags', [])),
+                        'pages': len(extr2.data.get('pages', [])) if hasattr(extr2, 'data') and extr2.data else 0,
+                    }
+                except Exception:
+                    return None
 
             results = []
-            for f in fetched:
-                if f is None:
-                    continue
-                mid = str(f.get('media_id', '') or '')
-                results.append({
-                    'id': f.get('id'),
-                    'title': f.get('title', ''),
-                    'mid': mid,
-                    'thumbnail': f'https://t.nhentai.net/galleries/{mid}/thumb.jpg' if mid else '',
-                    'tags': [t.get('name', str(t)) if isinstance(t, dict) else str(t) for t in (f.get('tags', []) or [])],
-                    'pages': f.get('num_pages', 0),
-                })
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                futures = {pool.submit(_fetch_one, gid): gid for gid in page_ids}
+                for fut in as_completed(futures):
+                    res = fut.result()
+                    if res:
+                        results.append(res)
 
             return {'results': results, 'total': len(gallery_ids)}
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return {'results': [], 'total': 0}
+        except Exception:
+            pass
+        return {'results': [], 'total': 0}
 
     def _search_ehentai(self, query, page):
         """Search E-Hentai via gallery-dl native e-hentai extractor."""

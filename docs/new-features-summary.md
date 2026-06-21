@@ -745,6 +745,119 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 ---
 
+## 24. api_raw Backend Fixes (NHentai v2, R34 count, Danbooru count) (20.06.2026)
+
+**Full rewrite of NHentai search/fetch, fixed R34/Danbooru result counts.**
+
+| Изменение | Детали |
+|-----------|--------|
+| NHentai search | Switched to API v2 (`/api/v2/search` + `/api/v2/galleries/{id}`) — public, no auth |
+| NHentai fetch | Rewritten for API v2 schema (different tag structure, page URLs) |
+| R34 count | JSON API returns no count → switched to XML API, parses `<posts count="...">` |
+| Danbooru count | `x-total-count` header missing for anonymous → fallback to `/counts/posts.json?tags=...` |
+
+**Key files:**
+- `src/backends/api_raw.py` — `_search_rule34`, `_search_danbooru`, `_search_nhentai`, `_fetch_nhentai`
+
+**Testing:**
+- [ ] Rule34 search returns correct total count
+- [ ] Danbooru search returns correct total count (anonymous)
+- [ ] NHentai search works with API v2
+- [ ] NHentai gallery fetch returns all pages and categorized tags
+
+---
+
+## 25. NHentai Multi-Page Manga Viewer (20.06.2026)
+
+**Book-style spread viewer for NHentai galleries in content-search lightbox.**
+
+| Изменение | Детали |
+|-----------|--------|
+| Spread layout | 2 pages side by side, up to 1400px wide lightbox |
+| Lazy loading | First 10 pages (5 spreads), more on demand as user navigates |
+| Page counter | Shows `"1-2 / 200"` (left-right / total) |
+| `onRenderMedia` | Gallery fetch fires per-item (not just first), lazy-load + category update |
+| Keyboard | PgUp/PgDn for spreads (avoids lightbox Arrow conflict) |
+
+**Key files:**
+- `static/content/content-search.js` — `onRenderMedia`, `loadSpreads`, `updateNhCategories`
+
+**Testing:**
+- [ ] NHentai gallery opens in lightbox with 2-page spreads
+- [ ] Navigation by arrows (spreads) and PgUp/PgDn
+- [ ] Lazy load — more pages load as user reaches end
+- [ ] Page counter shows correct page numbers
+- [ ] Categories (parody/character/tag/artist) shown in tag panel
+
+---
+
+## 26. "Open Source" Button in Lightbox Toolbar (20.06.2026)
+
+**Toolbar button to open source page on the original site.**
+
+| Изменение | Детали |
+|-----------|--------|
+| `_onOpenSource` | Lightbox option — callback for custom open-source action |
+| Fallback | MV standalone view URL if no callback provided |
+| Per-site URLs | NHentai → `nhentai.net/g/{id}/`, Danbooru → `danbooru.donmai.us/posts/{id}`, Rule34 → `rule34.xxx/index.php?page=post&s=view&id={id}`, E-Hentai → `e-hentai.org/g/{gid}/{token}/` |
+| Separate row | Download button moved to separate row below `.lb-header` |
+
+**Key files:**
+- `static/shared/lightbox.js` — `_onOpenSource`, `OpenSourceBtn` in toolbar
+- `static/content/content-search.js` — `_sourceUrl` per site, `onOpenSource` callback
+
+**i18n keys:** none (uses generic button)
+
+**Testing:**
+- [ ] Content-search lightbox shows "Open source" button
+- [ ] NHentai opens correct gallery URL
+- [ ] Danbooru opens correct post URL
+- [ ] R34 opens correct post URL
+- [ ] MV gallery lightbox falls back to standalone view
+
+---
+
+## 27. Comics Reader Spread Mode Redesign (21.06.2026)
+
+**Полный редизайн ридера комиксов — spread-режим вместо скролла.**
+
+| Изменение | Детали |
+|-----------|--------|
+| Spread по умолчанию | 2 страницы рядом на весь экран, `display:flex` + `object-fit:contain` |
+| Без скролла | `height: calc(100vh - 44px)`, `overflow: hidden` |
+| Все экраны | Убран `@media` — работает на desktop и mobile |
+| Навигация | ← → / PgUp/PgDn — по спредам (2 страницы); в lightbox — по 1 странице |
+| Счётчик | `"1-2 / 200"` для спреда, номера страниц |
+| Lightbox toggle | F — переключение spread ↔ lightbox, корректный возврат |
+
+**Key files:**
+- `templates/shared/view.html` — CSS + JS для spread-режима
+
+**Testing:**
+- [ ] 2 страницы помещаются на экран (без скролла)
+- [ ] Работает на мобильных (2 страницы, масштабируются)
+- [ ] F переключает в lightbox и обратно
+- [ ] ← → и PgUp/PgDn работают в обоих режимах
+- [ ] Счётчик показывает `"1-2 / 200"` в spread, `"1 / 200"` в lightbox
+- [ ] Последняя страница (нечётная) отображается одна
+
+---
+
+## 28. WebP Comics Auto-Creation (20.06.2026)
+
+**Comics auto-creation теперь принимает любые файлы (не только `.jpg`).**
+
+| Изменение | Детали |
+|-----------|--------|
+| Убран фильтр | `_IMAGE_EXTS` включает `.webp`; comics-creation без расширения |
+| Fix `import re` | `import re` перенесён выше `re.sub()` — исправлен `UnboundLocalError` |
+| Dead code | Удалён мёртвый `search_tags('nhentai', '', 1, settings)` (вызывал 500) |
+
+**Key files:**
+- `src/web_app.py` — `api_content_search_nhentai_gallery` (dead code), `api_content_search_download_manga` (import re)
+
+---
+
 ## Итоговая сводка (обновлённая)
 
 | # | Фича | Строк кода | Файлов |
@@ -765,6 +878,11 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 | 14 | Tag categories (Danbooru) | ~40 | 3 |
 | 15 | AI filter (R34-only) | ~10 | 2 |
 | 16 | Download label + manga download | ~130 (server + JS) | 3 |
+| 17 | api_raw fixes (NHentai v2, R34/Danbooru count) | ~120 | 1 |
+| 18 | Multi-page manga viewer | ~210 | 1 (content-search.js) |
+| 19 | Open source button | ~83 | 2 |
+| 20 | Comics reader spread redesign | ~159 | 1 (view.html) |
+| 21 | WebP comics + fixes | ~97 | 1 |
 
 ---
 

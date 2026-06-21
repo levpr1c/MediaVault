@@ -175,6 +175,24 @@ async function fetchPage(rawQuery, sites, pageNum) {
     _totalPages = Math.max(1, Math.ceil(_allResults.length / PER_PAGE))
     renderPage()
     updateLoadMoreBtn()
+    // Show total count from each source
+    var totalCounts = []
+    for (var sk in (data.results || {})) {
+      var sd = data.results[sk]
+      var st = sd.total || 0
+      if (st > 0) {
+        var siteLabel = {rule34: 'R34', danbooru: 'Dan', nhentai: 'NH', ehentai: 'EH'}[sk] || sk
+        totalCounts.push(siteLabel + ': ' + st)
+      }
+    }
+    var csTotal = document.getElementById('csTotal')
+    if (!csTotal) {
+      csTotal = document.createElement('div')
+      csTotal.id = 'csTotal'
+      csTotal.style.cssText = 'font-size:12px;color:var(--text2);margin-top:8px;text-align:center'
+      loadMoreBtn.parentNode.insertBefore(csTotal, loadMoreBtn.nextSibling)
+    }
+    csTotal.textContent = totalCounts.length ? 'Total: ' + totalCounts.join(' | ') : ''
   } catch(e) {
     if (e.name === 'AbortError' || (_ac && _ac.signal.aborted)) return
     _csGrid.clear()
@@ -217,9 +235,9 @@ function cardHTML(r) {
   var imgSrc = r.preview_url || r.large_file_url || r.sample_url || r.thumbnail || r.file_url || ''
   var tagsStr = Array.isArray(r.tags) ? r.tags.join(', ') : (r.tags || '')
   var sourceLabel = { r34: 'R34', dan: 'Dan', nhentai: 'NH', eh: 'EH' }[r._source] || r._source
-  return '<div class="cs-card">' +
+  return '<div class="cs-card"' + (r._source === 'nhentai' ? ' data-gid="' + esc(r.id) + '"' : '') + '>' +
     '<img class="cs-card-thumb" src="' + esc(imgSrc) + '" alt="" loading="lazy"' +
-    ' onerror="this.classList.add(\'cs-img-error\')">' +
+    ' onerror="this.src=\'\'; this.classList.add(\'cs-img-error\'); this.parentElement.classList.add(\'cs-thumb-fail\')">' +
     '<div class="cs-card-body">' +
     '<div class="cs-card-id">#' + esc(String(r.id)) + ' &middot; ' + sourceLabel + '</div>' +
     '<div class="cs-card-tags" title="' + esc(tagsStr) + '">' + esc(truncate(tagsStr, 80)) + '</div>' +
@@ -312,11 +330,185 @@ try {
         toast(_t('settingsSaveStart'), 'success');
         console.log('[content-search] Downloaded:', data.path);
       });
+    },
+    onRenderMedia: function(file, media, lb) {
+      // Clean up previous manga keyboard handler
+      var oldViewer = document.getElementById(lb._id('MangaViewer'));
+      if (oldViewer && oldViewer._kbCleanup) { oldViewer._kbCleanup(); }
+      // NHentai multi-page manga viewer
+      if (file._gid && file._mid) {
+        var doFetchGallery = function(cb) {
+          fetch('/api/content-search/nhentai-gallery?gid=' + file._gid)
+            .then(function(r) { return r.json(); })
+            .then(function(meta) {
+              if (!meta || meta.error) { cb && cb(); return; }
+              file._galleryTitle = meta.title || file._galleryTitle;
+              file._displayName = meta.title || file._displayName;
+              if (meta.page_urls && meta.page_urls.length) {
+                file._pageUrls = meta.page_urls;
+                file._numPages = meta.num_pages || meta.page_urls.length;
+                var tbc = {};
+                if (meta.tag_artist && meta.tag_artist.length) tbc.artist = meta.tag_artist;
+                if (meta.tag_character && meta.tag_character.length) tbc.character = meta.tag_character;
+                if (meta.tag_copyright && meta.tag_copyright.length) tbc.copyright = meta.tag_copyright;
+                if (meta.tag_general && meta.tag_general.length) tbc.general = meta.tag_general;
+                if (meta.tag_language && meta.tag_language.length) tbc.language = meta.tag_language;
+                if (meta.tag_category && meta.tag_category.length) tbc.category = meta.tag_category;
+                file._tagsByCategory = tbc;
+                if (meta.tags && meta.tags.length) file.tags = meta.tags.join(', ');
+                updateNhCategories(lb, tbc);
+              }
+              cb && cb();
+            })
+            .catch(function() { cb && cb(); });
+        };
+        if (!file._pageUrls || file._pageUrls.length === 0) {
+          doFetchGallery(function() {
+            var overlay = document.getElementById('csOverlay');
+            if (overlay && overlay.classList.contains('open')) lb._renderContent(true);
+          });
+          return false;
+        }
+        buildMangaViewer(file, media, lb);
+        return true;
+      }
+      return false;
+    },
+    onOpenSource: function(file) {
+      return file._sourceUrl || null;
     }
   })
 } catch(e) {
   console.warn('[content-search] Lightbox init failed:', e)
   csLightbox = { close: function(){}, open: function(){} }
+}
+
+// ── Lazy-load manga viewer helpers ──
+function buildMangaViewer(file, media, lb) {
+  var CHUNK = 10;
+  var totalPages = file._pageUrls.length;
+  var totalSpreads = Math.ceil(totalPages / 2);
+  var currentSpread = 0;
+  var loadedUpTo = 0;
+
+  media.innerHTML =
+    '<div class="lb-manga-viewer" id="' + lb._id('MangaViewer') + '">' +
+      '<div class="manga-track" id="' + lb._id('MangaTrack') + '"></div>' +
+      '<button class="manga-nav manga-prev" id="' + lb._id('MangaPrev') + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M15 18l-6-6 6-6"/></svg></button>' +
+      '<button class="manga-nav manga-next" id="' + lb._id('MangaNext') + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6"/></svg></button>' +
+      '<span class="manga-counter" id="' + lb._id('MangaCounter') + '">1 / ' + totalSpreads + '</span>' +
+    '</div>';
+
+  var viewerEl = document.getElementById(lb._id('MangaViewer'));
+  var track = document.getElementById(lb._id('MangaTrack'));
+  var prevBtn = document.getElementById(lb._id('MangaPrev'));
+  var nextBtn = document.getElementById(lb._id('MangaNext'));
+  var counterEl = document.getElementById(lb._id('MangaCounter'));
+
+  viewerEl.style.cssText = 'width:100%;height:100%;position:relative;display:flex;overflow:hidden';
+  track.style.cssText = 'display:flex;height:100%;gap:3px;transition:transform .25s cubic-bezier(.4,0,.2,1)';
+  prevBtn.style.cssText = 'position:absolute;top:50%;left:8px;transform:translateY(-50%);z-index:10;background:rgba(0,0,0,.5);border:none;color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s';
+  nextBtn.style.cssText = 'position:absolute;top:50%;right:8px;transform:translateY(-50%);z-index:10;background:rgba(0,0,0,.5);border:none;color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s';
+  counterEl.style.cssText = 'position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(0,0,0,.7);color:#fff;padding:4px 14px;border-radius:12px;font-size:13px;font-weight:600;pointer-events:none';
+
+  lb._sizeLb(Math.min(window.innerWidth - 60, 1400), window.innerHeight * 0.92);
+  media.style.overflow = 'hidden';
+
+  function loadSpreads() {
+    if (loadedUpTo >= totalPages) return;
+    var start = loadedUpTo;
+    var count = Math.min(CHUNK, totalPages - loadedUpTo);
+    for (var i = 0; i < count; i += 2) {
+      var spread = document.createElement('div');
+      spread.className = 'manga-spread';
+      spread.style.cssText = 'flex:0 0 100%;height:100%;display:flex;justify-content:center;align-items:center;gap:3px';
+      var idx1 = start + i;
+      if (idx1 < totalPages) {
+        var img1 = document.createElement('img');
+        img1.src = file._pageUrls[idx1];
+        img1.style.cssText = 'max-height:100%;max-width:calc(50% - 2px);object-fit:contain;border-radius:2px';
+        img1.loading = 'lazy';
+        spread.appendChild(img1);
+      }
+      var idx2 = start + i + 1;
+      if (idx2 < totalPages) {
+        var img2 = document.createElement('img');
+        img2.src = file._pageUrls[idx2];
+        img2.style.cssText = 'max-height:100%;max-width:calc(50% - 2px);object-fit:contain;border-radius:2px';
+        img2.loading = 'lazy';
+        spread.appendChild(img2);
+      }
+      track.appendChild(spread);
+    }
+    loadedUpTo = start + count;
+  }
+
+  function goToSpread(idx) {
+    if (idx < 0) idx = 0;
+    if (idx >= totalSpreads) idx = totalSpreads - 1;
+    if (idx === currentSpread) return;
+    currentSpread = idx;
+    track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+    updateCounter();
+    // Pre-load next chunk
+    if (loadedUpTo < totalPages && currentSpread >= Math.floor(loadedUpTo / 2) - 2) {
+      loadSpreads();
+    }
+  }
+
+  function updateCounter() {
+    var pageStart = currentSpread * 2 + 1;
+    var pageEnd = Math.min(pageStart + 1, totalPages);
+    var label = pageStart === pageEnd ? pageStart + ' / ' + totalPages : pageStart + '-' + pageEnd + ' / ' + totalPages;
+    counterEl.textContent = label;
+    var posEl = lb._el('Position');
+    if (posEl) posEl.textContent = label;
+  }
+
+  loadSpreads();
+  updateCounter();
+
+  prevBtn.addEventListener('click', function() { goToSpread(currentSpread - 1); });
+  nextBtn.addEventListener('click', function() { goToSpread(currentSpread + 1); });
+  prevBtn.addEventListener('mouseenter', function() { this.style.background = 'rgba(0,0,0,.8)'; });
+  prevBtn.addEventListener('mouseleave', function() { this.style.background = 'rgba(0,0,0,.5)'; });
+  nextBtn.addEventListener('mouseenter', function() { this.style.background = 'rgba(0,0,0,.8)'; });
+  nextBtn.addEventListener('mouseleave', function() { this.style.background = 'rgba(0,0,0,.5)'; });
+
+  // Document keyboard: PgUp/PgDn navigate spreads, arrows stay for lightbox item nav
+  var kbHandler = function(e) {
+    var v = document.getElementById(lb._id('MangaViewer'));
+    if (!v) return;
+    if (e.key === 'PageUp') { e.preventDefault(); goToSpread(currentSpread - 1); }
+    if (e.key === 'PageDown') { e.preventDefault(); goToSpread(currentSpread + 1); }
+  };
+  document.addEventListener('keydown', kbHandler);
+  viewerEl._kbCleanup = function() { document.removeEventListener('keydown', kbHandler); };
+}
+
+function updateNhCategories(lb, tbc) {
+  var curCatList = lb._getCatListFn ? lb._getCatListFn() : [];
+  var newCats = {};
+  curCatList.forEach(function(c) { newCats[c.name] = true; });
+  var fallbackColors = {artist:'#ff4444',character:'#44cc44',copyright:'#4488ff',general:'#cccccc',meta:'#999999',language:'#aa66cc',category:'#ffaa00',uncategorized:'#666666'};
+  var hasNew = false;
+  for (var cat in tbc) {
+    if (!newCats[cat]) { newCats[cat] = true; hasNew = true; }
+  }
+  if (hasNew) {
+    var fc = window._csCatColors || {};
+    var updatedCatList = Object.keys(newCats).map(function(n) {
+      return {name: n, color: (fc[n] || fallbackColors[n] || '#888')};
+    });
+    lb._getCatListFn = function() { return updatedCatList; };
+    var mergedTagToCat = {};
+    _allResults.forEach(function(r) {
+      var rbc = r.tags_by_category || {};
+      for (var rc in rbc) rbc[rc].forEach(function(t) { mergedTagToCat[t] = rc; });
+    });
+    for (var cat2 in tbc) tbc[cat2].forEach(function(t) { mergedTagToCat[t] = cat2; });
+    lb._getTagCategoryNameFn = function(tag) { return mergedTagToCat[tag] || ''; };
+  }
 }
 
 function showLightbox(index) {
@@ -342,21 +534,28 @@ function showLightbox(index) {
   csLightbox._getCatListFn = function() { return catList; };
   csLightbox._getTagCategoryNameFn = function(tag) { return tagToCat[tag] || ''; };
 
-  var items = _allResults.map(function(r) {
+    var items = _allResults.map(function(r) {
     var path
     if (r._source === 'nhentai') {
-      path = r.thumbnail || 'https://t.nhentai.net/galleries/' + r.mid + '/thumb.jpg'
+      path = r.file_url || r.thumbnail || 'https://t.nhentai.net/galleries/' + r.mid + '/thumb.jpg'
     } else if (r._source === 'eh') {
       path = r.thumbnail || r.preview_url || ''
     } else {
       path = r.file_url || r.sample_url || r.preview_url
     }
     var srcSite = r._source === 'nhentai' ? 'NHentai' : (r._source === 'eh' ? 'E-Hentai' : (r._source === 'r34' ? 'Rule34' : (r._source === 'dan' ? 'Danbooru' : r._source)))
+    // Source URL to open on original website
+    var srcUrl = ''
+    if (r._source === 'nhentai') srcUrl = 'https://nhentai.net/g/' + r.id + '/'
+    else if (r._source === 'dan') srcUrl = 'https://danbooru.donmai.us/posts/' + r.id
+    else if (r._source === 'r34') srcUrl = 'https://rule34.xxx/index.php?page=post&s=view&id=' + r.id
+    else if (r._source === 'eh') srcUrl = 'https://e-hentai.org/g/' + r.id + '/' + (r.token || '') + '/'
     var item = {
       path: path,
-      name: '',
+      name: r._source === 'nhentai' ? (r.title || 'NHentai #' + r.id) : '',
       _displayName: r._source === 'nhentai' ? (r.title || 'NHentai #' + r.id) : (r._source === 'eh' ? (r.title || 'E-Hentai #' + r.id) : (r._source.toUpperCase() + ' #' + r.id)),
       _sourceSite: srcSite,
+      _sourceUrl: srcUrl,
       _tagsByCategory: r.tags_by_category || {},
       width: r.width || null,
       height: r.height || null,
@@ -367,6 +566,7 @@ function showLightbox(index) {
       item._mid = r.mid;
       item._numPages = r.pages || 1;
       item._galleryTitle = r.title || '';
+      item._pageUrls = r.page_urls || [];
     } else if (r._source === 'eh') {
       item._gid = r.id;
       item._token = r.token || '';

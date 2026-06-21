@@ -1,5 +1,5 @@
 """Native API backends for Rule34, Danbooru, NHentai."""
-import time, requests
+import time, requests, xml.etree.ElementTree as ET
 
 UA = 'MediaVault/1.0 (mediavault project)'
 API_DELAY = 1.0
@@ -140,56 +140,101 @@ class ApiRawBackend:
         return results
 
     def _fetch_nhentai(self, gid, settings):
-        """NHentai gallery lookup by ID (v2 API)."""
-        api_key = settings.get('credentials', {}).get('nhentai', {}).get('key', '')
+        """NHentai gallery lookup by ID (v2 API). Returns full metadata with categorized tags + page URLs."""
         try:
             r = requests.get(
                 f'https://nhentai.net/api/v2/galleries/{gid}',
-                headers={'Authorization': f'Key {api_key}', 'User-Agent': UA},
+                headers={'User-Agent': UA},
                 timeout=15
             )
             if r.status_code == 200:
                 d = r.json()
                 media_id = d.get('media_id')
+                # Tags with categories
+                tags = d.get('tags', [])
+                tag_artist = []
+                tag_character = []
+                tag_copyright = []
+                tag_general = []
+                tag_language = []
+                tag_category = []
+                flat_tags = []
+                for t in tags:
+                    name = t.get('name', '')
+                    if not name:
+                        continue
+                    flat_tags.append(name)
+                    ttype = t.get('type', '')
+                    if ttype == 'artist':
+                        tag_artist.append(name)
+                    elif ttype == 'character':
+                        tag_character.append(name)
+                    elif ttype == 'parody':
+                        tag_copyright.append(name)
+                    elif ttype == 'language':
+                        tag_language.append(name)
+                    elif ttype == 'category':
+                        tag_category.append(name)
+                    else:
+                        tag_general.append(name)
+                # Page URLs from pages array
+                pages = d.get('pages', [])
+                page_urls = []
+                for p in pages:
+                    path = p.get('path', '')
+                    if path:
+                        page_urls.append(f"https://i.nhentai.net/{path}")
+                # Cover/thumbnail from relative paths
+                cover_path = d.get('cover', {}).get('path', '')
+                thumb_path = d.get('thumbnail', {}).get('path', '')
                 return {
                     'id': d.get('id'),
-                    'title': d.get('title', {}).get('english', ''),
-                    'media_id': media_id,
-                    'tags': [t.get('name', '') for t in d.get('tags', [])],
+                    'title': d.get('title', {}).get('english', '') or d.get('title', {}).get('pretty', ''),
+                    'media_id': str(media_id) if media_id else '',
+                    'tags': flat_tags,
+                    'tag_artist': tag_artist,
+                    'tag_character': tag_character,
+                    'tag_copyright': tag_copyright,
+                    'tag_general': tag_general,
+                    'tag_language': tag_language,
+                    'tag_category': tag_category,
                     'num_pages': d.get('num_pages', 0),
-                    'file_url': f"https://i.nhentai.net/galleries/{media_id}/1.jpg",
-                    'preview_url': f"https://t.nhentai.net/galleries/{media_id}/thumb.jpg",
+                    'file_url': f"https://i.nhentai.net/{cover_path}" if cover_path else '',
+                    'preview_url': f"https://t.nhentai.net/{thumb_path}" if thumb_path else '',
+                    'page_urls': page_urls,
                 }
         except Exception:
             pass
         return {'tags': [], 'file_url': '', 'preview_url': ''}
 
     def _search_nhentai(self, query, page, settings):
-        """NHentai search via v2 JSON API."""
-        api_key = settings.get('credentials', {}).get('nhentai', {}).get('key', '')
+        """NHentai search via v2 JSON API (public, no key needed).
+
+        Search API returns simplified results with relative thumbnail paths.
+        Full metadata (tags, page URLs) requires fetch_gallery per item.
+        """
         import logging as _log
-        _log.getLogger('mediavault').debug('[NHentai] api_raw._search_nhentai: key_exists=%s url=https://nhentai.net/api/v2/search query="%s" page=%d',
-                                            bool(api_key), query, page)
         try:
             r = requests.get(
                 'https://nhentai.net/api/v2/search',
                 params={'query': query, 'page': page, 'sort': 'popular'},
-                headers={'Authorization': f'Key {api_key}', 'User-Agent': UA},
+                headers={'User-Agent': UA},
                 timeout=20
             )
-            _log.getLogger('mediavault').debug('[NHentai] api_raw._search_nhentai: status=%d', r.status_code)
             if r.status_code != 200:
                 return {'results': [], 'total': 0}
             d = r.json()
             results = []
             for g in d.get('result', []):
-                mid = g.get('media_id', '')
+                mid = str(g.get('media_id', '') or '')
+                thumb_rel = g.get('thumbnail', '')
                 results.append({
                     'id': g.get('id'),
-                    'title': g.get('title', {}).get('english', '') or g.get('title', {}).get('japanese', ''),
+                    'title': g.get('english_title', '') or g.get('japanese_title', ''),
                     'mid': mid,
-                    'thumbnail': f"https://t.nhentai.net/galleries/{mid}/thumb.jpg" if mid else '',
-                    'tags': [t.get('name', '') for t in g.get('tags', [])],
+                    'thumbnail': f"https://t.nhentai.net/{thumb_rel}" if thumb_rel else '',
+                    'preview_url': f"https://t.nhentai.net/{thumb_rel}" if thumb_rel else '',
+                    'tags': [],
                     'pages': g.get('num_pages', 0),
                 })
             return {'results': results, 'total': d.get('total', len(results))}
@@ -215,29 +260,29 @@ class ApiRawBackend:
         uid = c.get('uid', '')
         key = c.get('key', '')
         pid = page - 1
-        url = (f'https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1'
+        url = (f'https://api.rule34.xxx/index.php?page=dapi&s=post&q=index'
                f'&tags={requests.utils.quote(query)}&limit=100&pid={pid}')
         if uid and key:
             url += f'&user_id={uid}&api_key={key}'
         try:
             r = requests.get(url, headers={'User-Agent': UA}, timeout=30)
             if r.status_code == 200 and r.text.strip():
-                posts = r.json()
-                if not isinstance(posts, list) or not posts:
-                    return {'results': [], 'total': 0}
+                root = ET.fromstring(r.text)
+                total = int(root.get('count', '0'))
+                posts = root.findall('post')
                 results = []
                 for p in posts:
                     results.append({
-                        'id': str(p.get('id', '')),
-                        'tags': p.get('tags', '').split(),
+                        'id': p.get('id', ''),
+                        'tags': (p.get('tags', '') or '').split(),
                         'file_url': p.get('file_url', ''),
                         'preview_url': p.get('preview_url', ''),
                         'sample_url': p.get('sample_url', ''),
-                        'width': p.get('width', 0),
-                        'height': p.get('height', 0),
+                        'width': int(p.get('width', 0) or 0),
+                        'height': int(p.get('height', 0) or 0),
                         'source': 'rule34',
                     })
-                return {'results': results, 'total': len(results)}
+                return {'results': results, 'total': total}
         except Exception:
             pass
         return {'results': [], 'total': 0}
@@ -257,6 +302,25 @@ class ApiRawBackend:
                 posts = r.json()
                 if not posts:
                     return {'results': [], 'total': 0}
+                # Try x-total-count header; if missing or implausible, use /counts endpoint
+                total = len(posts)
+                hdr = r.headers.get('x-total-count')
+                if hdr and hdr.isdigit() and int(hdr) > total:
+                    total = int(hdr)
+                else:
+                    try:
+                        cr = requests.get(
+                            f'https://danbooru.donmai.us/counts/posts.json?tags={requests.utils.quote(query)}',
+                            headers={'User-Agent': UA}, timeout=10
+                        )
+                        if cr.status_code == 200:
+                            cd = cr.json()
+                            if isinstance(cd, dict) and 'counts' in cd:
+                                total = int(cd['counts'].get('posts', total))
+                            elif isinstance(cd, (int, float)):
+                                total = int(cd)
+                    except Exception:
+                        pass
                 results = []
                 for p in posts:
                     fu = p.get('file_url', '')
@@ -281,7 +345,7 @@ class ApiRawBackend:
                         'height': p.get('image_height', 0),
                         'source': 'danbooru',
                     })
-                return {'results': results, 'total': len(results)}
+                return {'results': results, 'total': total}
         except Exception:
             pass
         return {'results': [], 'total': 0}

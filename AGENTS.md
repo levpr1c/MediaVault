@@ -1,6 +1,6 @@
 # MediaVault
 
-Flask single-file (`src/web_app.py`, 4571 строк, 92 роута, 49 `@admin_required`, 5 `@auth_required`, 70 `@api_error_handler`) + `src/credential_store.py` (122). Три под-приложения: **MV** (`/mediavault/`, read-only), **CM** (`/content-mgmt/`, admin-only), **Admin** (`/admin`).
+Flask single-file (`src/web_app.py`, 4861 строк, 96 роутов, 49 `@admin_required`, 5 `@auth_required`, 70 `@api_error_handler`) + `src/credential_store.py` (122). Три под-приложения: **MV** (`/mediavault/`, read-only), **CM** (`/content-mgmt/`, admin-only), **Admin** (`/admin`).
 
 ## Команды
 

@@ -281,32 +281,66 @@ try {
     onDownload: function(file) {
       var src = file._source || 'unknown';
 
+      function pollTask(taskId, onDone) {
+        var iv = setInterval(function() {
+          fetch('/api/content-search/task/' + taskId)
+            .then(function(r) { return r.json(); })
+            .then(function(status) {
+              if (status.status === 'completed') {
+                clearInterval(iv);
+                onDone(null, status.result);
+              } else if (status.status === 'failed') {
+                clearInterval(iv);
+                onDone(status.message || _t('downloadFailed'));
+              } else if (status.status === 'running' && status.total > 0) {
+                toast(_t('downloadRunning').replace('{p}', status.progress || 0).replace('{t}', status.total), 'info');
+              }
+            }).catch(function() {});
+        }, 2000);
+      }
+
       // NHentai: download ALL pages of the gallery
       if (file._gid && file._mid) {
+        var gid = file._gid;
         var payload = {
           source: 'nhentai',
-          gid: file._gid,
+          gid: gid,
           media_id: file._mid,
           num_pages: file._numPages || 1,
           title: file._galleryTitle || '',
           tags: file.tags || '',
         };
-        fetch('/api/content-search/download-manga', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
-        }).then(function(r) { return r.json(); }).then(function(data) {
-          if (data.error) {
-            var msg = data.message || data.error;
-            toast(msg, 'error');
+
+        // Check if already downloaded
+        var checkUrl = '/api/content-search/check-manga-dir?gid=' + encodeURIComponent(gid) +
+          '&media_id=' + encodeURIComponent(file._mid) +
+          '&title=' + encodeURIComponent(file._galleryTitle || '');
+        fetch(checkUrl).then(function(r) { return r.json(); }).then(function(check) {
+          if (check.error) { toast(check.error, 'error'); return; }
+
+          if (check.exists && !confirm(_t('downloadExists') + '\n' + check.dir + '\n\n' + _t('downloadOverwrite'))) {
+            toast(_t('downloadCancelled'), 'info');
             return;
           }
-          var msg = _t('settingsSaveStart') + ' (' + data.count + ' ' + _t('contentSearchPages') + ')';
-          if (data.comics_id) {
-            msg += ' <a href="/comics/view?id=' + data.comics_id + '" style="color:#fff;text-decoration:underline">' + _t('contentSearchViewComics') + '</a>';
-          }
-          toast(msg, 'success');
-          console.log('[content-search] Downloaded manga:', data.count, 'pages', 'comics_id:', data.comics_id);
+
+          payload.overwrite = check.exists;
+
+          fetch('/api/content-search/download-manga-async', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+          }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.error) { toast(data.error, 'error'); return; }
+            toast(_t('downloadStarted'), 'info');
+            pollTask(data.task_id, function(err, result) {
+              if (err) { toast(err, 'error'); return; }
+              var msg = _t('downloadCompleted').replace('{count}', (result && result.count) || 0);
+              if (result && result.comics_id) {
+                msg += ' <a href="/comics/view?id=' + result.comics_id + '" style="color:#fff;text-decoration:underline">' + _t('contentSearchViewComics') + '</a>';
+              }
+              toast(msg, 'success');
+            });
+          });
         });
         return;
       }
@@ -317,18 +351,17 @@ try {
         tags: file.tags || '',
         tags_by_category: file._tagsByCategory || {}
       };
-      fetch('/api/content-search/download', {
+      fetch('/api/content-search/download-async', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
       }).then(function(r) { return r.json(); }).then(function(data) {
-        if (data.error) {
-          var msg = data.message || data.error;
-          toast(msg, 'error');
-          return;
-        }
-        toast(_t('settingsSaveStart'), 'success');
-        console.log('[content-search] Downloaded:', data.path);
+        if (data.error) { toast(data.error, 'error'); return; }
+        toast(_t('downloadStarted'), 'info');
+        pollTask(data.task_id, function(err, result) {
+          if (err) { toast(err, 'error'); return; }
+          toast(_t('downloadCompleted').replace('{count}', '1'), 'success');
+        });
       });
     },
     onRenderMedia: function(file, media, lb) {

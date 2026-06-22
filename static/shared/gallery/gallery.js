@@ -95,6 +95,7 @@ var MediaVaultGallery = (function() {
         _selectedFolders = ['all'];
       }
     }
+    try { localStorage.setItem('mediavault_folder_filter', _selectedFolders.join(',')); } catch(e) {}
     _currentPage = 1;
     loadGallery();
   }
@@ -775,6 +776,16 @@ var MediaVaultGallery = (function() {
   function init() {
     var isComics = window.CONFIG && CONFIG.subview === 'comics';
     _applyURLParams();
+
+    // Restore folder filter from localStorage (only if URL doesn't override)
+    if (!window.location.search.includes('folder') && !window.location.search.includes('folders')) {
+      try {
+        var saved = localStorage.getItem('mediavault_folder_filter');
+        if (saved) {
+          _selectedFolders = saved === 'all' ? ['all'] : saved.split(',');
+        }
+      } catch(e) {}
+    }
 
     // For comics, clear any stale URL params (pics/page/etc)
     if (isComics) {

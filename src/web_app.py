@@ -155,6 +155,38 @@ def _invalidate_users_cache():
     global _has_users_cached
     _has_users_cached = None
 
+# ── Background download manager ──
+_download_tasks = {}
+_download_tasks_lock = threading.Lock()
+
+def _start_background_task(task_type, fn, *args, **kwargs):
+    task_id = secrets.token_hex(8)
+    with _download_tasks_lock:
+        _download_tasks[task_id] = {
+            'type': task_type, 'status': 'running',
+            'progress': 0, 'total': 0, 'errors': 0,
+            'message': '', 'result_data': None
+        }
+    log_info('[BgTask] start task_id=%s type=%s fn=%s', task_id, task_type, fn.__name__)
+    def _run():
+        try:
+            result = fn(*args, **kwargs)
+            if isinstance(result, tuple):
+                result = result[0]
+            with _download_tasks_lock:
+                t = _download_tasks[task_id]
+                t['status'] = 'completed'
+                t['result_data'] = result if isinstance(result, dict) else None
+            log_info('[BgTask] completed task_id=%s type=%s', task_id, task_type)
+        except Exception as e:
+            with _download_tasks_lock:
+                t = _download_tasks.get(task_id, {})
+                t['status'] = 'failed'
+                t['message'] = str(e)
+            log_error('[BgTask] FAILED task_id=%s type=%s: %s', task_id, task_type, e)
+    threading.Thread(target=_run, daemon=True).start()
+    return task_id
+
 # ── i18n ──
 LOCALE = {
     'en': {
@@ -270,6 +302,13 @@ LOCALE = {
         'contentSearchDownload': 'Download from {site}',
         'contentSearchPages': 'pages',
         'contentSearchViewComics': 'View Comics',
+        'downloadStarted': 'Download started',
+        'downloadRunning': 'Downloading… {p}/{t}',
+        'downloadCompleted': 'Download complete ({count} files)',
+        'downloadFailed': 'Download failed',
+        'downloadExists': 'This manga was already downloaded.',
+        'downloadOverwrite': 'Download again? Existing files will be replaced.',
+        'downloadCancelled': 'Download cancelled',
         'contentSearchNhWarning': 'NHentai API key is not configured — search may fail.',
         'settingsDownloadsDir': 'Downloads folder',
         'settingsCreateFolders': 'Create folders',
@@ -277,6 +316,8 @@ LOCALE = {
         'settingsFoldersExist': 'Already exist',
         'settingsMountOk': 'Storage is ready',
         'settingsMountFail': 'Storage is empty or not mounted',
+        'settingsDefaultFolderFilter': 'Default folder filter',
+        'settingsFolderFilterDesc': 'Choose which folders to show by default in the gallery. Uncheck all for All.',
         # ── Home page ──
         'cmHeader': 'CONTENT MANAGEMENT',
         'cmDesc': 'Manage tags, categories, and comics',
@@ -508,6 +549,13 @@ LOCALE = {
         'contentSearchDownload': 'Скачать с {site}',
         'contentSearchPages': 'страниц',
         'contentSearchViewComics': 'Открыть комикс',
+        'downloadStarted': 'Загрузка начата',
+        'downloadRunning': 'Загрузка… {p}/{t}',
+        'downloadCompleted': 'Загрузка завершена ({count} файлов)',
+        'downloadFailed': 'Ошибка загрузки',
+        'downloadExists': 'Эта манга уже была скачана.',
+        'downloadOverwrite': 'Скачать заново? Существующие файлы будут заменены.',
+        'downloadCancelled': 'Загрузка отменена',
         'contentSearchNhWarning': 'API-ключ NHentai не настроен — поиск может не работать.',
         'settingsDownloadsDir': 'Папка загрузок',
         'settingsCreateFolders': 'Создать папки',
@@ -515,6 +563,8 @@ LOCALE = {
         'settingsFoldersExist': 'Уже существуют',
         'settingsMountOk': 'Накопитель в порядке',
         'settingsMountFail': 'Накопитель не подключён или пуст',
+        'settingsDefaultFolderFilter': 'Фильтр папок по умолчанию',
+        'settingsFolderFilterDesc': 'Выберите какие папки показывать в галерее по умолчанию. Снимите все для All.',
         # ── Home page ──
         'cmHeader': 'УПРАВЛЕНИЕ КОНТЕНТОМ',
         'cmDesc': 'Управление тегами, категориями и комиксами',
@@ -1990,6 +2040,46 @@ def api_content_search_download():
 
     return jsonify({'path': target_path, 'exists': not was_downloaded, 'tags_saved': bool(tags_str)})
 
+@app.route('/api/content-search/check-manga-dir')
+@auth_required
+@api_error_handler
+def api_content_search_check_manga_dir():
+    """Check if a manga folder already exists for this gid."""
+    gid = request.args.get('gid', '').strip()
+    media_id = request.args.get('media_id', '').strip()
+    title = request.args.get('title', '').strip()
+    if not gid:
+        return jsonify({'error': 'Missing gid'}), 400
+
+    import re
+    s = load_settings()
+    media_dir = s.get('media_dir', '')
+    dl_dir = s.get('downloads_dir', 'Downloads')
+    folder_name = str(gid)
+    if title:
+        safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')[:80]
+        if safe_title:
+            folder_name = safe_title + '_' + str(gid)
+    target_dir = os.path.join(media_dir, dl_dir, 'nhentai', folder_name) if media_dir else ''
+    dir_exists = bool(target_dir and os.path.isdir(target_dir) and os.listdir(target_dir))
+
+    existing_comics = None
+    try:
+        db = _db_conn()
+        row = db.execute('SELECT id, title FROM comics WHERE source=? AND source_id=?',
+                         ['nhentai', str(gid)]).fetchone()
+        if row:
+            existing_comics = {'id': row['id'], 'title': row['title']}
+        db.close()
+    except Exception:
+        pass
+
+    return jsonify({
+        'exists': dir_exists,
+        'dir': target_dir if media_dir else '',
+        'comics': existing_comics
+    })
+
 
 @app.route('/api/content-search/download-manga', methods=['POST'])
 @auth_required
@@ -2031,7 +2121,6 @@ def api_content_search_download_manga():
         os.makedirs(target_dir, exist_ok=True)
     except Exception as e:
         return jsonify({'error': 'Cannot create directory: ' + str(e)}), 500
-
     import requests as req_lib
 
     _ensure_db_schema()
@@ -2039,49 +2128,64 @@ def api_content_search_download_manga():
     cd = settings.get('comics_dir', 'Comics')
     dd = settings.get('downloads_dir', 'Downloads')
 
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    # ── Fetch gallery info for correct page extensions ──
+    page_urls = []
+    try:
+        r = req_lib.get(f'https://nhentai.net/api/v2/galleries/{gid}',
+                        headers={'User-Agent': 'MediaVault/1.0 (mediavault project)'}, timeout=15)
+        if r.status_code == 200:
+            d = r.json()
+            pages = d.get('pages', [])
+            for i, pg in enumerate(pages, 1):
+                path = pg.get('path', '')
+                if path:
+                    page_urls.append(f"https://i.nhentai.net/{path}")
+    except Exception:
+        pass
+
+    if not page_urls:
+        # Fallback: .jpg only (most common)
+        for i in range(1, num_pages + 1):
+            page_urls.append(f"https://i.nhentai.net/galleries/{media_id}/{i}.jpg")
+
     log_info('[ContentSearch] Manga start: gid=%s title="%s" pages=%d dir=%s',
-             gid, title or '(no title)', num_pages, target_dir)
+             gid, title or '(no title)', len(page_urls), target_dir)
 
-    count = 0
+    # ── Download pages concurrently ──
+    def _dl_page(url, path):
+        r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
+        r.raise_for_status()
+        with open(path, 'wb') as f:
+            f.write(r.content)
+
+    downloaded = {}
     errors = 0
-    base_url = 'https://i.nhentai.net/galleries/' + str(media_id)
-
-    for n in range(1, num_pages + 1):
-        # Try .webp first (new galleries), fallback to .jpg (older ones)
-        exts = ['webp', 'jpg']
-        downloaded = False
-        for ext in exts:
-            page_url = base_url + '/' + str(n) + '.' + ext
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futs = {}
+        for n, url in enumerate(page_urls, 1):
+            ext = url.rsplit('.', 1)[-1]
             filename = str(n) + '.' + ext
             target_path = os.path.join(target_dir, filename)
-
             if os.path.exists(target_path):
-                log_debug('[ContentSearch] manga page %d/%d: already exists', n, num_pages)
-                count += 1
-                downloaded = True
-                break
-
-            log_info('[ContentSearch] manga page %d/%d: trying %s', n, num_pages, page_url)
-
-            try:
-                r = req_lib.get(page_url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
-                r.raise_for_status()
-                with open(target_path, 'wb') as f:
-                    f.write(r.content)
-                downloaded = True
-                break
-            except Exception:
+                downloaded[n] = (target_path, filename, ext)
                 continue
-        if not downloaded:
-            log_error('[ContentSearch] manga page %d/%d FAILED (tried webp+jpg)', n, num_pages)
-            errors += 1
-            continue
+            futs[pool.submit(_dl_page, url, target_path)] = (n, filename, ext)
 
-        # Read filename/target_path from the last successful download
-        filename = str(n) + '.' + ext
-        target_path = os.path.join(target_dir, filename)
+        for f in as_completed(futs):
+            n, filename, ext = futs[f]
+            try:
+                f.result()
+                downloaded[n] = (os.path.join(target_dir, filename), filename, ext)
+            except Exception as e:
+                log_error('[ContentSearch] manga page %d FAILED: %s', n, e)
+                errors += 1
 
-        # Index in DB with gallery tags
+    # ── Index in DB ──
+    count = 0
+    for n in sorted(downloaded):
+        target_path, filename, ext = downloaded[n]
         rel_path = os.path.relpath(target_path, media_dir)
         ftype = 'image'
         auto_tags = _get_auto_tags(target_path)
@@ -2092,6 +2196,7 @@ def api_content_search_download_manga():
                 auto_set.add(t)
         stat = os.stat(target_path)
         w, h = _get_image_dimensions(target_path)
+
         ar_tag = _get_aspect_ratio_tag(w, h) if w and h else ''
         if ar_tag:
             auto_set.add(ar_tag)
@@ -2100,7 +2205,7 @@ def api_content_search_download_manga():
         folder_type = {gd: 'gallery', cd: 'comics', dd: 'downloads'}.get(first_dir, 'gallery')
 
         log_info('[ContentSearch] manga page %d/%d: OK %dx%d %.1fKB tags=%d',
-                 n, num_pages, w, h, stat.st_size / 1024, len(auto_set))
+                 n, len(page_urls), w, h, stat.st_size / 1024, len(auto_set))
 
         existing = find_file_in_db(rel_path)
         db = _db_conn()
@@ -2128,27 +2233,332 @@ def api_content_search_download_manga():
     if count > 0:
         try:
             db = _db_conn()
-            pages_rel = sorted(
-                os.path.relpath(os.path.join(target_dir, f), media_dir)
-                for f in os.listdir(target_dir)
-                if os.path.isfile(os.path.join(target_dir, f))
-            )
-            pages_rel.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
-            comics_title = title or 'NHentai #' + str(gid)
-            cover = pages_rel[0] if pages_rel else None
-            c = db.execute('INSERT INTO comics (title, cover_path, source, source_id) VALUES (?, ?, ?, ?)',
-                           [comics_title, cover, 'nhentai', str(gid)])
-            comics_id = c.lastrowid
-            for i, p in enumerate(pages_rel):
-                db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)',
-                           [comics_id, i + 1, p])
-            db.commit()
-            db.close()
-            log_info('[ContentSearch] Comics auto-created: id=%d title="%s" pages=%d', comics_id, comics_title, len(pages_rel))
+            existing = db.execute('SELECT id FROM comics WHERE source=? AND source_id=?',
+                                  ['nhentai', str(gid)]).fetchone()
+            if existing:
+                comics_id = existing['id']
+                log_info('[ContentSearch] manga gid=%s: comics already exists id=%d, skipping', gid, comics_id)
+                db.close()
+            else:
+                pages_rel = sorted(
+                    os.path.relpath(os.path.join(target_dir, f), media_dir)
+                    for f in os.listdir(target_dir)
+                    if os.path.isfile(os.path.join(target_dir, f))
+                )
+                pages_rel.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                comics_title = title or 'NHentai #' + str(gid)
+                cover = pages_rel[0] if pages_rel else None
+                c = db.execute('INSERT INTO comics (title, cover_path, source, source_id) VALUES (?, ?, ?, ?)',
+                               [comics_title, cover, 'nhentai', str(gid)])
+                comics_id = c.lastrowid
+                for i, p in enumerate(pages_rel):
+                    db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)',
+                               [comics_id, i + 1, p])
+                db.commit()
+                db.close()
+                log_info('[ContentSearch] Comics auto-created: id=%d title="%s" pages=%d', comics_id, comics_title, len(pages_rel))
         except Exception as e:
             log_error('[ContentSearch] Comics auto-create failed: %s', e)
 
     return jsonify({'ok': True, 'count': count, 'errors': errors, 'dir': target_dir, 'comics_id': comics_id})
+
+# ── Background download wrappers ──
+
+def _bg_download_file(url, source, tags_str, tags_by_category):
+    """Download helper that returns dict or raises on error."""
+    import re
+    s = load_settings()
+    media_dir = s.get('media_dir', '')
+    if not media_dir:
+        raise ValueError('Media directory not configured')
+    if not os.path.isdir(media_dir) or not os.listdir(media_dir):
+        raise ValueError('storage_empty')
+    if not re.match(r'^[a-zA-Z0-9]+$', source):
+        raise ValueError('Invalid source name')
+
+    _SOURCE_FOLDER = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'eh': 'ehentai'}
+    source = _SOURCE_FOLDER.get(source, source.lower())
+    dl_dir = s.get('downloads_dir', 'Downloads')
+    target_dir = os.path.join(media_dir, dl_dir, source)
+    os.makedirs(target_dir, exist_ok=True)
+
+    from urllib.parse import urlparse
+    import requests as req_lib
+    filename = os.path.basename(urlparse(url).path) or 'download'
+    filename = os.path.basename(filename)
+    target_path = os.path.join(target_dir, filename)
+
+    was_downloaded = False
+    if not os.path.exists(target_path):
+        r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=60, stream=True)
+        r.raise_for_status()
+        with open(target_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+        was_downloaded = True
+
+    _ensure_db_schema()
+    if tags_str:
+        rel_path = os.path.relpath(target_path, media_dir)
+        existing = find_file_in_db(rel_path)
+        ext = os.path.splitext(target_path)[1].lower()
+        ftype = _get_file_type(ext)
+        auto_tags = _get_auto_tags(target_path)
+        auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
+        for t in tags_str.split(','):
+            t = t.strip()
+            if t:
+                auto_set.add(t)
+        stat = os.stat(target_path)
+        width = height = 0
+        if ftype == 'image':
+            width, height = _get_image_dimensions(target_path)
+        ar_tag = _get_aspect_ratio_tag(width, height) if width and height else ''
+        if ar_tag:
+            auto_set.add(ar_tag)
+        merged = ','.join(sorted(auto_set))
+        gd = s.get('gallery_dir', 'Gallery')
+        cd = s.get('comics_dir', 'Comics')
+        dd = s.get('downloads_dir', 'Downloads')
+        first_dir = rel_path.split('/')[0] if '/' in rel_path else ''
+        folder_type = {gd: 'gallery', cd: 'comics', dd: 'downloads'}.get(first_dir, 'gallery')
+        db = _db_conn()
+        if existing:
+            existing_tags = existing['tags'] or ''
+            existing_set = set(t.strip() for t in existing_tags.split(',') if t.strip())
+            existing_set.update(auto_set)
+            merged = ','.join(sorted(existing_set))
+            db.execute('UPDATE files SET tags=?, width=?, height=?, mtime=? WHERE path=?',
+                       [merged, width or existing.get('width', 0), height or existing.get('height', 0),
+                        int(os.path.getmtime(target_path)), rel_path])
+        else:
+            db.execute(
+                'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                [rel_path, os.path.basename(rel_path), ftype, stat.st_size, int(stat.st_mtime), merged, width, height,
+                 int(time.time()), folder_type])
+        db.commit()
+        db.close()
+
+    if tags_by_category and source.lower() in ('danbooru', 'dan'):
+        dr = {}
+        for sc, tl in tags_by_category.items():
+            if isinstance(tl, list):
+                dr['tag_' + sc] = tl
+        _ensure_categories(dr)
+
+    return {'path': target_path, 'exists': not was_downloaded, 'tags_saved': bool(tags_str)}
+
+def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=False):
+    """Download helper for manga that returns dict or raises on error."""
+    import re
+    s = load_settings()
+    media_dir = s.get('media_dir', '')
+    if not media_dir:
+        raise ValueError('Media directory not configured')
+    if not os.path.isdir(media_dir) or not os.listdir(media_dir):
+        raise ValueError('storage_empty')
+
+    dl_dir = s.get('downloads_dir', 'Downloads')
+    folder_name = str(gid)
+    if title:
+        safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')[:80]
+        if safe_title:
+            folder_name = safe_title + '_' + str(gid)
+    target_dir = os.path.join(media_dir, dl_dir, 'nhentai', folder_name)
+
+    # If overwrite requested, delete existing files
+    if overwrite and os.path.isdir(target_dir):
+        for f in os.listdir(target_dir):
+            fp = os.path.join(target_dir, f)
+            try:
+                if os.path.isfile(fp):
+                    os.remove(fp)
+            except Exception:
+                pass
+        log_info('[BgTask] manga gid=%s: cleared existing files for re-download', gid)
+
+    os.makedirs(target_dir, exist_ok=True)
+
+    import requests as req_lib
+    _ensure_db_schema()
+    gd = s.get('gallery_dir', 'Gallery')
+    cd = s.get('comics_dir', 'Comics')
+    dd = s.get('downloads_dir', 'Downloads')
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    page_urls = []
+    try:
+        r = req_lib.get(f'https://nhentai.net/api/v2/galleries/{gid}',
+                        headers={'User-Agent': 'MediaVault/1.0 (mediavault project)'}, timeout=15)
+        if r.status_code == 200:
+            d = r.json()
+            pages = d.get('pages', [])
+            for i, pg in enumerate(pages, 1):
+                path = pg.get('path', '')
+                if path:
+                    page_urls.append(f"https://i.nhentai.net/{path}")
+    except Exception:
+        pass
+    if not page_urls:
+        for i in range(1, num_pages + 1):
+            page_urls.append(f"https://i.nhentai.net/galleries/{media_id}/{i}.jpg")
+
+    def _dl(url, path):
+        r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
+        r.raise_for_status()
+        with open(path, 'wb') as f:
+            f.write(r.content)
+
+    downloaded = {}
+    errors = 0
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futs = {}
+        for n, url in enumerate(page_urls, 1):
+            ext = url.rsplit('.', 1)[-1]
+            filename = str(n) + '.' + ext
+            target_path = os.path.join(target_dir, filename)
+            if os.path.exists(target_path):
+                downloaded[n] = (target_path, filename, ext)
+                continue
+            futs[pool.submit(_dl, url, target_path)] = (n, filename, ext)
+        total_pages = len(page_urls)
+        for f in as_completed(futs):
+            n, filename, ext = futs[f]
+            try:
+                f.result()
+                downloaded[n] = (os.path.join(target_dir, filename), filename, ext)
+                done = len(downloaded)
+                log_info('[BgTask] manga gid=%s: page %d/%d downloaded (%d/%d)',
+                         gid, n, total_pages, done, total_pages)
+            except Exception as e:
+                log_error('[BgTask] manga gid=%s: page %d FAILED: %s', gid, n, e)
+                errors += 1
+
+    count = 0
+    log_info('[BgTask] manga gid=%s: saving %d pages to DB...', gid, len(downloaded))
+    for n in sorted(downloaded):
+        target_path, filename, ext = downloaded[n]
+        rel_path = os.path.relpath(target_path, media_dir)
+        ftype = 'image'
+        auto_tags = _get_auto_tags(target_path)
+        auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
+        for t in tags_str.split(','):
+            t = t.strip()
+            if t:
+                auto_set.add(t)
+        stat = os.stat(target_path)
+        w, h = _get_image_dimensions(target_path)
+        ar_tag = _get_aspect_ratio_tag(w, h) if w and h else ''
+        if ar_tag:
+            auto_set.add(ar_tag)
+        merged = ','.join(sorted(auto_set))
+        first_dir = rel_path.split('/')[0] if '/' in rel_path else ''
+        folder_type = {gd: 'gallery', cd: 'comics', dd: 'downloads'}.get(first_dir, 'gallery')
+        existing = find_file_in_db(rel_path)
+        db = _db_conn()
+        if existing:
+            existing_tags = existing['tags'] or ''
+            existing_set = set(t.strip() for t in existing_tags.split(',') if t.strip())
+            existing_set.update(auto_set)
+            merged = ','.join(sorted(existing_set))
+            db.execute('UPDATE files SET tags=?, width=?, height=? WHERE path=?',
+                       [merged, w or existing.get('width', 0), h or existing.get('height', 0), rel_path])
+        else:
+            db.execute(
+                'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                [rel_path, filename, ftype, stat.st_size, int(stat.st_mtime), merged, w, h,
+                 int(time.time()), folder_type])
+        db.commit()
+        db.close()
+        count += 1
+
+    comics_id = None
+    if count > 0:
+        try:
+            db = _db_conn()
+            # Check if comics already exists for this source_id
+            existing = db.execute('SELECT id FROM comics WHERE source=? AND source_id=?',
+                                  ['nhentai', str(gid)]).fetchone()
+            if existing:
+                comics_id = existing['id']
+                log_info('[BgTask] manga gid=%s: comics already exists id=%d, skipping', gid, comics_id)
+                db.close()
+            else:
+                comics_title = title or 'NHentai #' + str(gid)
+                pages_rel = sorted(
+                    os.path.relpath(os.path.join(target_dir, f), media_dir)
+                    for f in os.listdir(target_dir)
+                    if os.path.isfile(os.path.join(target_dir, f))
+                )
+                pages_rel.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                cover = pages_rel[0] if pages_rel else None
+                c = db.execute('INSERT INTO comics (title, cover_path, source, source_id) VALUES (?, ?, ?, ?)',
+                               [comics_title, cover, 'nhentai', str(gid)])
+                comics_id = c.lastrowid
+                for i, p in enumerate(pages_rel):
+                    db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)',
+                               [comics_id, i + 1, p])
+                db.commit()
+                log_info('[BgTask] manga gid=%s: comics created id=%d title="%s" pages=%d',
+                         gid, comics_id, comics_title, len(pages_rel))
+        except Exception as e:
+            log_error('[BgTask] Comics auto-create failed for gid=%s: %s', gid, e)
+
+    return {'ok': True, 'count': count, 'errors': errors, 'dir': target_dir, 'comics_id': comics_id}
+
+@app.route('/api/content-search/download-async', methods=['POST'])
+@auth_required
+@api_error_handler
+def api_content_search_download_async():
+    """Start a single-file download in background. Returns task_id immediately."""
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'no data'}), 400
+    url = (data.get('url') or '').strip()
+    source = (data.get('source') or '').strip()
+    tags_str = (data.get('tags') or '').strip()
+    tags_by_category = data.get('tags_by_category') or {}
+    if not url or not source:
+        return jsonify({'error': 'Missing url or source'}), 400
+
+    task_id = _start_background_task('single', _bg_download_file, url, source, tags_str, tags_by_category)
+    return jsonify({'task_id': task_id})
+
+@app.route('/api/content-search/download-manga-async', methods=['POST'])
+@auth_required
+@api_error_handler
+def api_content_search_download_manga_async():
+    """Start a manga download in background. Returns task_id immediately."""
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'no data'}), 400
+    gid = data.get('gid')
+    media_id = data.get('media_id')
+    num_pages = int(data.get('num_pages') or 1)
+    title = (data.get('title') or '').strip()
+    tags_str = (data.get('tags') or '').strip()
+    overwrite = data.get('overwrite') is True
+    if not gid or not media_id:
+        return jsonify({'error': 'Missing gid or media_id'}), 400
+
+    task_id = _start_background_task('manga', _bg_download_manga, gid, media_id, num_pages, title, tags_str, overwrite)
+    return jsonify({'task_id': task_id})
+
+@app.route('/api/content-search/task/<task_id>')
+@auth_required
+@api_error_handler
+def api_content_search_task_status(task_id):
+    """Return status of a background download task."""
+    with _download_tasks_lock:
+        t = _download_tasks.get(task_id)
+        if not t:
+            return jsonify({'error': 'task not found'}), 404
+        return jsonify({
+            'type': t['type'], 'status': t['status'],
+            'progress': t['progress'], 'total': t['total'], 'errors': t['errors'],
+            'message': t.get('message', ''),
+            'result': t.get('result_data')
+        })
 
 @app.route('/api/content-search/mount-check')
 @auth_required

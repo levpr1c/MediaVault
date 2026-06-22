@@ -920,3 +920,39 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 - [ ] Not duplicated in Folders card
 
 ---
+
+## v1.1.2 — Background downloads, NHentai v2, overwrite support, folder filter
+
+### Added
+- **Background download system**: Async endpoints (`/download-async`, `/download-manga-async`) return task_id immediately; frontend polls `GET /task/<id>` every 2s until completed/failed
+- **NHentai v2 API**: Uses `api/v2/galleries/{gid}` for correct page extensions (jpg/png/webp) instead of guessing `.webp`→`.jpg`
+- **Concurrent page download**: `ThreadPoolExecutor(max_workers=4)` for parallel manga download
+- **Overwrite re-download**: `overwrite=True` deletes existing files before re-download; frontend shows `confirm()` dialog via `check-manga-dir` endpoint
+- **Comics dedup**: `source_id` check before creating comics entry — if already exists, reuses existing `comics_id`
+- **Gallery default folder filter**: `localStorage['mediavault_folder_filter']` — per-user, applied at gallery init
+- **Settings UI**: "Фильтр папок по умолчанию" checkboxes (Gallery/Comics/DL) in Appearance tab
+- **BgTask logging**: Per-page progress logs (`[BgTask] manga gid=X: page N/M downloaded (K/M)`)
+- **i18n**: 11 new keys: downloadStarted/Running/Completed/Failed/Exists/Overwrite/Cancelled, settingsDefaultFolderFilter, settingsFolderFilterDesc
+
+### Changed
+- `content-search.js`: Download flow uses async endpoint + polling instead of blocking
+- `gallery.js`: `init()` reads `mediavault_folder_filter`, `_toggleFolder()` saves it
+- `settings.html`: New folder filter UI in Appearance tab
+- `utils.js`: `_i18nData` updated with 11 new keys
+
+### Testing checklist
+- [ ] Manga download with v2 API (check correct extensions)
+- [ ] Background task survives page navigation
+- [ ] Polling toast shows progress
+- [ ] Overwrite confirm dialog appears for existing manga
+- [ ] Gallery remembers folder filter across page reloads
+- [ ] Settings folder filter checkboxes save to localStorage
+
+### Checklist
+- [x] Py compile
+- [x] JS syntax check
+- [x] Locale parity (8 pre-existing failures remain)
+- [x] CSS valid
+- [x] Binary built (v1.1.2)
+
+---

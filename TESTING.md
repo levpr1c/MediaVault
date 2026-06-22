@@ -6,133 +6,138 @@
 ## Условные обозначения
 - `[ ]` — manual test (unchecked)
 - `[x]` — manual test (passed)
-- `A[ ]` — автоматический тест (test.py)
+
 
 ## 1. Автоматические тесты (test.py)
 
-- A[] `venv/bin/python test.py` — полный прогон: py + js + locale + dead + func
-- A[ ] `--check py` — Python syntax (2 файла)
-- A[ ] `--check js` — JS syntax (33 модуля)
-- A[ ] `--check css` — CSS непустые (8 файлов)
-- A[ ] `--check locale` — i18n parity en↔ru, JS sync, дубликаты
-- A[ ] `--check dead` — мёртвый код (AST Python + regex JS)
-- A[ ] `--check func` — хелперы (_has_non_meta_tags и др.)
-- A[ ] `--check smoke` — Flask старт + /login 200 + /api/gallery 401
-- A[ ] 42 теста passed
-- A[ ] 6 pre-existing failures (не связаны с сессией)
+- [x] `venv/bin/python test.py` — полный прогон: py + js + locale + dead + func
+- [x] `--check py` — Python syntax (2 файла)
+- [x] `--check js` — JS syntax (33 модуля)
+- [x] `--check css` — CSS непустые (8 файлов)
+- [x] `--check locale` — i18n parity en↔ru, JS sync, дубликаты
+- [x] `--check dead` — мёртвый код (AST Python + regex JS)
+- [x] `--check func` — хелперы (_has_non_meta_tags и др.)
+- [x] `--check smoke` — Flask старт + /login 200 + /api/gallery 401
+- [x] 42 теста passed
+- [x] 6 pre-existing failures (не связаны с сессией)
 
 ## 2. Авторизация и доступ
 
-- [ ] `/login` — форма входа отображается
-- [ ] Login с валидными кредами → редирект
-- [ ] Login с невалидными → ошибка
-- [ ] Logout
-- [ ] Доступ без авторизации → 401/редирект
-- [ ] `/admin` недоступен без admin-роли
-- [ ] `/content-mgmt/*` недоступен без auth
+- [x] `/login` — форма входа отображается
+- [x] Login с валидными кредами → редирект
+- [x] Login с невалидными → ошибка
+- [x] Logout
+- [x] Доступ без авторизации → 401/редирект
+- [x] `/admin` недоступен без admin-роли
+- [x] `/content-mgmt/*` недоступен без auth
 - [ ] 403 JSON при отсутствии admin-роли
 - [ ] 401 JSON при отсутствии auth
+вот эти пункты проверь сам плиз
 
 ## 3. Gallery (MV)
 
-- [ ] `/mediavault/gallery` — загружается
-- [ ] Файлы отображаются в сетке
-- [ ] Фильтр по типу (images/video/audio/other) — работает
-- [ ] Сортировка (по имени/дате/размеру)
-- [ ] Переключение layout (grid/list/compact)
-- [ ] Folder filter: переключение All/Gallery/Comics/DL
+- [x] `/mediavault/gallery` — загружается
+- [x] Файлы отображаются в сетке
+- [x] Фильтр по типу (images/video/audio/other) — работает
+- [x] Сортировка (по имени/дате/размеру)
+- [x] Переключение layout (grid/list/compact)
+- [x] Folder filter: переключение All/Gallery/Comics/DL
 - [ ] Folder filter: сохраняется в localStorage (mediavault_folder_filter)
 - [ ] Folder filter: применяется при загрузке галереи
 - [ ] Пагинация (page_size из localStorage)
-- [ ] Поиск по тегам
-- [ ] gallery.html — нет inline `style=""` на sidebar элементах
-- [ ] view.html — нет emoji, все иконки SVG
+- [x] Поиск по тегам
+- [ ] gallery.html — нет inline `style=""` на sidebar элементах я не ебу что это
+- [x] view.html — нет emoji, все иконки SVG
+http://127.0.0.1:5050/mediavault/gallery?pics=30  мобильный грди сломан. он масонори да, но падинг между карточками огронмый. там на 1-2 фокти ещё место есть
 
-## 4. Lightbox
+я логинился за user и понял, что надо добавить на главную страниуц 3 карточку - 
+CONTENT MANAGEMENT, но с 2 кнопками. searcch + auto tagfetch. для user поменять хеддер для pc и мобыли. (для admin расширенный)  
+## 4. Lightbox 
 
-- [ ] Клик по файлу → lightbox открывается
-- [ ] Теги отображаются
-- [ ] Навигация prev/next (клавиши + кнопки)
-- [ ] Close (кнопка + Escape)
-- [ ] Close без предшествующего open() — не падает (guard в Lightbox.close() на null)
-- [ ] Видео-файлы корректно отображаются
-- [ ] При навигации теги обновляются
-- [ ] "Open source" button: для NHentai → nhentai.net/g/{id}/
-- [ ] "Open source" button: для Danbooru → danbooru.donmai.us/posts/{id}
-- [ ] "Open source" button: для Rule34 → rule34.xxx/index.php?page=post&s=view&id={id}
-- [ ] "Open source" button: для MV gallery → fallback на standalone view
-- [ ] Download label: content-search shows "Download from {site}"
-- [ ] Download label: MV gallery shows `⬇` without label
-- [ ] Download label: LabelFn works as option in Lightbox constructor
+- [x] Клик по файлу → lightbox открывается
+- [x] Теги отображаются
+- [ ] Навигация prev/next (клавиши + кнопки) вот ты замени зоны переключения в лайтбоксе на стелочки, в view mode оставь зоны.
+- [x] Close (кнопка + Escape)
+- [ ] Close без предшествующего open() — не падает (guard в Lightbox.close() на null) это как...
+- [x] Видео-файлы корректно отображаются
+- [ ] При навигации теги обновляются 
+- [x] "Open source" button: для NHentai → nhentai.net/g/{id}/
+- [x] "Open source" button: для Danbooru → danbooru.donmai.us/posts/{id}
+- [x] "Open source" button: для Rule34 → rule34.xxx/index.php?page=post&s=view&id={id}
+- [x] "Open source" button: для MV gallery → fallback на standalone view
+- [x] Download label: content-search shows "Download from {site}"
+- [x] Download label: MV gallery shows `⬇` without label
+- [x] Download label: LabelFn works as option in Lightbox constructor
 
 ## 5. Tagfetch (CM)
 
 ### 5.1 Tags Manual
 
-- [ ] `/content-mgmt/tags-manual` — загружается
-- [ ] Поиск по имени файла
-- [ ] Drag-to-tag работает
-- [ ] Source присваивается правильно (site name / auto / manual)
-- [ ] Layout — `.tf-layout` использует `display:flex` (aside + main)
+- [x] `/content-mgmt/tags-manual` — загружается
+- [x] Поиск по имени файла
+- [ ] Drag-to-tag работает на тегс манула нету дрга дропа
+- [x] Source присваивается правильно (site name / auto / manual)
+- [ ] Layout — `.tf-layout` использует `display:flex` (aside + main) хз мб
 
 ### 5.2 Tags Auto
 
-- [ ] `/content-mgmt/tags-auto` — загружается
-- [ ] Сканирование файлов
-- [ ] Drag-to-tag работает
-- [ ] Прогресс отображается
-- [ ] AI Filter (исключение AI-generated)
+- [x] `/content-mgmt/tags-auto` — загружается
+- [x] Сканирование файлов
+- [ ] Drag-to-tag работает нету буквально как на тегс манула, этого не должно быть
+- [x] Прогресс отображается
+- [ ] AI Filter (исключение AI-generated) не надо просто
 
 ## 6. Content Management (CM)
 
 ### 6.1 Content Search
 
 - [ ] Поиск по query
-- [ ] Результаты от Rule34, Danbooru, NHentai (в зависимости от site selection)
-- [ ] Скелетоны при загрузке
-- [ ] Error state: сообщение при ошибке API (res.ok проверка)
-- [ ] Пустой поиск — соответствующее сообщение
-- [ ] Спецсимволы в поиске (Unicode, HTML entities)
-- [ ] Content-search использует CM header (условие: request.path == '/content-search')
-- [ ] Lightbox try-catch: new Lightbox() обёрнут — ошибка не блокирует поиск
-- [ ] Shared.applyI18n() guard — не падает если Shared не определён
+- [x] Результаты от Rule34, Danbooru, NHentai (в зависимости от site selection)
+- [x] Скелетоны при загрузке
+- [ ] Error state: сообщение при ошибке API (res.ok проверка) это чё
+- [ ] Пустой поиск — соответствующее сообщение при нажати на search в хедере не работает переход на поиск, а блять работает, только на images + comics, я то думал там будет чисто одна кнопка. ты добавь перевод кнопко на русский язык, если нету.
+- [ ] Спецсимволы в поиске (Unicode, HTML entities) это чо
+- [x] Content-search использует CM header (условие: request.path == '/content-search')
+- [x] Lightbox try-catch: new Lightbox() обёрнут — ошибка не блокирует поиск
+- [x] Shared.applyI18n() guard — не падает если Shared не определён
 - [ ] `tags_by_category` в API response для Danbooru результатов
-- [ ] Lightbox показывает color-coded tags (Artist=red, Character=green, Copyright=blue, General=grey, Meta=dark grey)
-- [ ] Danbooru результаты имеют artist/character/copyright/general/meta категории
-- [ ] Rule34 результаты — uncategorized (без категорий)
-- [ ] AI filter checkbox виден
-- [ ] AI filter checked → Rule34 исключает AI-контент (-ai_generated -ai -ai_assisted)
-- [ ] AI filter unchecked → все Rule34 результаты
-- [ ] AI filter: Danbooru/NHentai не меняются при включении
-- [ ] NHentai галерея открывается в lightbox с 2-page spreads
-- [ ] Навигация стрелками (spreads) и PgUp/PgDn
-- [ ] Lazy load — подгрузка страниц при достижении конца
-- [ ] Счётчик страниц корректный ("1-2 / 200")
+- [x] Lightbox показывает color-coded tags (Artist=red, Character=green, Copyright=blue, General=grey, Meta=dark grey)
+- [x] Danbooru результаты имеют artist/character/copyright/general/meta категории
+- [x] Rule34 результаты — uncategorized (без категорий)
+- [x] AI filter checkbox виден
+- [x] AI filter checked → Rule34 исключает AI-контент (-ai_generated -ai -ai_assisted)
+- [x] AI filter unchecked → все Rule34 результаты
+- [x] AI filter: Danbooru/NHentai не меняются при включении
+- [x] NHentai галерея открывается в lightbox с 2-page spreads
+- [x] Навигация стрелками (spreads) и PgUp/PgDn
+- [x] Lazy load — подгрузка страниц при достижении конца
+- [x] Счётчик страниц корректный ("1-2 / 200")
 
 ### 6.2 NHentai Search
 
-- [ ] `/nhentai-search` — загружается
-- [ ] Ввести "touhou" → результаты в сетке (карточки)
-- [ ] Спиннер появляется и исчезает
-- [ ] Клик по карточке → detail view:
-  - [ ] Обложка
-  - [ ] Теги с цветовыми категориями (tag/artist/parody/character/language/category/group)
-  - [ ] Stats (ID, pages, tag count)
+- [x] `/nhentai-search` — загружается
+- [x] Ввести "touhou" → результаты в сетке (карточки)
+- [ ] Спиннер появляется и исчезает это что
+- [x] Клик по карточке → detail view:
+  - [x] Обложка
+  - [x] Теги с цветовыми категориями (tag/artist/parody/character/language/category/group)
+  - [x] Stats (ID, pages, tag count)
 - [ ] Drag-to-tag работает
-- [ ] Add all tags работает
-- [ ] Error state: при ошибке API показывается сообщение
+- [x] Add all tags работает
+- [x] Error state: при ошибке API показывается сообщение
+дизайн бы обновить под вид MV GALLERY и перенести кнопки в выпадающие меню для мобилы. убрать текст "поиск контента" и его svg icon + вернуть навщение cm в хедер
 
 ### 6.3 Manga Download (NHentai)
 
-- [ ] Клик "Download All" на деталях галереи → task_id
-- [ ] Toast "Download started"
-- [ ] Task running: toast с прогрессом N/M каждые 2с
-- [ ] Task completed: toast с количеством файлов
-- [ ] Ссылка "View comics" в toast
-- [ ] Навигация на другую страницу — загрузка продолжается (background task)
-- [ ] Overwrite confirm: если папка существует → confirm() диалог
-- [ ] Overwrite: "Download again?" → подтверждение → файлы заменяются
-- [ ] Single file download работает (download-async)
+- [x] Клик "Download All" на деталях галереи → task_id
+- [x] Toast "Download started"
+- [x] Task running: toast с прогрессом N/M каждые 2с
+- [x] Task completed: toast с количеством файлов
+- [x] Ссылка "View comics" в toast
+- [x] Навигация на другую страницу — загрузка продолжается (background task)
+- [x] Overwrite confirm: если папка существует → confirm() диалог
+- [x] Overwrite: "Download again?" → подтверждение → файлы заменяются
+- [x] Single file download работает (download-async)
 - [ ] Errors: toast при ошибке
 - [ ] Создаётся `Downloads/nhentai/<gid>/` директория
 - [ ] Скачиваются все страницы 1.jpg..N.jpg

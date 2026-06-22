@@ -1,6 +1,6 @@
 pkgbase = mediavault-bin
 	pkgdesc = Self-hosted media vault — browse, tag, manage images and comics
-	pkgver = 1.1.1
+	pkgver = 1.1.2
 	pkgrel = 1
 	url = https://github.com/levpr1c/MediaVault
 	arch = x86_64
@@ -9,7 +9,7 @@ pkgbase = mediavault-bin
 	optdepends = gnome-keyring: encrypt API keys in system keychain
 	provides = mediavault
 	conflicts = mediavault
-	source = mediavault-v1.1.1-linux-amd64::https://github.com/levpr1c/MediaVault/releases/download/v1.1.1/mediavault-linux-amd64
-	sha256sums = 3fd39a93f85c6e5cccddf09451f8b44a7faec47445fece4c0f0e641e02acbee4
+	source = mediavault-v1.1.2-linux-amd64::https://github.com/levpr1c/MediaVault/releases/download/v1.1.2/mediavault-linux-amd64
+	sha256sums = 02a5cfd921f179e0495bee23b391f157211d1f97d6523fb27dd4efb13aaa16b4
 
 pkgname = mediavault-bin

@@ -22,11 +22,6 @@
 **Dependencies:**
 - `gallery-dl` — для Rule34/Danbooru/NHentai/E-Hentai/Kemono/Coomer (установлен в venv, Python API)
 
-**Testing:**
-- [ ] `from backends import fetch_tags; fetch_tags('rule34', md5, settings)` — работает
-- [ ] `from backends import search_tags; search_tags('danbooru', query, page, settings)` — работает
-- [ ] `GalleryDlBackend().is_available()` — true если gallery-dl установлен
-- [ ] `GalleryDlBackend().get_info(url)` — возвращает metadata
 
 ---
 
@@ -47,11 +42,6 @@
 
 **i18n keys:** `sectionBackends`, `backendsDesc`, `backendApiRaw`, `backendGallerydl`, `siteRule34`, `siteDanbooru`, `siteNhentai`, `siteEhentai`, `siteKemono`, `siteCoomer`, `navBackends`
 
-**Testing:**
-- [ ] Раздел Backends отображается в `/admin` (иконка шестерёнки)
-- [ ] Для каждого сайта показана иконка + выпадающий список
-- [ ] После Save — настройки сохраняются в settings.json
-- [ ] При перезагрузке страницы — выбранные значения сохраняются
 
 ---
 
@@ -70,11 +60,6 @@ window.SiteIcons.getIcon('danbooru')       // → data URI (favicon)
 window.SiteIcons.getIconDataURI('nhentai') // → data: URI
 ```
 
-**Testing:**
-- [ ] `window.SiteIcons` определён в консоли браузера
-- [ ] `SiteIcons.getIconImg('rule34', 24)` возвращает `<img>` с корректным data URI
-- [ ] Иконки отображаются в Backends секции админ-панели
-- [ ] Физические SVG файлы доступны по `/static/shared/icons/rule34.svg`
 
 ---
 
@@ -95,11 +80,6 @@ window.SiteIcons.getIconDataURI('nhentai') // → data: URI
 
 **i18n keys:** `adminGalleryDir`, `adminComicsDir`, `navFolders`, `sectionFolders`
 
-**Testing:**
-- [ ] `/admin` → Folders: поля gallery_dir, comics_dir отображаются
-- [ ] После Save — значения сохраняются
-- [ ] При сканировании файлы из `media_dir/Gallery/` получают `folder_type='gallery'`
-- [ ] `/api/gallery?folder=gallery` возвращает только файлы из Gallery
 
 ---
 
@@ -123,12 +103,6 @@ window.SiteIcons.getIconDataURI('nhentai') // → data: URI
 
 **i18n keys:** `settingsBrowserCache`, `settingsBrowserCacheDefault`, `settingsBrowserCacheReduced`, `settingsBrowserCacheNoCache`
 
-**Testing:**
-- [ ] Settings → Appearance → Browser Cache — 3 опции в выпадающем списке
-- [ ] Смена опции → перезагрузка → опция сохраняется
-- [ ] `default` → заголовок `Cache-Control: public, max-age=86400, immutable` в /api/media
-- [ ] `nocache` → заголовок `Cache-Control: no-cache`
-- [ ] `POST /api/clear_browser_cache` → cache_buster инкрементируется
 
 ---
 
@@ -150,10 +124,6 @@ INSERT INTO tag_category_members (tag_name, category, source, last_updated) VALU
 ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = excluded.source, last_updated = excluded.last_updated
 ```
 
-**Testing:**
-- [ ] Тег с source='auto' при повторном фетче получает source='danbooru' или 'rule34'
-- [ ] Категория тега обновляется при конфликте
-- [ ] При рекатегоризации (manual) source не затирается
 
 ---
 
@@ -177,12 +147,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 | `POST /api/kemono/download` | Скачать пост в `media_dir/Downloads/kemono/` |
 | `GET /kemono-import` | Страница импорта |
 
-**Testing:**
-- [ ] `GET /api/kemono/mirrors` → `{"mirrors": ["kemono.su", "kemono.cr", ...]}` (14 entries)
-- [ ] `GET /api/kemono/info?url=https://kemono.su/...` → metadata
-- [ ] `POST /api/kemono/download` → файлы скачиваются в Downloads/kemono/
-- [ ] URL с новыми доменами (.cr, .cv etc.) корректно парсятся
-- [ ] Старые .su домены продолжают работать
 
 ---
 
@@ -198,12 +162,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 | `style.display` → `classList` | Все JS файлы |
 | Tagfetch CSS layout fix | `static/css/tagfetch.css` |
 
-**Testing:**
-- [ ] gallery.html — нет inline `style=""` на sidebar элементах
-- [ ] view.html — нет emoji, все иконки SVG
-- [ ] Нигде нет `style="display:none"` (используется класс `.hidden`)
-- [ ] JS не использует `element.style.display = 'none/block'`
-- [ ] Tagfetch manual layout — `.tf-layout` использует `display:flex`
 
 ---
 
@@ -217,11 +175,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 | min-height: 0 | `content.css` → `.comic-modal-body` | Убирает лишний отступ |
 | _programmaticScroll guard | `templates/shared/view.html` | Счётчик не дёргается при программном скролле |
 
-**Testing:**
-- [ ] ComicsPicker на мобильных — модал не шире 95vw
-- [ ] `.comic-modal-body` — нет огромных отступов
-- [ ] Scroll в ридере — счётчик не меняется при программном скролле
-- [ ] Реальный скролл — счётчик обновляется
 
 ---
 
@@ -247,13 +200,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 **i18n keys (new):** `navFolders`, `navBackends`, `sectionFolders`, `sectionBackends`, `backendsDesc`, `adminGalleryDir`, `adminComicsDir`
 
-**Testing:**
-- [ ] `/admin` показывает 5 иконок в хедере
-- [ ] Клик по Folders — показывает gallery_dir и comics_dir
-- [ ] Клик по Backends — показывает список сайтов с выбором бэкенда
-- [ ] API Keys — media_dir вынесен, только ключи + credential backend
-- [ ] Save в любой секции — работает и показывает toast
-- [ ] Обновление страницы — секция не теряется
 
 ---
 
@@ -266,10 +212,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 - i18n key: `homeComicsFetch`
 - Роут: `/nhentai-search` — поиск по NHentai
 
-**Testing:**
-- [ ] На главной есть кнопка «Comics Fetch» (только для admin)
-- [ ] Клик открывает страницу поиска NHentai
-- [ ] Поиск возвращает результаты
 
 ---
 
@@ -326,61 +268,22 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 ---
 
-## Чеклист тестирования
 
 ### Backend system
-- [ ] `fetch_tags('rule34', md5, settings)` — возвращает теги
-- [ ] `fetch_tags('danbooru', md5, settings)` — возвращает теги
-- [ ] `fetch_tags('nhentai', md5, settings)` — возвращает теги
-- [ ] `search_tags('danbooru', 'fumimi', 1, settings)` — возвращает результаты
-- [ ] `search_tags('nhentai', 'test', 1, settings)` — NHentai поиск работает
-- [ ] `GalleryDlBackend().is_available()` — true
-- [ ] `GalleryDlBackend().get_info(kemono_url)` — возвращает metadata
-- [ ] `GalleryDlBackend().download(kemono_url, dest)` — скачивает файлы
-- [ ] `ApiRawBackend().search('nhentai', 'test', 1, settings)` — NHentai через прямой API
 
 ### Backend Selection UI (Admin)
-- [ ] Иконки сайтов отображаются в Backends tab
-- [ ] Выбор бэкенда для каждого сайта сохраняется
-- [ ] После перезагрузки выбранные бекенды сохраняются
-- [ ] Save показывает toast с подтверждением
 
 ### Folder system
-- [ ] gallery_dir/comics_dir сохраняются в settings
-- [ ] /api/gallery?folder=gallery — фильтрация по папке
-- [ ] /api/gallery?folder=comics — фильтрация по комиксам
 
 ### Browser Cache
-- [ ] Переключение default/reduced/nocache
-- [ ] Cache-Control заголовки меняются
-- [ ] Clear browser cache инкрементирует cache_buster
-- [ ] Файлы перезагружаются с новым &cb=N
 
 ### Kemono/Coomer
-- [ ] /api/kemono/mirrors возвращает 14 зеркал
-- [ ] /api/kemono/info?url=... возвращает метаданные
-- [ ] /api/kemono/download скачивает файлы
-- [ ] URL валидация работает для всех доменов (.su, .cr, .cv, .party, .so, .us, .co)
 
 ### Admin Dashboard
-- [ ] Все 5 табов загружаются без ошибок
-- [ ] Users: добавление/удаление/смена роли/пароля
-- [ ] Database: экспорт/импорт/очистка
-- [ ] API Keys: сохранение ключей
-- [ ] Folders: сохранение gallery_dir/comics_dir
-- [ ] Backends: сохранение fetch_backend
-- [ ] Media dir: Browse + Scan работают
 
 ### Redesign
-- [ ] gallery.html — нет inline style (все через CSS классы)
-- [ ] view.html — нет emoji (все через SVG)
-- [ ] .hidden класс используется вместо style="display:none"
-- [ ] JS использует classList вместо style.display
-- [ ] Tagfetch manual page — layout flex (aside + main)
 
 ### Comics
-- [ ] ComicsPicker модал: не вылезает за экран
-- [ ] Comics viewer: счётчик страниц не дёргается при скролле
 
 ---
 
@@ -395,17 +298,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 - `static/admin/admin.js` — gallery_dl опция в Backend Selection UI для всех сайтов
 - `NokufindBackend` **удалён** — gallery-dl полностью заменил для NHentai
 
-**Чеклист тестирования:**
-- [x] 6.1 `GalleryDlBackend.search('rule34', 'furry', 1)` — результаты
-- [x] 6.2 `GalleryDlBackend.search('danbooru', 'fumimi', 1)` — результаты
-- [x] 6.3 `GalleryDlBackend.search('nhentai', 'lolicon', 1)` — результаты
-- [x] 6.4 `GalleryDlBackend.search('kemono', 'artist:name', 1)` — результаты
-- [x] 6.5 `GalleryDlBackend.fetch('rule34', md5)` — теги
-- [x] 6.6 `GalleryDlBackend.fetch('danbooru', md5)` — теги
-- [x] 6.7 Backend Selection UI: gallery_dl опция для всех сайтов
-- [x] 6.8 Выбор gallery_dl → поиск/fetch через gallery-dl
-- [x] 6.9 Сравнение результатов: raw_api vs gallery_dl
-- [x] 6.10 gallery-dl как дефолтный бэкенд для NHentai/E-Hentai/Kemono/Coomer, raw_api — legacy/fallback
 
 ---
 
@@ -422,12 +314,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 | Section router | `static/content/main.js` | Добавлена секция `comicsTags`, path detection для `/content-mgmt/comics-tags` |
 | Template | `templates/content-mgmt/tags.html` | Использует существующий шаблон с `page='content-mgmt/comics-tags'` |
 
-**Testing:**
-- [ ] `/content-mgmt/comics-tags` доступен и загружается без ошибок
-- [ ] Левая панель показывает категории тегов
-- [ ] Теги можно перетаскивать на карточки комиксов
-- [ ] Drag-to-tag работает (тег добавляется к комиксу)
-- [ ] Секция определяется по URL в `main.js`
 
 ### 16.2 CM Header Refactor
 
@@ -441,11 +327,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 **Key files:** `templates/base.html`, CM header JS
 
-**Testing:**
-- [ ] CM header имеет 4 раскрывающиеся группы
-- [ ] Клик по TAGS открывает тэг-пад, закрывает другие
-- [ ] Content-search показывает CM header
-- [ ] Mobile drawer содержит навигационные группы
 
 ### 16.3 Content-search Fixes
 
@@ -457,11 +338,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 | HTTP error check | Добавлена `res.ok` проверка перед парсингом JSON |
 | Shared guard | Проверка `window.Shared` перед вызовом `Shared.applyI18n()` |
 
-**Testing:**
-- [ ] Content-search работает без ошибок в консоли
-- [ ] Сломанный ответ API не вызывает исключение
-- [ ] Shared.applyI18n() не падает если Shared не определён
-- [ ] Header использует CM header
 
 ### 16.4 Home Page CM Card
 
@@ -476,11 +352,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 **Key files:** `templates/home.html`
 
-**Testing:**
-- [ ] Home page CM card показывает 4 колонки
-- [ ] Каждая колонка имеет заголовок + кнопки
-- [ ] Кнопка Comic Tags → `/content-mgmt/comics-tags`
-- [ ] NHentai кнопка → `/content-search?site=nhentai`
 
 ### 16.5 Comics Picker Improvements
 
@@ -495,11 +366,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 **Key files:** `static/shared/comics/comics.js`, `static/css/content.css`
 
-**Testing:**
-- [ ] Модал ComicsPicker шире (2100px с preview)
-- [ ] Grid — left→right порядок, 6 колонок
-- [ ] Preview панель анимируется плавно
-- [ ] На мобильных — 3 колонки
 
 ### 16.6 Counter Bug Fix
 
@@ -509,9 +375,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 **Key file:** `static/content/tags-manage/tags-manage.js`
 
-**Testing:**
-- [ ] При загрузке раздела Files счётчик пагинации показывает 1
-- [ ] Переключение между секциями не ломает счётчик
 
 ### 16.7 Новые i18n ключи
 
@@ -562,16 +425,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 | Responsive | 960px wrap, 768px stack, 650px 1-col |
 | Account button | padding 8px, 36×36 SVG |
 
-**Testing:**
-- [ ] Home page card sizes сбалансированы на 1920×1080
-- [ ] На 960px CM grid переходит в 2 колонки
-- [ ] На 768px все карточки stack
-- [ ] На 650px CM grid 1 колонка
-- [ ] Account button SVG корректного размера
-- [ ] Content-search: Lightbox.open() → close() не падает
-- [ ] Content-search: поиск работает без ошибок в консоли
-- [ ] COMICS dropdown: нет NHentai и Franchise
-- [ ] Comics-tags: левая панель тегов имеет правильную структуру
 
 ---
 
@@ -605,12 +458,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 - `templates/settings.html:48` — `#mountStatus` в хедере карточки
 - `static/css/settings.css:126` — удалён `margin-top: 8px` у `.mount-badge` (style tweak для нового расположения)
 
-**Testing:**
-- [ ] `/admin` — blinking dot отображается в хедере (рядом с названием страницы)
-- [ ] `/admin` → Database → Folders — индикатор отсутствует внутри карточки
-- [ ] `/settings` → Appearance → Media Path — индикатор в хедере карточки (слева от заголовка)
-- [ ] Индикатор мигает зелёным (storage mounted) или красным (not mounted)
-- [ ] `GET /api/content-search/mount-check` возвращает корректный статус
 
 ---
 
@@ -632,12 +479,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 - `static/content/content-search.js` — showLightbox() wires categories
 - `src/backends/api_raw.py`, `gallerydl.py` — return category data from API
 
-**Testing:**
-- [ ] Content-search results include `tags_by_category` per post
-- [ ] Lightbox shows tags with category colors
-- [ ] Danbooru results have artist/character/copyright/general/meta categories
-- [ ] Rule34 results shown as 'uncategorized'
-- [ ] Tag→category map is correct for mixed results from multiple sites
 
 ---
 
@@ -655,11 +496,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 - `static/content/content-search.js:109-115` — checkbox handler
 - `src/web_app.py:1707-1722` — filter_ai param + query adjustment
 
-**Testing:**
-- [ ] AI filter checkbox visible in content-search
-- [ ] Checked → Rule34 results exclude AI content
-- [ ] Unchecked → all Rule34 results shown
-- [ ] Danbooru/NHentai results unchanged with filter on
 
 ---
 
@@ -679,11 +515,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 **i18n keys:** `contentSearchDownload` — `'Download from {site}'` / `'Скачать с {site}'`
 
-**Testing:**
-- [ ] Content-search lightbox shows "⬇ Download from Danbooru" button
-- [ ] NHentai results show "⬇ Download from NHentai" button
-- [ ] Gallery lightbox (MV) still shows `⬇` without label
-- [ ] Download button function unchanged
 
 ---
 
@@ -713,13 +544,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 **i18n keys:** `contentSearchPages` — `'pages'` / `'страниц'`
 
-**Testing:**
-- [ ] Download manga button visible for NHentai results in content-search
-- [ ] Creates `Downloads/nhentai/<gid>/` directory
-- [ ] Downloads all pages 1.jpg..N.jpg
-- [ ] Each page indexed in DB with gallery tags
-- [ ] Already downloaded pages are skipped (no duplicates)
-- [ ] Errors in individual pages don't stop the batch
 
 ---
 
@@ -737,11 +561,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 **Key files:**
 - `src/web_app.py:1792-1906` — `api_content_search_download()`
 
-**Testing:**
-- [ ] File downloaded appears in MV gallery immediately
-- [ ] Tags from content-search are saved to file
-- [ ] Danbooru categories are stored in DB
-- [ ] Duplicate download updates existing record
 
 ---
 
@@ -759,11 +578,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 **Key files:**
 - `src/backends/api_raw.py` — `_search_rule34`, `_search_danbooru`, `_search_nhentai`, `_fetch_nhentai`
 
-**Testing:**
-- [ ] Rule34 search returns correct total count
-- [ ] Danbooru search returns correct total count (anonymous)
-- [ ] NHentai search works with API v2
-- [ ] NHentai gallery fetch returns all pages and categorized tags
 
 ---
 
@@ -782,12 +596,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 **Key files:**
 - `static/content/content-search.js` — `onRenderMedia`, `loadSpreads`, `updateNhCategories`
 
-**Testing:**
-- [ ] NHentai gallery opens in lightbox with 2-page spreads
-- [ ] Navigation by arrows (spreads) and PgUp/PgDn
-- [ ] Lazy load — more pages load as user reaches end
-- [ ] Page counter shows correct page numbers
-- [ ] Categories (parody/character/tag/artist) shown in tag panel
 
 ---
 
@@ -808,12 +616,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 **i18n keys:** none (uses generic button)
 
-**Testing:**
-- [ ] Content-search lightbox shows "Open source" button
-- [ ] NHentai opens correct gallery URL
-- [ ] Danbooru opens correct post URL
-- [ ] R34 opens correct post URL
-- [ ] MV gallery lightbox falls back to standalone view
 
 ---
 
@@ -833,13 +635,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 **Key files:**
 - `templates/shared/view.html` — CSS + JS для spread-режима
 
-**Testing:**
-- [ ] 2 страницы помещаются на экран (без скролла)
-- [ ] Работает на мобильных (2 страницы, масштабируются)
-- [ ] F переключает в lightbox и обратно
-- [ ] ← → и PgUp/PgDn работают в обоих режимах
-- [ ] Счётчик показывает `"1-2 / 200"` в spread, `"1 / 200"` в lightbox
-- [ ] Последняя страница (нечётная) отображается одна
 
 ---
 
@@ -886,38 +681,18 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 
 ---
 
-## Чеклист тестирования (дополнение)
 
 ### Content-Search Tag Categories
-- [ ] `tags_by_category` in API response for Danbooru results
-- [ ] `cat_colors` returned from server
-- [ ] Lightbox shows color-coded tags
-- [ ] Rule34 results don't have categories (uncategorized)
 
 ### AI Filter
-- [ ] Checkbox filters AI from R34 only
-- [ ] Re-runs search on toggle
 
 ### NHentai Manga Download
-- [ ] Full gallery downloaded to `Downloads/nhentai/<gid>/`
-- [ ] Pages indexed in DB with tags
-- [ ] Error handling for network failures
 
 ### Download with Tags
-- [ ] Downloaded files appear in gallery with correct tags
-- [ ] Danbooru categories preserved in tag_category_members
-- [ ] Aspect ratio tags computed correctly
 
 ### Download Label
-- [ ] Content-search shows "Download from {site}"
-- [ ] MV gallery shows regular arrow
-- [ ] LabelFn works as option in Lightbox constructor
 
 ### Mount Indicator
-- [ ] Green dot when mounted
-- [ ] Red dot when unmounted
-- [ ] Blinks in admin header and settings card header
-- [ ] Not duplicated in Folders card
 
 ---
 
@@ -940,19 +715,6 @@ ON CONFLICT(tag_name) DO UPDATE SET category = excluded.category, source = exclu
 - `settings.html`: New folder filter UI in Appearance tab
 - `utils.js`: `_i18nData` updated with 11 new keys
 
-### Testing checklist
-- [ ] Manga download with v2 API (check correct extensions)
-- [ ] Background task survives page navigation
-- [ ] Polling toast shows progress
-- [ ] Overwrite confirm dialog appears for existing manga
-- [ ] Gallery remembers folder filter across page reloads
-- [ ] Settings folder filter checkboxes save to localStorage
 
-### Checklist
-- [x] Py compile
-- [x] JS syntax check
-- [x] Locale parity (8 pre-existing failures remain)
-- [x] CSS valid
-- [x] Binary built (v1.1.2)
 
 ---

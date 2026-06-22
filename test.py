@@ -759,7 +759,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('--check', nargs='+', metavar='CHECK',
                         choices=list(_CHECK_GROUPS),
-                        help='One or more checks: py, js, css, syntax, locale, dead, func, smoke')
+                        help='One or more checks: py, js, css, locale, dead, func, smoke. Default: all')
     parser.add_argument('--watch', action='store_true', help='watch mode (re-run syntax check)')
     parser.add_argument('--fix', action='store_true', help='remove unused LOCALE keys')
     args = parser.parse_args()
@@ -773,10 +773,11 @@ if __name__ == '__main__':
         ok = all(_CHECK_GROUPS[c]() for c in args.check)
         sys.exit(0 if ok else 1)
     else:
-        # default: syntax + locale + dead + func (no smoke)
+        # default: all checks
         ok_syn = syntax_check()
         ok_loc = check_locale()
         ok_dc = check_dead_code()
         ok_dj = check_dead_js()
         ok_ft = check_functions()
-        sys.exit(0 if (ok_syn and ok_loc and ok_dc and ok_dj and ok_ft) else 1)
+        ok_sm = smoke_test()
+        sys.exit(0 if (ok_syn and ok_loc and ok_dc and ok_dj and ok_ft and ok_sm) else 1)

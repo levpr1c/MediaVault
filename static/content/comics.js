@@ -24,7 +24,6 @@ export function comicsDestroy() {
 
 function _buildHTML() {
   let html = `<div id="cmComics" class="cm-comics">` +
-    `<input id="cmComicsSearchQ" class="cm-comics-search-input" placeholder="${_t('searchComics')}">` +
     `<div class="cm-comics-grid" id="cmComicsGrid">`
   _comics.forEach(c => {
     html +=
@@ -58,19 +57,6 @@ function _buildHTML() {
 }
 
 function _attachEvents(body, signal) {
-  // Search filter
-  document.getElementById('cmComicsSearchQ')?.addEventListener('input', e => {
-    const q = e.target.value.toLowerCase()
-    const grid = document.getElementById('cmComicsGrid')
-    if (!grid) return
-    _comics.forEach(c => {
-      const card = grid.querySelector(`.cm-comic-card[data-id="${c.id}"]`)
-      if (!card) return
-      const match = (c.title || '').toLowerCase().includes(q)
-      card.style.display = match ? '' : 'none'
-    })
-  }, { signal })
-
   body.addEventListener('click', e => {
     const el = e.target.closest('[data-action]')
     if (!el) return

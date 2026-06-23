@@ -266,52 +266,73 @@ var AdminDashboard = (function() {
           creds:[{id:'key', label:'API Key'}],
           vals:{key: (s.credentials?.nhentai?.key || '')},
           backends:['api_raw','gallerydl']},
-        {id:'kemono', nameKey:'siteKemono', icon:'kemono',
-          creds:[], backends:['gallerydl']},
-        {id:'coomer', nameKey:'siteCoomer', icon:'coomer',
-          creds:[], backends:['gallerydl']},
         {id:'ehentai', nameKey:'siteEhentai', icon:'ehentai',
           creds:[{id:'key', label:'API Key'}],
           vals:{key: (s.credentials?.ehentai?.key || '')},
           backends:['api_raw','gallerydl']},
+        {id:'kemono', nameKey:'siteKemono', icon:'kemono',
+          creds:[], backends:['gallerydl']},
+        {id:'coomer', nameKey:'siteCoomer', icon:'coomer',
+          creds:[], backends:['gallerydl']},
       ];
       var html =
         '<div class="admin-card">' +
         '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="navApiKeys">' + _t('navApiKeys') + '</span></span></div>' +
         '<div class="admin-card-desc"><span data-i18n="settingsApiCreds">' + _t('settingsApiCreds') + '</span></div>';
-      sites.forEach(function(site) {
+      var hasCred = [], noCred = [];
+      sites.forEach(function(s) { (s.creds.length > 0 ? hasCred : noCred).push(s); });
+
+      hasCred.forEach(function(site) {
         var currentBackend = fb[site.id] || site.backends[0];
         var isAvail = bs[currentBackend] !== false;
+        var optsHtml = '';
+        site.backends.forEach(function(b) {
+          var bAvail = bs[b] !== false;
+          optsHtml += '<option value="' + b + '"' + (currentBackend === b ? ' selected' : '') + '>' +
+            (backendLabels[b] || b) + (bAvail ? '' : ' (N/A)') + '</option>';
+        });
         html += '<div class="backend-card">' +
           '<div class="backend-card-header">' +
           '<div class="backend-card-site">' +
           '<span class="backend-icon" id="admIcon' + site.id + '"></span>' +
           '<span class="backend-card-name"><span data-i18n="' + site.nameKey + '">' + _t(site.nameKey) + '</span></span>' +
           '</div>' +
+          '<div class="backend-header-actions">' +
           '<span class="backend-badge ' + (isAvail ? 'backend-badge-ok' : 'backend-badge-err') + '">' +
           (backendIcons[currentBackend] || '') +
-          '<span>' + (backendLabels[currentBackend] || currentBackend) + '</span>' +
-          '</span>' +
+          '<span>' + (backendLabels[currentBackend] || currentBackend) + '</span></span>' +
+          '<select class="admin-field-input backend-select backend-select-sm" data-site="' + site.id + '">' + optsHtml + '</select>' +
+          '</div>' +
           '</div>';
         if (site.creds.length > 0) {
-          html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">';
+          html += '<div class="backend-card-credentials">';
           site.creds.forEach(function(k) {
-            html += '<div class="admin-field" style="flex:1;min-width:120px"><label class="admin-field-label">' + k.label + '</label>' +
+            html += '<div class="backend-field-wrap"><label class="admin-field-label">' + k.label + '</label>' +
               '<input class="admin-field-input" id="adm' + site.id + k.id + '" value="' + _esc(site.vals[k.id] || '') + '" placeholder="' + k.label + '"></div>';
           });
           html += '</div>';
         }
-        html += '<div style="display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid var(--border)">' +
-          '<span style="font-size:12px;color:var(--text2);white-space:nowrap">' + _t('backendType') + ':</span>' +
-          '<select class="admin-field-input backend-select" data-site="' + site.id + '" style="font-size:12px;padding:6px 10px">';
-        site.backends.forEach(function(b) {
-          var bAvail = bs[b] !== false;
-          html += '<option value="' + b + '"' + (currentBackend === b ? ' selected' : '') + '>' +
-            (backendLabels[b] || b) + (bAvail ? '' : ' (N/A)') +
-            '</option>';
-        });
-        html += '</select></div></div>';
+        html += '</div>';
       });
+
+      if (noCred.length > 0) {
+        html += '<div class="backend-nokey-row">';
+        noCred.forEach(function(site) {
+          var currentBackend = fb[site.id] || site.backends[0];
+          var optsHtml = '';
+          site.backends.forEach(function(b) {
+            var bAvail = bs[b] !== false;
+            optsHtml += '<option value="' + b + '"' + (currentBackend === b ? ' selected' : '') + '>' +
+              (backendLabels[b] || b) + (bAvail ? '' : ' (N/A)') + '</option>';
+          });
+          html += '<div class="backend-nokey-item">' +
+            '<span class="backend-icon" id="admIcon' + site.id + '"></span>' +
+            '<span class="backend-nokey-name"><span data-i18n="' + site.nameKey + '">' + _t(site.nameKey) + '</span></span>' +
+            '<select class="backend-select backend-select-sm" data-site="' + site.id + '">' + optsHtml + '</select>' +
+            '</div>';
+        });
+        html += '</div>';
+      }
       html +=
         '<button class="btn btn-primary" onclick="AdminDashboard._saveApiKeys()" style="margin-top:12px"><span data-i18n="settingsSaveStart">' + _t('settingsSaveStart') + '</span></button>' +
         '</div>';
@@ -619,13 +640,13 @@ var AdminDashboard = (function() {
       '<div class="admin-modal-title"><span data-i18n="dbImport">' + _t('dbImport') + '</span></div>' +
       '<p style="font-size:12px;color:var(--text2);margin-top:4px"><span data-i18n="secConfirmClearAll">' + _t('secConfirmClearAll') + '</span></p>' +
       '<div class="adm-import-file-wrap">' +
-        '<button class="btn" onclick="document.getElementById(\'admImportFile\').click()" style="width:100%;justify-content:center">' +
+        '<button class="btn" onclick="document.getElementById(\'admImportFile\').click()">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
           '<span id="admImportLabel" data-i18n="chooseFile">Choose .db file...</span>' +
         '</button>' +
         '<input type="file" id="admImportFile" accept=".db,.sqlite,.sqlite3" onchange="document.getElementById(\'admImportLabel\').textContent=this.files[0]?.name||\'Choose .db file...\'" style="display:none">' +
       '</div>' +
-      '<button class="btn btn-danger" onclick="AdminDashboard._confirmImport()" style="margin-top:8px"><span data-i18n="dbImport">' + _t('dbImport') + '</span></button></div>'
+      '<button class="btn btn-danger admin-import-btn" onclick="AdminDashboard._confirmImport()"><span data-i18n="dbImport">' + _t('dbImport') + '</span></button></div>'
     );
   }
 

@@ -144,13 +144,51 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── Folder filter checkboxes ─── */
-.settings-folder-cb {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 6px;
+/* ─── Backend no-key compact row ─── */
+.backend-nokey-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.backend-nokey-site {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
   border: 1px solid var(--border);
-  cursor: pointer; font-size: 13px;
+  border-radius: 8px;
+  background: var(--surface);
+  flex: 1;
+  min-width: 200px;
+  transition: border-color .2s;
+}
+.backend-nokey-site:hover {
+  border-color: var(--accent);
+}
+
+/* ─── Folder filter checkboxes (pill style) ─── */
+.settings-folder-cb {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.settings-folder-cb span {
+  padding: 8px 16px; border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 13px; font-weight: 500;
   transition: all .2s;
 }
-.settings-folder-cb:hover { border-color: var(--accent); }
-.settings-folder-cb input { accent-color: var(--accent); }
+.settings-folder-cb:hover span {
+  border-color: var(--accent);
+  background: var(--surface2);
+}
+.settings-folder-cb input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+.settings-folder-cb input:checked + span {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}

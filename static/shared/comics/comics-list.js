@@ -1,4 +1,5 @@
 // MV comics list (view mode) — ES module
+import { initComicsSearch } from './comics-search.js'
 
 function _t(key) {
   if (!window._i18nData) return key;
@@ -54,6 +55,18 @@ function render() {
         '</div>';
       }
       grid.innerHTML = html;
+      initComicsSearch(grid, null, null, {
+        _t: _t,
+        onFilter: function(gridEl, q) {
+          var cards = gridEl.querySelectorAll('.cm-comic-card');
+          for (var i = 0; i < cards.length; i++) {
+            var card = cards[i];
+            var titleEl = card.querySelector('.cm-comic-title');
+            var match = !q || (titleEl && (titleEl.textContent || '').toLowerCase().includes(q));
+            card.style.display = match ? '' : 'none';
+          }
+        }
+      });
     })
     .catch(function(err) {
       grid.innerHTML = '<div class="empty-state"><p>' + _t('loadingError') + ': ' + esc(err.message) + '</p></div>';
@@ -76,8 +89,29 @@ document.addEventListener('click', function(e) {
 });
 
 // Auto-init on DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', render);
-} else {
+function init() {
   render();
+
+  MobileSearch.register('mv-comics', {
+    onSearch: function(val) {
+      var q = val.toLowerCase().trim();
+      document.querySelectorAll('#comicsGrid .cm-comic-card').forEach(function(card) {
+        var titleEl = card.querySelector('.cm-comic-title');
+        var match = !q || (titleEl && (titleEl.textContent || '').toLowerCase().includes(q));
+        card.style.display = match ? '' : 'none';
+      });
+    },
+    onClear: function() {
+      document.querySelectorAll('#comicsGrid .cm-comic-card').forEach(function(card) {
+        card.style.display = '';
+      });
+    },
+    getInitialValue: function() { return ''; }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
 }

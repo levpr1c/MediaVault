@@ -35,6 +35,7 @@ var CONFIG = {
 };
 </script>
 <script src="/static/shared/utils.js"></script>
+<script src="/static/shared/mobile-search.js"></script>
 <script src="/static/shared/api.js"></script>
 <script src="/static/shared/grid/shared-grid.js"></script>
 <div id="app">
@@ -251,6 +252,41 @@ var CONFIG = {
       <div class="mv-mh-search">
         <svg class="mv-mh-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="text" id="searchInputMobile" placeholder="{{ _('mvSearchPlaceholder') }}" data-i18n-placeholder="mvSearchPlaceholder">
+      </div>
+      <button class="mv-mh-icon" id="mobileToolbarBtn" title="Toolbar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      </button>
+      <div class="mv-mh-toolbar-dropdown" id="mobileToolbarDropdown">
+        <div class="mv-mh-toolbar-row" id="mobTbLayout">
+          <button class="tool-btn tool-btn-icon" data-layout="columns" title="Masonry">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="tool-btn tool-btn-icon" data-layout="fixed" title="Grid">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+          </button>
+          <button class="tool-btn tool-btn-icon" data-layout="scroll" title="List">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="4" rx="1"/><rect x="5" y="10" width="14" height="4" rx="1"/><rect x="5" y="16" width="14" height="4" rx="1"/></svg>
+          </button>
+        </div>
+        <div class="mv-mh-toolbar-row" id="mobTbSort">
+          <button class="tool-btn" id="mobTbSortBtn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-4 4 4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h10"/><path d="M20 17H10"/></svg>
+            <span data-i18n="sortByName">By name</span>
+          </button>
+        </div>
+        <div class="mv-mh-toolbar-row" id="mobTbPageSize">
+          <span class="mv-mh-tb-label" data-i18n="mvPageSize">Page:</span>
+          <button class="tool-btn" data-pagesize="0" data-action="pagesize" data-size="0" data-i18n="tfFilterAll">All</button>
+          <button class="tool-btn" data-pagesize="30" data-action="pagesize" data-size="30">30</button>
+          <button class="tool-btn" data-pagesize="60" data-action="pagesize" data-size="60">60</button>
+          <button class="tool-btn" data-pagesize="90" data-action="pagesize" data-size="90">90</button>
+        </div>
+        <div class="mv-mh-toolbar-row" id="mobTbFilter">
+          <button class="tool-btn" id="mobTbFetchedBtn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span data-i18n="navTags">Tagged</span>
+          </button>
+        </div>
       </div>
     {% endblock %}</div>
   </div>

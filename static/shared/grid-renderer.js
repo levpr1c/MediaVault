@@ -35,6 +35,11 @@ export function renderLeftTags(container, cats, searchQ, opts) {
   opts = opts || {}
   const q = searchQ ? searchQ.toLowerCase() : ''
   let html = ''
+  if (!cats || !cats.length) {
+    html += `<div class="cm-files-left-empty">${_t('comicsEmpty')}</div>`
+    container.innerHTML = html
+    return
+  }
   cats.forEach(cat => {
     let tags = cat.tags || []
     if (q) tags = tags.filter(t => t.toLowerCase().includes(q))

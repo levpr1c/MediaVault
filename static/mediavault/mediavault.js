@@ -25,48 +25,41 @@ var MediaVault = (function() {
       });
     }
 
-    // Search input
+    // Desktop search input
     var searchDebounce = null;
     document.getElementById('searchInput').addEventListener('input', function(e) {
       MediaVaultGallery.onSearchInput(e.target.value);
+      MobileSearch.setValue(e.target.value);
       clearTimeout(searchDebounce);
       searchDebounce = setTimeout(function() {
         if (e.target.value === document.getElementById('searchInput').value) {
           MediaVaultGallery.applyFilter();
         }
       }, 150);
-      var mob = document.getElementById('searchInputMobile');
-      if (mob) mob.value = e.target.value;
     });
 
-    var mobSearch = document.getElementById('searchInputMobile');
-    if (mobSearch) {
-      mobSearch.addEventListener('input', function(e) {
-        document.getElementById('searchInput').value = e.target.value;
-        MediaVaultGallery.onSearchInput(e.target.value);
+    // Mobile search: register with shared module
+    MobileSearch.register('gallery', {
+      onSearch: function(val) {
+        var side = document.getElementById('searchInput');
+        if (side) side.value = val;
+        MediaVaultGallery.onSearchInput(val);
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(function() {
-          if (e.target.value === document.getElementById('searchInput').value) {
+          if (val === MobileSearch.getValue()) {
             MediaVaultGallery.applyFilter();
           }
         }, 150);
-      });
-      mobSearch.addEventListener('focus', function() {
-        var autocomplete = document.getElementById('searchAutocomplete');
-        if (autocomplete && mobSearch.value.trim()) {
-          MediaVaultGallery.showSearchAutocomplete(mobSearch.value);
-        }
-      });
-    }
-
-    // Keep mobile search in sync after filter
-    var _origApplyFilter = MediaVaultGallery.applyFilter;
-    MediaVaultGallery.applyFilter = function() {
-      var mob = document.getElementById('searchInputMobile');
-      var side = document.getElementById('searchInput');
-      if (mob && side) mob.value = side.value;
-      _origApplyFilter.call(MediaVaultGallery);
-    };
+      },
+      onClear: function() {
+        MediaVaultGallery.onSearchInput('');
+        MediaVaultGallery.applyFilter();
+      },
+      getInitialValue: function() {
+        var side = document.getElementById('searchInput');
+        return side ? side.value : '';
+      }
+    });
 
     // Click on sidebar tag → search by that tag
     function onSidebarTagClick(e) {

@@ -149,12 +149,13 @@ var ComicsPicker = (function() {
     var prev = document.getElementById('comicPreviewOverlay');
     if (prev) prev.classList.remove('preview-open');
     var toggle = document.getElementById('previewToggleBtn') || document.getElementById('comicPreviewToggle');
-    if (toggle) toggle.querySelector('svg').innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+    if (toggle) toggle.querySelector('svg').innerHTML = '<path d="M9 18l6-6-6-6"/>';
 
     _updateSelected();
     fetch('/api/gallery').then(function(r) { return r.json(); }).then(function(data) {
       _galleryData = data.files || [];
       _renderGallery();
+      _updateSelected();
     }).catch(function() {});
   }
 
@@ -168,6 +169,7 @@ var ComicsPicker = (function() {
     _coverPath = null;
     _onSave = null;
     _onCancel = null;
+    _dragAttached = false;
     _editingId = null;
     var previewPanel = document.getElementById('comicPreviewContent');
     if (previewPanel) { _abortImages(previewPanel); previewPanel.innerHTML = ''; }
@@ -189,10 +191,10 @@ var ComicsPicker = (function() {
     var inner = document.getElementById('modalInner');
     if (_previewOpen) {
       prev.classList.add('preview-open');
-      toggle.querySelector('svg').innerHTML = '<path d="M9 18l6-6-6-6"/>';
+      toggle.querySelector('svg').innerHTML = '<path d="M15 18l-6-6 6-6"/>';
     } else {
       prev.classList.remove('preview-open');
-      toggle.querySelector('svg').innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+      toggle.querySelector('svg').innerHTML = '<path d="M9 18l6-6-6-6"/>';
     }
   }
 

@@ -32,6 +32,11 @@
   display: inline-block;
 }
 
+/* ─── Mobile: allow reflow for masonry ─── */
+@media(max-width:768px){
+  .shared-grid { contain: none; }
+}
+
 /* ─── Loading state ─── */
 .shared-grid-loading {
   text-align: center;

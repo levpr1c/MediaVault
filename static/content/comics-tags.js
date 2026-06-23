@@ -1,9 +1,11 @@
 import { _t, api, esc, toast } from './utils.js'
 import { buildLeftPanelHtml, renderLeftTags, setupDragEvents, buildComicsGridHTML } from '../shared/grid-renderer.js'
+import { initComicsSearch } from '../shared/comics/comics-search.js'
 
 const state = { cats: [], tagToCat: {}, catCache: {} }
 let _ac = null
 let _comics = []
+let _searchDestroy = null
 
 export function comicsTagsRender(body) {
   _ac = new AbortController()
@@ -31,15 +33,15 @@ export function comicsTagsRender(body) {
 }
 
 export function comicsTagsDestroy() {
+  if (_searchDestroy) { _searchDestroy(); _searchDestroy = null }
   if (_ac) { _ac.abort(); _ac = null }
 }
 
 function _buildHTML() {
   return `<div id="cmComicsTags" class="cm-files">` +
-    `<div class="cm-files-body" style="display:flex;gap:16px;height:100%">` +
+    `<div class="cm-files-body" style="gap:16px">` +
       buildLeftPanelHtml(_t('tagSearchPlaceholder')) +
       `<div class="cm-comics-tags-grid" id="cmComicsTagsGrid">` +
-        `<input id="cmComicsSearchQ" class="cm-comics-search-input" placeholder="${_t('searchComics')}">` +
         `<div class="cm-comics-tags-grid-inner">` +
           buildComicsGridHTML(_comics) +
         `</div>` +
@@ -48,11 +50,20 @@ function _buildHTML() {
 }
 
 function _attachEvents(body, signal) {
-  document.getElementById('cmComicsSearchQ')?.addEventListener('input', e => {
-    const q = e.target.value.toLowerCase()
-    const filtered = _comics.filter(c => (c.title || '').toLowerCase().includes(q))
-    document.getElementById('cmComicsTagsGrid').querySelector('.cm-comics-tags-grid-inner').innerHTML = buildComicsGridHTML(filtered)
-  }, { signal })
+  const gridDiv = document.getElementById('cmComicsTagsGrid')
+  if (gridDiv) {
+    _searchDestroy = initComicsSearch(gridDiv, null, null, {
+      _t,
+      onFilter(grid, q) {
+        const inner = grid.querySelector('.cm-comics-tags-grid-inner')
+        if (inner) {
+          inner.innerHTML = buildComicsGridHTML(
+            _comics.filter(c => (c.title || '').toLowerCase().includes(q))
+          )
+        }
+      }
+    })
+  }
 
   document.getElementById('cmFilesTagSearchQ')?.addEventListener('input', e => {
     renderLeftTags(document.getElementById('cmFilesLeftContent'), state.cats, e.target.value)

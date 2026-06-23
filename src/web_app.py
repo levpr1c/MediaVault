@@ -851,30 +851,46 @@ def _norm_path(path):
     """Resolve symlinks and normalize path components."""
     return os.path.abspath(os.path.realpath(path))
 
+_RESTRICTED_FOLDERS = ['nhentai', 'comics']
+
+def _is_restricted_path(path):
+    parts = path.replace('\\', '/').lower().split('/')
+    for folder in _RESTRICTED_FOLDERS:
+        if folder in parts:
+            return True
+    return False
+
 # Безопасно резолвит путь к файлу: абсолютный напрямую, относительный через media_dir
-def _safe_media_path(requested_path):
+def _safe_media_path(requested_path, allow_restricted=False):
     """Resolve a path (relative or absolute) to an existing file.
     When media_dir is set, resolve relative paths against it.
     Tries progressively shorter prefixes of requested_path (in case media_dir
     already overlaps with path components stored in the DB)."""
+    result = None
     if os.path.isabs(requested_path):
         c = os.path.realpath(requested_path)
         if os.path.exists(c):
-            return c
-    md = settings.get('media_dir', '')
-    if md:
-        md_real = _norm_path(md)
-        parts = requested_path.replace('\\', '/').split('/')
-        for i in range(len(parts) + 1):
-            suffix = '/'.join(parts[i:])
-            if not suffix:
-                continue
-            candidate = _norm_path(os.path.join(md_real, suffix))
-            if os.path.exists(candidate) and candidate.startswith(md_real.rstrip('/') + '/'):
-                return candidate
+            result = c
+    if not result:
+        md = settings.get('media_dir', '')
+        if md:
+            md_real = _norm_path(md)
+            parts = requested_path.replace('\\', '/').split('/')
+            for i in range(len(parts) + 1):
+                suffix = '/'.join(parts[i:])
+                if not suffix:
+                    continue
+                candidate = _norm_path(os.path.join(md_real, suffix))
+                if os.path.exists(candidate) and candidate.startswith(md_real.rstrip('/') + '/'):
+                    result = candidate
+                    break
+        else:
+            c = _norm_path(requested_path)
+            if os.path.exists(c):
+                result = c
+    if result and not allow_restricted and _is_restricted_path(result):
         return None
-    c = _norm_path(requested_path)
-    return c if os.path.exists(c) else None
+    return result
 
 # ── Кэш превью (BLOB в БД) ──
 
@@ -1615,7 +1631,7 @@ def mediavault_view_route():
     media_dir = settings.get('media_dir', '')
     if not raw_path or not media_dir:
         abort(404)
-    safe_path = _safe_media_path(raw_path)
+    safe_path = _safe_media_path(raw_path, allow_restricted=True)
     if not safe_path or not os.path.exists(safe_path):
         abort(404)
     filename = os.path.basename(safe_path)
@@ -3588,6 +3604,8 @@ def api_browse():
         entries = []
         for name in sorted(os.listdir(safe_path), key=lambda n: (not os.path.isdir(os.path.join(safe_path, n)), n.lower())):
             full = os.path.join(safe_path, name)
+            if name.lower() in _RESTRICTED_FOLDERS:
+                continue
             try:
                 rel_path = ''
                 if media_dir:
@@ -3604,13 +3622,14 @@ def api_browse():
 
 # Отдача медиафайла с поддержкой Range-запросов для видео. Параметр: path.
 @app.route('/api/media')
+@auth_required
 @api_error_handler
 def api_media():
     filepath = request.args.get('path', '')
     if not filepath:
         log_info_yellow('api_media: missing path')
         abort(404)
-    safe = _safe_media_path(filepath)
+    safe = _safe_media_path(filepath, allow_restricted=True)
     if not safe or not os.path.exists(safe):
         safe = _relocate_or_clean(filepath)
         if not safe:
@@ -3630,13 +3649,14 @@ def api_media():
 
 # Отдача превью изображения/видео. Если нет превью — отдаёт оригинал. Параметр: path.
 @app.route('/api/thumbnail')
+@auth_required
 @api_error_handler
 def api_thumbnail():
     filepath = request.args.get('path', '')
     if not filepath:
         log_info_yellow('api_thumbnail: missing path')
         abort(404)
-    safe = _safe_media_path(filepath)
+    safe = _safe_media_path(filepath, allow_restricted=True)
     if not safe or not os.path.exists(safe):
         safe = _relocate_or_clean(filepath)
         if not safe:
@@ -3660,6 +3680,7 @@ def api_thumbnail():
 
 # Информация о файле: размер, размеры изображения, теги из БД. Параметр: path.
 @app.route('/api/fileinfo')
+@auth_required
 @api_error_handler
 def api_fileinfo():
     raw_path = request.args.get('path', '')
@@ -3667,7 +3688,7 @@ def api_fileinfo():
     if not media_dir or not raw_path:
         return jsonify({'error': 'bad params'}), 400
 
-    safe = _safe_media_path(raw_path)
+    safe = _safe_media_path(raw_path, allow_restricted=True)
     if not safe or not os.path.exists(safe):
         return jsonify({'error': 'file not found'}), 404
 
@@ -3750,7 +3771,7 @@ def api_fetch_file():
     if not rel_path or not media_dir:
         return jsonify({'error': 'bad params'}), 400
 
-    filepath = _safe_media_path(rel_path)
+    filepath = _safe_media_path(rel_path, allow_restricted=True)
     if not filepath or not os.path.exists(filepath):
         return jsonify({'error': 'file not found'}), 404
 
@@ -4102,7 +4123,7 @@ def api_save_file():
     if not rel_path or not source or not media_dir:
         return jsonify({'error': 'bad params'}), 400
 
-    filepath = _safe_media_path(rel_path)
+    filepath = _safe_media_path(rel_path, allow_restricted=True)
     if not filepath or not os.path.exists(filepath):
         return jsonify({'error': 'file not found'}), 404
 
@@ -4236,7 +4257,7 @@ def api_save_all_fetched():
 
     for rel_path in paths:
         result = {'path': rel_path, 'name': os.path.basename(rel_path), 'saved': False, 'tags_count': 0}
-        filepath = _safe_media_path(rel_path) or ''
+        filepath = _safe_media_path(rel_path, allow_restricted=True) or ''
         md5 = md5_cache.get(rel_path, '')
         if not md5 and filepath and os.path.exists(filepath):
             md5 = compute_md5(filepath)
@@ -4891,7 +4912,8 @@ def api_deduplicate():
         seen = {}
         remove = []
         for path, name, tags, sz in rows:
-            key = (name, sz)
+            parent = os.path.dirname(path)
+            key = (name, sz, parent)
             if key in seen:
                 prev_path, prev_tags = seen[key]
                 merged = prev_tags
@@ -5113,7 +5135,7 @@ def api_comics_pages_tag():
             tag_set.add(tag)
             db.execute('UPDATE files SET tags = ? WHERE id = ?', [','.join(sorted(tag_set)), fid])
         else:
-            filepath = _safe_media_path(rel)
+            filepath = _safe_media_path(rel, allow_restricted=True)
             if not filepath or not os.path.exists(filepath):
                 return jsonify({'error': 'file not found'}), 404
             ext = os.path.splitext(filepath)[1].lower()

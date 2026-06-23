@@ -158,9 +158,9 @@
               <div class="admin-field" style="margin-bottom:8px">
                 <label class="admin-field-label">{{ _('settingsDefaultFolderFilter') }}</label>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
-                  <label class="settings-folder-cb"><input type="checkbox" value="gallery" onchange="SettingsApp.saveFolderFilter()"> Gallery</label>
-                  <label class="settings-folder-cb"><input type="checkbox" value="comics" onchange="SettingsApp.saveFolderFilter()"> Comics</label>
-                  <label class="settings-folder-cb"><input type="checkbox" value="downloads" onchange="SettingsApp.saveFolderFilter()"> D/L</label>
+                  <label class="settings-folder-cb"><input type="checkbox" value="gallery" onchange="SettingsApp.saveFolderFilter()"><span>Gallery</span></label>
+                  <label class="settings-folder-cb"><input type="checkbox" value="comics" onchange="SettingsApp.saveFolderFilter()"><span>Comics</span></label>
+                  <label class="settings-folder-cb"><input type="checkbox" value="downloads" onchange="SettingsApp.saveFolderFilter()"><span>D/L</span></label>
                 </div>
                 <div style="font-size:12px;color:var(--text2);margin-top:6px" data-i18n="settingsFolderFilterDesc">{{ _('settingsFolderFilterDesc') }}</div>
               </div>
@@ -188,20 +188,35 @@
               </div>
               <div id="stBackendList">
                 {% set fb = s.get('fetch_backend', {}) %}
-                {% for site_id, site_key, backends in [('rule34','siteRule34',['api_raw','gallerydl']),('danbooru','siteDanbooru',['api_raw','gallerydl']),('nhentai','siteNhentai',['api_raw','gallerydl']),('ehentai','siteEhentai',['api_raw','gallerydl']),('kemono','siteKemono',['gallerydl']),('coomer','siteCoomer',['gallerydl'])] %}
+                {% set key_sites = [('rule34','siteRule34',['api_raw','gallerydl']),('danbooru','siteDanbooru',['api_raw','gallerydl']),('nhentai','siteNhentai',['api_raw','gallerydl']),('ehentai','siteEhentai',['api_raw','gallerydl'])] %}
+                {% set nokey_sites = [('kemono','siteKemono',['gallerydl']),('coomer','siteCoomer',['gallerydl'])] %}
+                {% for site_id, site_key, backends in key_sites %}
                 <div class="backend-row">
-                  <span class="backend-icon" id="stIcon{{ site_id }}">{% if site_id == 'rule34' %}<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#ee3344"/><text x="12" y="16" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#fff">34</text></svg>{% elif site_id == 'danbooru' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M5 3h7c3 0 8 1 8 9s-5 9-8 9H5V3zm4 4v10h3c2 0 4-1 4-5s-2-5-4-5H9z" fill="#BA9570" stroke="#000" stroke-width="2" stroke-linejoin="round"/></svg>{% elif site_id == 'nhentai' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 4v16h4v-8l6 8h4V4h-4v8l-6-8H4z" fill="#ED2754"/></svg>{% elif site_id == 'ehentai' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M5 3H3v18h18V3H5zm14 2v14H7V5h12zM9 8h6v2H9V8zm0 4h6v2H9v-2zm0 4h6v2H9v-2z" fill="#BA4B4B"/></svg>{% elif site_id == 'kemono' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M10 3l-6 4v2l2 1v3l2 3v4h8v-4l2-3v-3l2-1V7l-6-4h-4zm-2 7l1 2-1 2-1-2 1-2zm8 0l1 2-1 2-1-2 1-2z" fill="#E6702F"/></svg>{% elif site_id == 'coomer' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M10 3l-6 4v2l2 1v3l2 3v4h8v-4l2-3v-3l2-1V7l-6-4h-4zm-2 8l1 2-1 2-1-2 1-2zm8 0l1 2-1 2-1-2 1-2z" fill="#3B82F6"/></svg>{% endif %}</span>
+                  <span class="backend-icon" id="stIcon{{ site_id }}">{% if site_id == 'rule34' %}<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#ee3344"/><text x="12" y="16" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#fff">34</text></svg>{% elif site_id == 'danbooru' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M5 3h7c3 0 8 1 8 9s-5 9-8 9H5V3zm4 4v10h3c2 0 4-1 4-5s-2-5-4-5H9z" fill="#BA9570" stroke="#000" stroke-width="2" stroke-linejoin="round"/></svg>{% elif site_id == 'nhentai' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 4v16h4v-8l6 8h4V4h-4v8l-6-8H4z" fill="#ED2754"/></svg>{% elif site_id == 'ehentai' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M5 3H3v18h18V3H5zm14 2v14H7V5h12zM9 8h6v2H9V8zm0 4h6v2H9v-2zm0 4h6v2H9v-2z" fill="#BA4B4B"/></svg>{% endif %}</span>
                   <span style="font-weight:600;flex-shrink:0"><span data-i18n="{{ site_key }}">{{ _(site_key) }}</span></span>
                   <span style="flex:1;min-width:8px"></span>
-                  <span style="font-size:13px;color:var(--text2);white-space:nowrap">Backend:</span>
-                  <select class="admin-field-input backend-select" data-site="{{ site_id }}">
+                  <select class="admin-field-input backend-select" data-site="{{ site_id }}" style="max-width:180px">
                     {% for b in backends %}
-                    {% set cur = fb.get(site_id, 'gallerydl' if site_id in ('kemono','coomer','nhentai') else 'api_raw') %}
+                    {% set cur = fb.get(site_id, 'api_raw') %}
                     <option value="{{ b }}" {{ 'selected' if cur == b }}>{{ _( 'backendGallerydl' if b == 'gallerydl' else 'backendApiRaw' ) }}</option>
                     {% endfor %}
                   </select>
                 </div>
                 {% endfor %}
+                <div class="backend-nokey-row">
+                {% for site_id, site_key, backends in nokey_sites %}
+                  <div class="backend-nokey-site">
+                    <span class="backend-icon" id="stIcon{{ site_id }}">{% if site_id == 'kemono' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M10 3l-6 4v2l2 1v3l2 3v4h8v-4l2-3v-3l2-1V7l-6-4h-4zm-2 7l1 2-1 2-1-2 1-2zm8 0l1 2-1 2-1-2 1-2z" fill="#E6702F"/></svg>{% elif site_id == 'coomer' %}<svg width="22" height="22" viewBox="0 0 24 24"><path d="M10 3l-6 4v2l2 1v3l2 3v4h8v-4l2-3v-3l2-1V7l-6-4h-4zm-2 8l1 2-1 2-1-2 1-2zm8 0l1 2-1 2-1-2 1-2z" fill="#3B82F6"/></svg>{% endif %}</span>
+                    <span style="font-weight:600;font-size:13px"><span data-i18n="{{ site_key }}">{{ _(site_key) }}</span></span>
+                    <select class="admin-field-input backend-select" data-site="{{ site_id }}" style="max-width:150px;font-size:12px;padding:4px 8px">
+                      {% for b in backends %}
+                      {% set cur = fb.get(site_id, 'gallerydl') %}
+                      <option value="{{ b }}" {{ 'selected' if cur == b }}>{{ _( 'backendGallerydl' if b == 'gallerydl' else 'backendApiRaw' ) }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                {% endfor %}
+                </div>
               </div>
               <button class="btn btn-primary" onclick="SettingsApp.saveBackends()" style="margin-top:8px">
                 <span data-i18n="settingsSaveStart">{{ _('settingsSaveStart') }}</span>
@@ -334,6 +349,18 @@ var SettingsApp = (function() {
     var str = vals.length === 0 || vals.length === 3 ? 'all' : vals.join(',');
     try { localStorage.setItem('mediavault_folder_filter', str); } catch(e) {}
     _toast(_t('save') + ' — OK', 'success');
+  }
+
+  function loadFolderFilter() {
+    var saved;
+    try { saved = localStorage.getItem('mediavault_folder_filter'); } catch(e) {}
+    var cbs = document.querySelectorAll('#tab-account .settings-folder-cb input');
+    if (!saved || saved === 'all') {
+      cbs.forEach(function(cb) { cb.checked = true; });
+      return;
+    }
+    var selected = saved.split(',');
+    cbs.forEach(function(cb) { cb.checked = selected.indexOf(cb.value) >= 0; });
   }
 
   function saveMediaDir() {
@@ -533,7 +560,7 @@ var SettingsApp = (function() {
 
   return {
     switchTab: switchTab, toggleEffects: toggleEffects, toggleBg: toggleBg,
-    saveBrowserCache: saveBrowserCache, saveFolderFilter: saveFolderFilter,
+    saveBrowserCache: saveBrowserCache,     saveFolderFilter: saveFolderFilter, loadFolderFilter: loadFolderFilter,
     saveMediaDir: saveMediaDir, scanFolder: scanFolder,
     checkMount: checkMount, createFolders: createFolders,
     dbAction: dbAction, loadDbTools: loadDbTools,
@@ -544,6 +571,7 @@ var SettingsApp = (function() {
 
 document.addEventListener('DOMContentLoaded', function() {
   SettingsApp.checkMount();
+  SettingsApp.loadFolderFilter();
 });
 document.addEventListener('languageChanged', function() {
   SettingsApp.loadDbTools();

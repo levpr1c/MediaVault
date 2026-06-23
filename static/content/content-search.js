@@ -638,3 +638,24 @@ if (qParam) {
   searchInput.value = qParam
   doSearch(qParam)
 }
+
+// Register with MobileSearch
+MobileSearch.register('content-search', {
+  onSearch: function(val) {
+    searchInput.value = val
+    if (val.trim()) doSearch(val.trim())
+  },
+  onClear: function() {
+    if (_ac) _ac.abort()
+    searchInput.value = ''
+    _allResults = []
+    _csGrid.clear()
+    grid.innerHTML = ''
+    loading.style.display = 'none'
+    pagination.style.display = 'none'
+    empty.style.display = 'none'
+  },
+  getInitialValue: function() {
+    return searchInput.value
+  }
+})

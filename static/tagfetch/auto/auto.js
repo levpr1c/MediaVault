@@ -175,8 +175,8 @@ var TagfetchAuto = (function() {
       try {
         _autoLb = new Lightbox({
           prefix: 'auto',
-          panel: false,
-          mediaUrl: function(file) { return MediaVaultAPI.mediaUrl(file.path); }
+          tagPanel: false,
+          mediaUrlFn: function(path) { return MediaVaultAPI.mediaUrl(path); }
         });
       } catch(e) { return; }
     }

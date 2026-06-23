@@ -67,15 +67,6 @@ Shared.toggleTheme = function(btn) {
   }, 500);
 };
 
-// Форматирование размера в человекочитаемый вид: B, KB, MB, GB
-Shared.formatSize = function(bytes) {
-  if (!bytes) return '0 B';
-  var units = ['B','KB','MB','GB'];
-  var i = 0, size = bytes;
-  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
-  return size.toFixed(1) + ' ' + units[i];
-};
-
 // ─── i18n ───
 var _i18nData = {
   en: {
@@ -183,7 +174,6 @@ var _i18nData = {
     // General
     welcome: 'Welcome to MediaVault',
     welcomeDesc: 'Import a database or use Tagfetch to get started',
-    dbReady: 'Database ready',
     noFiles: 'No media files found',
     addTag: 'Add tag...',
     logout: 'Logout',
@@ -272,7 +262,6 @@ var _i18nData = {
     searchFiles: 'Search files',
     searchComics: 'Search comics',
     mediaDirEmpty: 'Media directory is empty',
-    filesCountShort: 'files',
     added: "Added",
     adminSettings: "Administration & Settings",
     adminDesc: "Configure settings and manage access",
@@ -294,7 +283,6 @@ var _i18nData = {
     comicsEmpty: "No comics yet",
     comicsName: "Name",
     langToggle: "Switch language",
-    sortToggle: "Toggle sort",
     themeToggle: "Switch theme",
     uncategorized: "Uncategorized",
 
@@ -451,7 +439,6 @@ var _i18nData = {
     // General
     welcome: 'Добро пожаловать в MediaVault',
     welcomeDesc: 'Импортируйте базу данных или используйте Tagfetch',
-    dbReady: 'База данных готова',
     noFiles: 'Файлы не найдены',
     addTag: 'Добавить тег...',
     bulkTag: 'Добавить к файлам',
@@ -543,7 +530,6 @@ var _i18nData = {
     searchFiles: 'Поиск файлов',
     searchComics: 'Поиск комиксов',
     mediaDirEmpty: 'Папка с медиа пуста',
-    filesCountShort: 'файлов',
     added: "Добавлен",
     adminSettings: "Администрирование и настройки",
     adminDesc: "Настройки и управление доступом",
@@ -565,7 +551,6 @@ var _i18nData = {
     comicsEmpty: "Комиксов пока нет",
     comicsName: "Название",
     langToggle: "Сменить язык",
-    sortToggle: "Сменить сортировку",
     themeToggle: "Сменить тему",
     uncategorized: "Без категории",
 
@@ -709,21 +694,6 @@ Shared.toggleEffects = function(btn) {
     if (label) label.textContent = Shared.t ? Shared.t('effectsOff') : 'Effects OFF';
   }
   fetch('/api/effects', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({effects: current})});
-};
-
-Shared.initEffectsBtn = function() {
-  var btn = document.getElementById('effectsToggle');
-  if (!btn || btn._effectsInit) return;
-  btn._effectsInit = true;
-  var html = document.documentElement;
-  var off = html.hasAttribute('data-no-effects');
-  btn.classList.toggle('effects-off', off);
-  var onIcon = btn.querySelector('.effects-on');
-  var offIcon = btn.querySelector('.effects-off-icon');
-  if (onIcon) onIcon.style.display = off ? 'none' : '';
-  if (offIcon) offIcon.style.display = off ? '' : 'none';
-  var label = document.getElementById('effectsLabel');
-  if (label) label.textContent = Shared.t ? Shared.t(off ? 'effectsOff' : 'effectsOn') : (off ? 'Effects OFF' : 'Effects ON');
 };
 
 Shared.initThemeBtn = function() {

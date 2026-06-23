@@ -1,6 +1,5 @@
 import { _t, api, esc, toast } from './utils.js'
 
-console.log('[content-search] module loaded')
 let _ac = null
 let _autocompleteTimer = null
 let _allResults = []
@@ -168,7 +167,6 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading) {
     for (var siteKey in (data.results || {})) {
       var siteData = data.results[siteKey]
       var shortName = siteMap[siteKey] || siteKey
-      console.log('[content-search] site=' + siteKey + ' backend=' + (siteData.backend || '?') + ' results=' + (siteData.results || []).length)
       var items = siteData.results || []
       items.forEach(function(r) { r._source = shortName; newItems.push(r) })
     }

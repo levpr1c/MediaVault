@@ -36,8 +36,6 @@ async function doSearch(page = 1) {
   const q = searchInput.value.trim()
   if (!q) return
 
-  console.log(`[NHentai] search start: query="${q}" page=${page}`)
-
   // Abort any in-flight request
   if (_ac) _ac.abort()
   _ac = new AbortController()
@@ -65,15 +63,9 @@ async function doSearch(page = 1) {
       return
     }
     if (!data.results || !data.results.length) {
-      console.log(`[NHentai] no results for query="${q}"`)
       grid.innerHTML = `<div class="admin-loading" style="color:var(--text2)">No results</div>`
       return
     }
-
-    console.log(`[NHentai] results received: ${data.results.length} items, total=${data.total}`)
-    data.results.forEach((g, i) => {
-      console.log(`[NHentai]   [${i + 1}] id=${g.id} title="${g.title}" pages=${g.pages} tags=${(g.tags || []).length} mid=${g.mid} thumbnail=${g.thumbnail}`)
-    })
 
     // Render gallery cards
     grid.innerHTML = data.results.map(g => cardHTML(g)).join('')
@@ -83,7 +75,6 @@ async function doSearch(page = 1) {
   } catch (e) {
     // AbortError → another search was started, loading handled by the new call
     if (e.name === 'AbortError' || signal.aborted) {
-      console.log(`[NHentai] search aborted: query="${q}"`)
       return
     }
     console.error(`[NHentai] fetch error: ${e.message}`, e)

@@ -14,12 +14,11 @@
 <link rel="preload" as="font" type="font/woff2" href="/static/fonts/ibmplexsans-cyrillic-ext.woff2" crossorigin>
 <link rel="stylesheet" href="/static/css/shared.css?v=10">
 <link rel="stylesheet" href="/static/css/shared-grid.css?v=10">
-<link rel="stylesheet" href="/static/css/tagfetch.css?v=10">
-<link rel="stylesheet" href="/static/css/mediavault.css?v=10">
-{% block head_extra %}{% endblock %}
 {% if request.path.startswith('/content-mgmt/') or request.path == '/content-search' %}
 <link rel="stylesheet" href="/static/css/content.css?v=10">
 {% endif %}
+{% block head_extra %}{% endblock %}
+<link rel="stylesheet" href="/static/css/mediavault.css?v=10">
 </head>
 <body>
 {% block body_start %}{% endblock %}

@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ _('mvComics') }}{% endblock %}
 {% block head_extra %}
+{% if not request.path.startswith('/content-mgmt/') %}
 <link rel="stylesheet" href="/static/css/content.css?v=10">
+{% endif %}
 {% endblock %}
 {% block hdr_brand %}{{ super() }}{% endblock %}
 {% block hdr_tabs %}

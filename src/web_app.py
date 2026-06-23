@@ -280,7 +280,6 @@ LOCALE = {
         'mvCatModalFailed': 'Failed to load',
         'welcome': 'Welcome to MediaVault',
         'welcomeDesc': 'Import a database or use Tagfetch to get started',
-        'dbReady': 'Database ready',
         'noFiles': 'No media files found',
         'addTag': 'Add tag...',
         'logout': 'Logout',
@@ -362,7 +361,6 @@ LOCALE = {
         'delete': 'Delete',
         'comicPagesLabel': 'Pages',
         'save': 'Save',
-        'filesCountShort': '{n} files',
         'mediaDirEmpty': 'Media directory is empty',
         'secLoginTitle': '🔐 MediaVault',
         'secLoginDesc': 'Sign in to your account',
@@ -432,7 +430,6 @@ LOCALE = {
         'comicsEmpty': 'No comics yet',
         'comicsName': 'Name',
         'langToggle': 'Switch language',
-        'sortToggle': 'Toggle sort',
         'themeToggle': 'Switch theme',
         'uncategorized': 'Uncategorized',
         # ── Settings page ──
@@ -529,7 +526,6 @@ LOCALE = {
         'mvCatModalFailed': 'Ошибка загрузки категорий',
         'welcome': 'Добро пожаловать в MediaVault',
         'welcomeDesc': 'Импортируйте базу данных или используйте Tagfetch',
-        'dbReady': 'База данных готова',
         'noFiles': 'Файлы не найдены',
         'addTag': 'Добавить тег...',
         'logout': 'Выйти',
@@ -610,7 +606,6 @@ LOCALE = {
         'delete': 'Удалить',
         'comicPagesLabel': 'Страницы',
         'save': 'Сохранить',
-        'filesCountShort': '{n} файлов',
         'mediaDirEmpty': 'Папка с медиа пуста: {path}. Возможно, хранилище недоступно.',
         'secLoginTitle': '🔐 MediaVault',
         'secLoginDesc': 'Войдите в аккаунт',
@@ -682,7 +677,6 @@ LOCALE = {
         'comicsEmpty': 'Комиксов пока нет',
         'comicsName': 'Название',
         'langToggle': 'Сменить язык',
-        'sortToggle': 'Сменить сортировку',
         'themeToggle': 'Сменить тему',
         'uncategorized': 'Без категории',
         # ── Settings page ──
@@ -744,7 +738,6 @@ def compute_md5(filepath):
 # Извлекает MD5 из имени файла (первые 32 шестнадцатеричных символа)
 def _md5_from_filename(filename):
     """Extract MD5 hash from filename if it starts with a 32-char hex string."""
-    import re
     m = re.match(r'^([0-9a-fA-F]{32})', filename)
     return m.group(1).lower() if m else None
 
@@ -1339,7 +1332,6 @@ def _ensure_db_schema():
             pass
         # Tables for normalized tag storage (used by nhentai manga downloads)
         db.execute('CREATE TABLE IF NOT EXISTS file_tags (path TEXT NOT NULL, tag TEXT NOT NULL, source TEXT DEFAULT \'nhentai\', PRIMARY KEY (path, tag))')
-        db.execute('CREATE TABLE IF NOT EXISTS comic_tags (comic_id INTEGER NOT NULL, tag TEXT NOT NULL, source TEXT DEFAULT \'nhentai\', PRIMARY KEY (comic_id, tag))')
         db.commit()
         db.close()
     except Exception:
@@ -1727,12 +1719,10 @@ def comics_view_route():
             db.close()
         except Exception:
             return redirect('/comics')
-        import urllib.parse
         pages_data = [{'id': p[0], 'num': p[1], 'path': urllib.parse.quote(p[2])} for p in pages]
         comic_data = {'id': comic[0], 'title': comic[1], 'cover': comic[2]}
         return render_template('shared/view.html', mode='comics', comic=comic_data, pages=pages_data, theme=s.get('theme', 'dark'), s=s, page='mediavault', preview=False)
     elif preview:
-        import urllib.parse
         paths_raw = request.args.get('paths', '')
         if not paths_raw:
             return redirect('/comics')
@@ -1976,7 +1966,6 @@ def api_content_search_download():
     if not os.path.isdir(media_dir) or not os.listdir(media_dir):
         return jsonify({'error': 'storage_empty', 'message': _('contentSearchStorageEmpty')}), 400
 
-    import re
     if not re.match(r'^[a-zA-Z0-9]+$', source):
         return jsonify({'error': 'Invalid source name'}), 400
 
@@ -1993,7 +1982,6 @@ def api_content_search_download():
         return jsonify({'error': 'Cannot create directory: ' + str(e)}), 500
 
     from urllib.parse import urlparse
-    import requests as req_lib
     parsed = urlparse(url)
     filename = os.path.basename(parsed.path) or 'download'
     filename = os.path.basename(filename)
@@ -2002,7 +1990,7 @@ def api_content_search_download():
     was_downloaded = False
     if not os.path.exists(target_path):
         try:
-            r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=60, stream=True)
+            r = requests.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=60, stream=True)
             r.raise_for_status()
             with open(target_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
@@ -2080,7 +2068,6 @@ def api_content_search_check_manga_dir():
     if not gid:
         return jsonify({'error': 'Missing gid'}), 400
 
-    import re
     s = load_settings()
     media_dir = s.get('media_dir', '')
     dl_dir = s.get('downloads_dir', 'Downloads')
@@ -2098,7 +2085,7 @@ def api_content_search_check_manga_dir():
         row = db.execute('SELECT id, title FROM comics WHERE source=? AND source_id=?',
                          ['nhentai', str(gid)]).fetchone()
         if row:
-            existing_comics = {'id': row['id'], 'title': row['title']}
+            existing_comics = {'id': row[0], 'title': row[1]}
         db.close()
     except Exception:
         pass
@@ -2114,7 +2101,6 @@ def api_content_search_check_manga_dir():
 @api_error_handler
 def api_content_search_download_manga():
     """Download all pages of an NHentai gallery into a subfolder."""
-    import re
     data = request.get_json()
     if data is None:
         return jsonify({'error': 'no data'}), 400
@@ -2149,7 +2135,6 @@ def api_content_search_download_manga():
         os.makedirs(target_dir, exist_ok=True)
     except Exception as e:
         return jsonify({'error': 'Cannot create directory: ' + str(e)}), 500
-    import requests as req_lib
 
     _ensure_db_schema()
     gd = settings.get('gallery_dir', 'Gallery')
@@ -2160,11 +2145,19 @@ def api_content_search_download_manga():
 
     # ── Fetch gallery info for correct page extensions ──
     page_urls = []
+    api_tags = []
+    api_tag_types = {}
     try:
-        r = req_lib.get(f'https://nhentai.net/api/v2/galleries/{gid}',
+        r = requests.get(f'https://nhentai.net/api/v2/galleries/{gid}',
                         headers={'User-Agent': 'MediaVault/1.0 (mediavault project)'}, timeout=15)
         if r.status_code == 200:
             d = r.json()
+            for t in d.get('tags', []):
+                name = t.get('name', '')
+                ttype = t.get('type', 'tag')
+                if name:
+                    api_tags.append(name)
+                    api_tag_types[name] = ttype
             pages = d.get('pages', [])
             for i, pg in enumerate(pages, 1):
                 path = pg.get('path', '')
@@ -2172,6 +2165,14 @@ def api_content_search_download_manga():
                     page_urls.append(f"https://i.nhentai.net/{path}")
     except Exception:
         pass
+
+    # Merge frontend tags with API tags
+    if api_tags:
+        all_tags = set()
+        if tags_str:
+            all_tags.update(t.strip() for t in tags_str.split(',') if t.strip())
+        all_tags.update(api_tags)
+        tags_str = ','.join(sorted(all_tags))
 
     if not page_urls:
         # Fallback: .jpg only (most common)
@@ -2183,7 +2184,7 @@ def api_content_search_download_manga():
 
     # ── Download pages concurrently ──
     def _dl_page(url, path):
-        r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
+        r = requests.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
         r.raise_for_status()
         with open(path, 'wb') as f:
             f.write(r.content)
@@ -2250,6 +2251,11 @@ def api_content_search_download_manga():
                 [rel_path, filename, ftype, stat.st_size, int(stat.st_mtime), merged, w, h,
                  int(time.time()), folder_type]
             )
+        # Save individual tags to file_tags table
+        if api_tags:
+            for tag in api_tags:
+                db.execute('INSERT OR REPLACE INTO file_tags (path, tag, source) VALUES (?, ?, ?)',
+                           [rel_path, tag, 'nhentai'])
         db.commit()
         db.close()
         count += 1
@@ -2264,7 +2270,7 @@ def api_content_search_download_manga():
             existing = db.execute('SELECT id FROM comics WHERE source=? AND source_id=?',
                                   ['nhentai', str(gid)]).fetchone()
             if existing:
-                comics_id = existing['id']
+                comics_id = existing[0]
                 log_info('[ContentSearch] manga gid=%s: comics already exists id=%d, skipping', gid, comics_id)
                 db.close()
             else:
@@ -2276,13 +2282,35 @@ def api_content_search_download_manga():
                 pages_rel.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                 comics_title = title or 'NHentai #' + str(gid)
                 cover = pages_rel[0] if pages_rel else None
-                c = db.execute('INSERT INTO comics (title, cover_path, source, source_id) VALUES (?, ?, ?, ?)',
-                               [comics_title, cover, 'nhentai', str(gid)])
+                c = db.execute('INSERT INTO comics (title, cover_path, source, source_id, tags) VALUES (?, ?, ?, ?, ?)',
+                               [comics_title, cover, 'nhentai', str(gid), tags_str or None])
                 comics_id = c.lastrowid
                 for i, p in enumerate(pages_rel):
                     db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)',
                                [comics_id, i + 1, p])
                 db.commit()
+                # Insert NHentai tags into tag_category_members for left panel
+                if api_tags and api_tag_types:
+                    try:
+                        for ntype, cat in _NHENTAI_TYPE_MAP.items():
+                            db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
+                                       [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
+                        for tag_name in api_tags:
+                            ntype = api_tag_types.get(tag_name, 'tag')
+                            cat = _NHENTAI_TYPE_MAP.get(ntype, 'general')
+                            db.execute("""
+                                INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                                VALUES (?, ?, 'nhentai', ?)
+                                ON CONFLICT(tag_name) DO UPDATE SET
+                                    category = excluded.category,
+                                    source = 'nhentai',
+                                    last_updated = excluded.last_updated
+                            """, [tag_name, cat, int(time.time())])
+                        db.commit()
+                        log_info('[ContentSearch] manga gid=%s: inserted %d tags into tag_category_members',
+                                 gid, len(api_tags))
+                    except Exception as e:
+                        log_error('[ContentSearch] Failed to insert NHentai categories for gid=%s: %s', gid, e)
                 db.close()
                 log_info('[ContentSearch] Comics auto-created: id=%d title="%s" pages=%d', comics_id, comics_title, len(pages_rel))
         except Exception as e:
@@ -2294,7 +2322,6 @@ def api_content_search_download_manga():
 
 def _bg_download_file(url, source, tags_str, tags_by_category):
     """Download helper that returns dict or raises on error."""
-    import re
     s = load_settings()
     media_dir = s.get('media_dir', '')
     if not media_dir:
@@ -2311,14 +2338,13 @@ def _bg_download_file(url, source, tags_str, tags_by_category):
     os.makedirs(target_dir, exist_ok=True)
 
     from urllib.parse import urlparse
-    import requests as req_lib
     filename = os.path.basename(urlparse(url).path) or 'download'
     filename = os.path.basename(filename)
     target_path = os.path.join(target_dir, filename)
 
     was_downloaded = False
     if not os.path.exists(target_path):
-        r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=60, stream=True)
+        r = requests.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=60, stream=True)
         r.raise_for_status()
         with open(target_path, 'wb') as f:
             for chunk in r.iter_content(chunk_size=8192):
@@ -2378,7 +2404,6 @@ def _bg_download_file(url, source, tags_str, tags_by_category):
 
 def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=False):
     """Download helper for manga that returns dict or raises on error."""
-    import re
     s = load_settings()
     media_dir = s.get('media_dir', '')
     if not media_dir:
@@ -2407,7 +2432,6 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
 
     os.makedirs(target_dir, exist_ok=True)
 
-    import requests as req_lib
     _ensure_db_schema()
     gd = s.get('gallery_dir', 'Gallery')
     cd = s.get('comics_dir', 'Comics')
@@ -2418,7 +2442,7 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
     api_tags = []
     api_tag_types = {}
     try:
-        r = req_lib.get(f'https://nhentai.net/api/v2/galleries/{gid}',
+        r = requests.get(f'https://nhentai.net/api/v2/galleries/{gid}',
                         headers={'User-Agent': 'MediaVault/1.0 (mediavault project)'}, timeout=15)
         if r.status_code == 200:
             d = r.json()
@@ -2436,16 +2460,20 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
                     page_urls.append(f"https://i.nhentai.net/{path}")
     except Exception:
         pass
-    # Use API tags as fallback if frontend sent none
-    if not tags_str and api_tags:
-        tags_str = ','.join(api_tags)
-        log_info('[BgTask] manga gid=%s: using tags from API response: %d tags', gid, len(api_tags))
+    # Merge frontend tags with API tags
+    if api_tags:
+        all_tags = set()
+        if tags_str:
+            all_tags.update(t.strip() for t in tags_str.split(',') if t.strip())
+        all_tags.update(api_tags)
+        tags_str = ','.join(sorted(all_tags))
+        log_info('[BgTask] manga gid=%s: merged %d API tags with frontend tags -> %d total', gid, len(api_tags), len(all_tags))
     if not page_urls:
         for i in range(1, num_pages + 1):
             page_urls.append(f"https://i.nhentai.net/galleries/{media_id}/{i}.jpg")
 
     def _dl(url, path):
-        r = req_lib.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
+        r = requests.get(url, headers={'User-Agent': 'MediaVault/1.0'}, timeout=30)
         r.raise_for_status()
         with open(path, 'wb') as f:
             f.write(r.content)
@@ -2526,7 +2554,7 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
             existing = db.execute('SELECT id FROM comics WHERE source=? AND source_id=?',
                                   ['nhentai', str(gid)]).fetchone()
             if existing:
-                comics_id = existing['id']
+                comics_id = existing[0]
                 # Обновляем tags в comics.tags — это CSV-строка, основное хранилище тегов комикса
                 if tags_str:
                     db.execute('UPDATE comics SET tags=? WHERE id=?', [tags_str, comics_id])

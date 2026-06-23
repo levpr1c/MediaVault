@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="/static/css/content.css?v=10">
+{% endblock %}
 {% block title %}Similar{% endblock %}
 {% block hdr_brand %}SIMILAR{% endblock %}
 {% block hdr_tabs %}
@@ -41,5 +44,4 @@ if (path) {
     });
 }
 </script>
-<link rel="stylesheet" href="/static/css/content.css?v=10">
 {% endblock %}

@@ -42,30 +42,6 @@
             <div class="admin-card">
               <div class="admin-card-header">
                 <div class="admin-card-title">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                  <span data-i18n="settingsMediaPath">{{ _('settingsMediaPath') }}</span>
-                </div>
-                <div id="mountStatus" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)"></div>
-              </div>
-              <div class="admin-field">
-                <label class="admin-field-label" for="mediaDir">{{ _('settingsMediaPath') }}</label>
-                <input type="text" id="mediaDir" class="admin-field-input" value="{{ s.get('media_dir', '') }}" placeholder="/path/to/media">
-              </div>
-              <div class="admin-field-row" style="margin-top:12px">
-                <div class="admin-field"><label class="admin-field-label">{{ _('adminGalleryDir') }}</label><input class="admin-field-input" id="galleryDir" value="{{ s.get('gallery_dir', 'Gallery') }}" placeholder="Gallery"></div>
-                <div class="admin-field"><label class="admin-field-label">{{ _('adminComicsDir') }}</label><input class="admin-field-input" id="comicsDir" value="{{ s.get('comics_dir', 'Comics') }}" placeholder="Comics"></div>
-                <div class="admin-field"><label class="admin-field-label" data-i18n="settingsDownloadsDir">{{ _('settingsDownloadsDir') }}</label><input class="admin-field-input" id="downloadsDir" value="{{ s.get('downloads_dir', 'Downloads') }}" placeholder="Downloads"></div>
-              </div>
-              <div class="settings-actions">
-                <button class="btn btn-primary" onclick="SettingsApp.saveMediaDir()" data-i18n="save">{{ _('save') }}</button>
-                <button class="btn" onclick="SettingsApp.scanFolder()" data-i18n="settingsScan">{{ _('settingsScan') }}</button>
-                <button class="btn" onclick="SettingsApp.createFolders()" data-i18n="settingsCreateFolders">{{ _('settingsCreateFolders') }}</button>
-              </div>
-            </div>
-
-            <div class="admin-card">
-              <div class="admin-card-header">
-                <div class="admin-card-title">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   <span data-i18n="effectsTitle">{{ _('effectsTitle') }}</span>
                 </div>
@@ -109,6 +85,30 @@
             <div class="admin-card">
               <div class="admin-card-header">
                 <div class="admin-card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  <span data-i18n="settingsMediaPath">{{ _('settingsMediaPath') }}</span>
+                </div>
+                <div id="mountStatus" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)"></div>
+              </div>
+              <div class="admin-field">
+                <label class="admin-field-label" for="mediaDir">{{ _('settingsMediaPath') }}</label>
+                <input type="text" id="mediaDir" class="admin-field-input" value="{{ s.get('media_dir', '') }}" placeholder="/path/to/media">
+              </div>
+              <div class="admin-field-row" style="margin-top:12px">
+                <div class="admin-field"><label class="admin-field-label">{{ _('adminGalleryDir') }}</label><input class="admin-field-input" id="galleryDir" value="{{ s.get('gallery_dir', 'Gallery') }}" placeholder="Gallery"></div>
+                <div class="admin-field"><label class="admin-field-label">{{ _('adminComicsDir') }}</label><input class="admin-field-input" id="comicsDir" value="{{ s.get('comics_dir', 'Comics') }}" placeholder="Comics"></div>
+                <div class="admin-field"><label class="admin-field-label" data-i18n="settingsDownloadsDir">{{ _('settingsDownloadsDir') }}</label><input class="admin-field-input" id="downloadsDir" value="{{ s.get('downloads_dir', 'Downloads') }}" placeholder="Downloads"></div>
+              </div>
+              <div class="settings-actions">
+                <button class="btn btn-primary" onclick="SettingsApp.saveMediaDir()" data-i18n="save">{{ _('save') }}</button>
+                <button class="btn" onclick="SettingsApp.scanFolder()" data-i18n="settingsScan">{{ _('settingsScan') }}</button>
+                <button class="btn" onclick="SettingsApp.createFolders()" data-i18n="settingsCreateFolders">{{ _('settingsCreateFolders') }}</button>
+              </div>
+            </div>
+
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div class="admin-card-title">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   <span data-i18n="secUsername">{{ _('secUsername') }}</span>
                 </div>
@@ -146,6 +146,24 @@
               </div>
               <button class="btn btn-primary" onclick="SettingsApp.changePassword()" data-i18n="userSetPasswordBtn">{{ _('userSetPasswordBtn') }}</button>
               <div id="accountStatus" class="ac-status"></div>
+            </div>
+
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div class="admin-card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  <span>{{ _('settingsDefaultFolderFilter') }}</span>
+                </div>
+              </div>
+              <div class="admin-field" style="margin-bottom:8px">
+                <label class="admin-field-label">{{ _('settingsDefaultFolderFilter') }}</label>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
+                  <label class="settings-folder-cb"><input type="checkbox" value="gallery" onchange="SettingsApp.saveFolderFilter()"> Gallery</label>
+                  <label class="settings-folder-cb"><input type="checkbox" value="comics" onchange="SettingsApp.saveFolderFilter()"> Comics</label>
+                  <label class="settings-folder-cb"><input type="checkbox" value="downloads" onchange="SettingsApp.saveFolderFilter()"> D/L</label>
+                </div>
+                <div style="font-size:12px;color:var(--text2);margin-top:6px" data-i18n="settingsFolderFilterDesc">{{ _('settingsFolderFilterDesc') }}</div>
+              </div>
             </div>
           </div>
 
@@ -203,23 +221,6 @@
             </div>
             </div>
 
-            <div class="admin-card">
-              <div class="admin-card-header">
-                <div class="admin-card-title">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                  <span>{{ _('settingsDefaultFolderFilter') }}</span>
-                </div>
-              </div>
-              <div class="admin-field" style="margin-bottom:8px">
-                <label class="admin-field-label">{{ _('settingsDefaultFolderFilter') }}</label>
-                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
-                  <label class="settings-folder-cb"><input type="checkbox" value="gallery" onchange="SettingsApp.saveFolderFilter()"> Gallery</label>
-                  <label class="settings-folder-cb"><input type="checkbox" value="comics" onchange="SettingsApp.saveFolderFilter()"> Comics</label>
-                  <label class="settings-folder-cb"><input type="checkbox" value="downloads" onchange="SettingsApp.saveFolderFilter()"> D/L</label>
-                </div>
-                <div style="font-size:12px;color:var(--text2);margin-top:6px" data-i18n="settingsFolderFilterDesc">{{ _('settingsFolderFilterDesc') }}</div>
-              </div>
-            </div>
           </div>
     </div>
   </main>
@@ -273,7 +274,7 @@ var SettingsApp = (function() {
     if (content) content.classList.add('active');
     if (tab) tab.classList.add('active');
     if (name === 'database') { loadDbTools(); loadBackends(); }
-    if (name === 'appearance') {
+    if (name === 'account') {
       checkMount();
       if (_mountTimer) clearInterval(_mountTimer);
       _mountTimer = setInterval(checkMount, 300000);
@@ -327,7 +328,7 @@ var SettingsApp = (function() {
   }
 
   function saveFolderFilter() {
-    var cbs = document.querySelectorAll('#tab-appearance .settings-folder-cb input:checked');
+    var cbs = document.querySelectorAll('#tab-account .settings-folder-cb input:checked');
     var vals = [];
     cbs.forEach(function(cb) { vals.push(cb.value); });
     var str = vals.length === 0 || vals.length === 3 ? 'all' : vals.join(',');

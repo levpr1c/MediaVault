@@ -121,6 +121,7 @@ var CONFIG = {
   <a href="/mediavault/gallery" class="hdr-link{% if request.path == '/mediavault/gallery' or request.path == '/mediavault/view' %} active{% endif %}" data-i18n="mvGallery">Gallery</a>
   <a href="/mediavault/comics" class="hdr-link{% if request.path == '/mediavault/comics' or '/comics/view' in request.path %} active{% endif %}" data-i18n="mvComics">Comics</a>
 </div>
+{% if session.role == 'admin' %}
 <div class="hdr-group-sep"></div>
 <div class="hdr-group">
   <span class="hdr-group-label" data-i18n="navSearch">Search</span>
@@ -155,6 +156,7 @@ var CONFIG = {
   <a href="/settings" class="hdr-link{% if request.path == '/settings' %} active{% endif %}" data-i18n="settings">Settings</a>
   <a href="/admin" class="hdr-link{% if request.path == '/admin' %} active{% endif %}" data-i18n="navAdmin">Admin</a>
 </div>
+{% endif %}
 {% endif %}
     {% endblock %}</nav>
       <nav class="hdr-nav">{% block hdr_nav_desktop %}{% endblock %}</nav>

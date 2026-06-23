@@ -88,6 +88,16 @@ def log_request(method, path, query, status):
 _scan_lock = threading.Lock()
 _scan_in_progress = False
 
+# Прогресс сканирования папок (читается из /api/admin/scan-progress)
+_scan_progress_lock = threading.Lock()
+_scan_progress = {
+    'status': 'idle',       # idle | scanning | done | error
+    'current_folder': '',
+    'total_folders': 0,
+    'folders_done': 0,
+    'error': ''
+}
+
 # ── Путь к БД (всегда в скрытой папке) ──
 
 _DB_DIR = os.path.expanduser('~/.local/share/MediaVault')
@@ -300,7 +310,6 @@ LOCALE = {
         'contentSearchAiFilter': 'Hide AI',
         'contentSearchStorageEmpty': 'Storage appears empty — your drive may not be mounted',
         'contentSearchDownload': 'Download from {site}',
-        'contentSearchPages': 'pages',
         'contentSearchViewComics': 'View Comics',
         'downloadStarted': 'Download started',
         'downloadRunning': 'Downloading… {p}/{t}',
@@ -314,6 +323,7 @@ LOCALE = {
         'settingsCreateFolders': 'Create folders',
         'settingsCreateFoldersDone': 'Folders created',
         'settingsFoldersExist': 'Already exist',
+        'settingsFolder': 'Folder',
         'settingsMountOk': 'Storage is ready',
         'settingsMountFail': 'Storage is empty or not mounted',
         'settingsDefaultFolderFilter': 'Default folder filter',
@@ -344,7 +354,9 @@ LOCALE = {
         'comicNamePlaceholder': 'Comic title',
         'searchFiles': 'Search files…',
         'searchComics': 'Search comics…',
-        'switchViewMode': 'Switch view mode',
+        'singlePage': 'Single page',
+        'spread': 'Spread',
+        'scrollMode': 'Scroll',
         'prevPage': 'Previous',
         'nextPage': 'Next',
         'delete': 'Delete',
@@ -394,6 +406,7 @@ LOCALE = {
         'sectionFolders': 'Folder Settings',
         'backendApiRaw': 'API Raw',
         'backendGallerydl': 'Gallery-DL (universal)',
+        'backendType': 'Backend',
         'siteRule34': 'Rule34',
         'siteDanbooru': 'Danbooru',
         'siteNhentai': 'NHentai',
@@ -547,7 +560,6 @@ LOCALE = {
         'contentSearchAiFilter': 'Без AI',
         'contentSearchStorageEmpty': 'Хранилище пустое — возможно, накопитель не подключён',
         'contentSearchDownload': 'Скачать с {site}',
-        'contentSearchPages': 'страниц',
         'contentSearchViewComics': 'Открыть комикс',
         'downloadStarted': 'Загрузка начата',
         'downloadRunning': 'Загрузка… {p}/{t}',
@@ -561,6 +573,7 @@ LOCALE = {
         'settingsCreateFolders': 'Создать папки',
         'settingsCreateFoldersDone': 'Папки созданы',
         'settingsFoldersExist': 'Уже существуют',
+        'settingsFolder': 'Папка',
         'settingsMountOk': 'Накопитель в порядке',
         'settingsMountFail': 'Накопитель не подключён или пуст',
         'settingsDefaultFolderFilter': 'Фильтр папок по умолчанию',
@@ -589,7 +602,9 @@ LOCALE = {
         'comicNamePlaceholder': 'Название комикса',
         'searchFiles': 'Поиск файлов…',
         'searchComics': 'Поиск комиксов…',
-        'switchViewMode': 'Переключить режим',
+        'singlePage': 'Одна страница',
+        'spread': 'Разворот',
+        'scrollMode': 'Лента',
         'prevPage': 'Предыдущая',
         'nextPage': 'Следующая',
         'delete': 'Удалить',
@@ -641,6 +656,7 @@ LOCALE = {
         'sectionFolders': 'Настройки папок',
         'backendApiRaw': 'API Raw',
         'backendGallerydl': 'Gallery-DL (универсальный)',
+        'backendType': 'Бэкенд',
         'siteRule34': 'Rule34',
         'siteDanbooru': 'Danbooru',
         'siteNhentai': 'NHentai',
@@ -1101,6 +1117,17 @@ _R34_CAT_PREFIXES = {
     'meta': 'meta',
 }
 
+_NHENTAI_TYPE_MAP = {
+    'tag': 'general',
+    'artist': 'artist',
+    'character': 'character',
+    'parody': 'copyright',
+    'group': 'general',
+    'language': 'meta',
+    'category': 'general',
+    'other': 'general',
+}
+
 # Определяет категорию тега Rule34: сначала БД, затем эвристика по префиксу
 def _categorize_r34_tag(tag):
     """Determine category for an R34 tag: check DB membership first, then heuristic prefix."""
@@ -1305,6 +1332,14 @@ def _ensure_db_schema():
             db.execute("ALTER TABLE comics ADD COLUMN source_id TEXT DEFAULT ''")
         except Exception:
             pass
+        # Миграция: tags column for comics
+        try:
+            db.execute("ALTER TABLE comics ADD COLUMN tags TEXT DEFAULT ''")
+        except Exception:
+            pass
+        # Tables for normalized tag storage (used by nhentai manga downloads)
+        db.execute('CREATE TABLE IF NOT EXISTS file_tags (path TEXT NOT NULL, tag TEXT NOT NULL, source TEXT DEFAULT \'nhentai\', PRIMARY KEY (path, tag))')
+        db.execute('CREATE TABLE IF NOT EXISTS comic_tags (comic_id INTEGER NOT NULL, tag TEXT NOT NULL, source TEXT DEFAULT \'nhentai\', PRIMARY KEY (comic_id, tag))')
         db.commit()
         db.close()
     except Exception:
@@ -1768,12 +1803,6 @@ def comics_tags_page():
     s = load_settings()
     return render_template('content-mgmt/tags.html', page='content-mgmt/comics-tags', s=s)
 
-@app.route('/franchise-search')
-@admin_required
-def franchise_search_page():
-    """Redirect to new content search."""
-    return redirect('/content-search')
-
 @app.route('/content-search')
 @admin_required
 def content_search_page():
@@ -2079,7 +2108,6 @@ def api_content_search_check_manga_dir():
         'dir': target_dir if media_dir else '',
         'comics': existing_comics
     })
-
 
 @app.route('/api/content-search/download-manga', methods=['POST'])
 @auth_required
@@ -2387,11 +2415,20 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
     page_urls = []
+    api_tags = []
+    api_tag_types = {}
     try:
         r = req_lib.get(f'https://nhentai.net/api/v2/galleries/{gid}',
                         headers={'User-Agent': 'MediaVault/1.0 (mediavault project)'}, timeout=15)
         if r.status_code == 200:
             d = r.json()
+            # Extract tags from NHentai API v2 response with their types
+            for t in d.get('tags', []):
+                name = t.get('name', '')
+                ttype = t.get('type', 'tag')
+                if name:
+                    api_tags.append(name)
+                    api_tag_types[name] = ttype
             pages = d.get('pages', [])
             for i, pg in enumerate(pages, 1):
                 path = pg.get('path', '')
@@ -2399,6 +2436,10 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
                     page_urls.append(f"https://i.nhentai.net/{path}")
     except Exception:
         pass
+    # Use API tags as fallback if frontend sent none
+    if not tags_str and api_tags:
+        tags_str = ','.join(api_tags)
+        log_info('[BgTask] manga gid=%s: using tags from API response: %d tags', gid, len(api_tags))
     if not page_urls:
         for i in range(1, num_pages + 1):
             page_urls.append(f"https://i.nhentai.net/galleries/{media_id}/{i}.jpg")
@@ -2468,6 +2509,11 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
                 'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
                 [rel_path, filename, ftype, stat.st_size, int(stat.st_mtime), merged, w, h,
                  int(time.time()), folder_type])
+        # Save individual tags to file_tags table
+        if api_tags:
+            for tag in api_tags:
+                db.execute('INSERT OR REPLACE INTO file_tags (path, tag, source) VALUES (?, ?, ?)',
+                           [rel_path, tag, 'nhentai'])
         db.commit()
         db.close()
         count += 1
@@ -2481,7 +2527,13 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
                                   ['nhentai', str(gid)]).fetchone()
             if existing:
                 comics_id = existing['id']
-                log_info('[BgTask] manga gid=%s: comics already exists id=%d, skipping', gid, comics_id)
+                # Обновляем tags в comics.tags — это CSV-строка, основное хранилище тегов комикса
+                if tags_str:
+                    db.execute('UPDATE comics SET tags=? WHERE id=?', [tags_str, comics_id])
+                    # comic_tags НЕ нужна: теги уже есть в comics.tags, а tag_category_members
+                    # (глобальный реестр для левой панели) заполняется ниже отдельно
+                db.commit()
+                log_info('[BgTask] manga gid=%s: comics already exists id=%d, updated tags', gid, comics_id)
                 db.close()
             else:
                 comics_title = title or 'NHentai #' + str(gid)
@@ -2492,17 +2544,44 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
                 )
                 pages_rel.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
                 cover = pages_rel[0] if pages_rel else None
-                c = db.execute('INSERT INTO comics (title, cover_path, source, source_id) VALUES (?, ?, ?, ?)',
-                               [comics_title, cover, 'nhentai', str(gid)])
+                c = db.execute('INSERT INTO comics (title, cover_path, source, source_id, tags) VALUES (?, ?, ?, ?, ?)',
+                               [comics_title, cover, 'nhentai', str(gid), tags_str or None])
                 comics_id = c.lastrowid
                 for i, p in enumerate(pages_rel):
                     db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)',
                                [comics_id, i + 1, p])
+                # comic_tags не нужна: теги комикса хранятся в comics.tags (CSV-строка),
+                # а tag_category_members для левой панели заполняется ниже
                 db.commit()
-                log_info('[BgTask] manga gid=%s: comics created id=%d title="%s" pages=%d',
-                         gid, comics_id, comics_title, len(pages_rel))
+                log_info('[BgTask] manga gid=%s: comics created id=%d title="%s" pages=%d tags=%d',
+                         gid, comics_id, comics_title, len(pages_rel), len(api_tags))
         except Exception as e:
             log_error('[BgTask] Comics auto-create failed for gid=%s: %s', gid, e)
+
+    # Insert NHentai tags into tag_category_members for left panel
+    if api_tags and api_tag_types:
+        try:
+            db = _db_conn()
+            for ntype, cat in _NHENTAI_TYPE_MAP.items():
+                db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
+                           [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
+            for tag_name in api_tags:
+                ntype = api_tag_types.get(tag_name, 'tag')
+                cat = _NHENTAI_TYPE_MAP.get(ntype, 'general')
+                db.execute("""
+                    INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                    VALUES (?, ?, 'nhentai', ?)
+                    ON CONFLICT(tag_name) DO UPDATE SET
+                        category = excluded.category,
+                        source = 'nhentai',
+                        last_updated = excluded.last_updated
+                """, [tag_name, cat, int(time.time())])
+            db.commit()
+            db.close()
+            log_info('[BgTask] manga gid=%s: inserted %d tags into tag_category_members',
+                     gid, len(api_tags))
+        except Exception as e:
+            log_error('[BgTask] Failed to insert NHentai categories for gid=%s: %s', gid, e)
 
     return {'ok': True, 'count': count, 'errors': errors, 'dir': target_dir, 'comics_id': comics_id}
 
@@ -2579,7 +2658,6 @@ def api_content_search_mount_check():
     except Exception as e:
         return jsonify({'mounted': False, 'empty': True, 'message': str(e)})
 
-
 @app.route('/api/content-search/create-folders', methods=['POST'])
 @admin_required
 @api_error_handler
@@ -2604,22 +2682,6 @@ def api_content_search_create_folders():
             return jsonify({'error': 'Cannot create ' + sub + ': ' + str(e)}), 500
     log_info('[ContentSearch] Folders: created=%s existing=%s', ', '.join(created) or '-', ', '.join(existing) or '-')
     return jsonify({'ok': True, 'created': created, 'existing': existing})
-
-
-@app.route('/api/franchise/search')
-@admin_required
-@api_error_handler
-def api_franchise_search():
-    """Legacy alias: delegates to content search API."""
-    q = request.args.get('q', '').strip()
-    page = request.args.get('page', 1, type=int)
-    if not q:
-        return jsonify({'error': 'no query'}), 400
-    from flask import Response as Resp
-    resp = Resp()
-    resp.headers['Location'] = f'/api/content-search?q={urllib.parse.quote(q)}&page={page}'
-    resp.status_code = 308
-    return resp
 
 @app.route('/api/tags/autocomplete')
 @admin_required
@@ -3203,12 +3265,22 @@ def _quick_scan(force=False):
         log_info('quick_scan: scan already in progress, skipping')
         return (0, 0)
     _scan_in_progress = True
+
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'scanning'
+        _scan_progress['current_folder'] = ''
+        _scan_progress['total_folders'] = 0
+        _scan_progress['folders_done'] = 0
+        _scan_progress['error'] = ''
+
     count = 0
     errors = 0
     try:
         media_dir = settings.get('media_dir', '')
         if not media_dir:
             log_info('quick_scan: no media_dir set')
+            with _scan_progress_lock:
+                _scan_progress['status'] = 'idle'
             return (0, 0)
 
         # ── Fast check: compare file count ──
@@ -3219,17 +3291,39 @@ def _quick_scan(force=False):
 
         if not force and prev_dir == media_dir and current_count == prev_count:
             log_info('quick_scan: file count unchanged (%d), skipping', current_count)
+            with _scan_progress_lock:
+                _scan_progress['status'] = 'idle'
             return (0, 0)
 
         log_info('quick_scan: scanning %s (force=%s, count=%d)', media_dir, force, current_count)
+
+        # ── Count first-level folders for progress ──
+        try:
+            first_level = [d for d in os.listdir(media_dir) if os.path.isdir(os.path.join(media_dir, d)) and not d.startswith('.')]
+            with _scan_progress_lock:
+                _scan_progress['total_folders'] = len(first_level)
+        except:
+            pass
+
         _ensure_db_schema()
         count = 0
         errors = 0
         db = _db_conn()
 
         try:
+            _last_top = None
             for root, dirs, files in os.walk(media_dir):
                 dirs[:] = [d for d in dirs if not d.startswith('.')]
+
+                # ── Update current folder progress ──
+                rel_path = os.path.relpath(root, media_dir)
+                top_dir = rel_path.split('/')[0] if '/' in rel_path else '.'
+                if top_dir != _last_top:
+                    _last_top = top_dir
+                    with _scan_progress_lock:
+                        _scan_progress['folders_done'] = min(_scan_progress['folders_done'] + 1, _scan_progress['total_folders'] or 1)
+                        _scan_progress['current_folder'] = top_dir
+
                 for f in files:
                     if f.startswith('.'):
                         continue
@@ -3271,14 +3365,19 @@ def _quick_scan(force=False):
         save_settings(s)
 
         log_info('quick_scan done: %d new, %d errors (total %d files in dir)', count, errors, current_count)
+        with _scan_progress_lock:
+            _scan_progress['status'] = 'done'
     except Exception as e:
         log_error('quick_scan error: %s', e)
+        with _scan_progress_lock:
+            _scan_progress['status'] = 'error'
+            _scan_progress['error'] = str(e)
     finally:
         _scan_in_progress = False
         _scan_lock.release()
     return (count, errors)
 
-# Ручное сканирование папки (кнопка Scan/Rescan). Запускает _quick_scan(force=True).
+# Ручное сканирование папки (кнопка Scan/Rescan). Запускает _quick_scan(force=True) в фоне.
 @app.route('/api/scan_folder', methods=['POST'])
 @admin_required
 @api_error_handler
@@ -3291,10 +3390,9 @@ def api_scan_folder():
     log_info('scan_folder: media_dir=%s', media_dir)
     if _scan_in_progress:
         log_info('scan_folder: scan already in progress')
-        return jsonify({'ok': True, 'scanned': 0, 'errors': 0, 'skipped': 'scan_in_progress'})
-    count, errors = _quick_scan(force=True)
-    log_info('scan_folder: done — scanned=%d, errors=%d', count, errors)
-    return jsonify({'ok': True, 'scanned': count, 'errors': errors})
+        return jsonify({'ok': True, 'async': True, 'skipped': 'scan_in_progress'})
+    threading.Thread(target=_quick_scan, args=(True,), daemon=True).start()
+    return jsonify({'ok': True, 'async': True})
 
 # Статус сканирования.
 @app.route('/api/scan_status', methods=['GET'])
@@ -3302,6 +3400,31 @@ def api_scan_folder():
 @api_error_handler
 def api_scan_status():
     return jsonify({'scan_in_progress': _scan_in_progress})
+
+# Прогресс сканирования папок (с деталями по папкам).
+@app.route('/api/admin/scan-progress', methods=['GET'])
+@admin_required
+@api_error_handler
+def api_admin_scan_progress():
+    with _scan_progress_lock:
+        return jsonify({k: _scan_progress[k] for k in _scan_progress})
+
+# Статус бэкендов (gallery-dl, api_raw).
+@app.route('/api/admin/backends/status', methods=['GET'])
+@admin_required
+@api_error_handler
+def api_admin_backends_status():
+    from backends import BACKENDS
+    result = {}
+    for name, backend in BACKENDS.items():
+        if hasattr(backend, 'is_available'):
+            try:
+                result[name] = backend.is_available()
+            except:
+                result[name] = False
+        else:
+            result[name] = True
+    return jsonify(result)
 
 def _folder_sql_clause(ft, settings):
     """Return (sql_fragment, params) for a folder type filter in api_gallery."""
@@ -3849,12 +3972,23 @@ def api_categories():
         _ensure_db_schema()
         db = _db_conn()
         if request.method == 'GET':
-            rows = db.execute('''
-                SELECT c.name, c.color, m.tag_name
-                FROM tag_categories c
-                LEFT JOIN tag_category_members m ON c.name = m.category
-                ORDER BY c.name, m.tag_name
-            ''').fetchall()
+            sources_param = request.args.get('sources', '')
+            if sources_param:
+                sources_list = [s.strip() for s in sources_param.split(',') if s.strip()]
+                placeholders = ','.join('?' * len(sources_list))
+                rows = db.execute(f'''
+                    SELECT c.name, c.color, m.tag_name
+                    FROM tag_categories c
+                    LEFT JOIN tag_category_members m ON c.name = m.category AND m.source IN ({placeholders})
+                    ORDER BY c.name, m.tag_name
+                ''', sources_list).fetchall()
+            else:
+                rows = db.execute('''
+                    SELECT c.name, c.color, m.tag_name
+                    FROM tag_categories c
+                    LEFT JOIN tag_category_members m ON c.name = m.category
+                    ORDER BY c.name, m.tag_name
+                ''').fetchall()
             db.close()
             cat_names = []
             cat_colors = {}

@@ -248,12 +248,16 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
   #sidebarToggle{display:none}
   .thumb-size{display:none}
   #mvBottomLinks{display:flex}
-  #galleryToolbar{flex-wrap:wrap;gap:6px;padding-bottom:8px}
+  #mvMain{padding:12px}
+  #galleryToolbar{flex-wrap:wrap;gap:4px;padding-bottom:6px}
   .tool-btn{padding:4px 8px;font-size:12px;min-height:28px}
   .tool-btn-icon{padding:4px;min-width:28px}
-  .file-card{border-radius:6px}
+  .file-card{border-radius:6px;margin-bottom:6px}
   .file-card.selected::after{border-radius:6px}
-  #gallery.shared-grid .file-card{width:140px !important}
+  #gallery.shared-grid .file-card{width:140px !important;margin-bottom:6px}
+  #gallery.shared-grid.shared-grid-fixed{gap:6px}
+  #gallery.fixed{gap:6px}
+  #gallery.scroll{gap:4px}
   #gallery.scroll .file-card-thumb{width:120px;min-height:80px}
   .file-card-thumb{min-height:60px;font-size:32px}
   .file-card-content{padding:4px 6px}
@@ -263,7 +267,8 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 }
 /* ═══════════════════════════════════════ МОБИЛЬНАЯ ВЁРСТКА (<480px) — компактная галерея ═══════════════════════════════════════ */
 @media(max-width:480px){
-  #gallery.shared-grid .file-card{width:120px !important}
+  #mvMain{padding:8px}
+  #gallery.shared-grid .file-card{width:120px !important;margin-bottom:4px}
   #gallery.scroll .file-card-thumb{width:100px;min-height:70px}
   .file-card-thumb{min-height:40px;font-size:24px}
 }

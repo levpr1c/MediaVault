@@ -31,13 +31,18 @@ body{padding-top:44px}
 #tagHint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:20;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:6px 14px;border-radius:16px;pointer-events:none;opacity:0;transition:opacity .4s}
 #tagHint.show{opacity:1}
 #content{overflow:visible}
-#scrollView{display:flex;align-items:center;justify-content:center;width:100%;height:calc(100vh - 44px);overflow:hidden;background:var(--bg)}
-#scrollView .page-wrap{display:none;flex:1;align-self:stretch}
-#scrollView .page-wrap.active{display:flex;align-items:center;justify-content:center;height:100%}
-#scrollView .page-wrap.active img{max-width:100%;max-height:100%;object-fit:contain;display:block;padding:0 1px}
-#lightboxView{display:none;position:fixed;top:44px;left:0;right:0;bottom:0;z-index:50;background:var(--bg);align-items:center;justify-content:center}
-#lightboxView.open{display:flex}
-#lightboxView img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+#scrollView{width:100%;height:calc(100vh - 44px);background:var(--bg)}
+#scrollView.single-mode,#scrollView.spread-mode{display:flex;align-items:center;justify-content:center;overflow:hidden}
+#scrollView.scroll-mode{display:block;overflow-y:auto}
+#scrollView .page-wrap{display:none}
+#scrollView.single-mode .page-wrap{flex:1;align-self:stretch}
+#scrollView.single-mode .page-wrap.active{display:flex;align-items:center;justify-content:center;height:100%}
+#scrollView.single-mode .page-wrap.active img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+#scrollView.spread-mode .page-wrap{flex:1;align-self:stretch}
+#scrollView.spread-mode .page-wrap.active{display:flex;align-items:center;justify-content:center;height:100%}
+#scrollView.spread-mode .page-wrap.active img{max-width:100%;max-height:100%;object-fit:contain;display:block;padding:0 1px}
+#scrollView.scroll-mode .page-wrap{display:flex;align-items:center;justify-content:center;width:100%;padding:4px 0}
+#scrollView.scroll-mode .page-wrap img{max-width:100%;display:block}
 #pageCounter{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(30,30,30,.85);border-radius:12px;font-size:13px;border:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:2px 8px;transition:opacity .3s;user-select:none;backdrop-filter:blur(4px)}
 [data-theme="light"] #pageCounter{background:rgba(255,255,255,.85)}
 #pageCounter.hidden{opacity:0;pointer-events:none}
@@ -70,8 +75,14 @@ body{padding-top:44px}
     {{ _('createComic') }}
   </button>
   {% endif %}
-  <button class="top-btn" id="toggleModeBtn" onclick="toggleMode()" title="{{ _('switchViewMode') }}">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 21h10"/><path d="M12 21V3"/></svg>
+  <button class="top-btn mode-btn" data-mode="single" onclick="setMangaMode('single')" title="{{ _('singlePage') }}">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+  </button>
+  <button class="top-btn mode-btn active" data-mode="spread" onclick="setMangaMode('spread')" title="{{ _('spread') }}">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="9" height="18" rx="1"/><rect x="13" y="3" width="9" height="18" rx="1"/></svg>
+  </button>
+  <button class="top-btn mode-btn" data-mode="scroll" onclick="setMangaMode('scroll')" title="{{ _('scrollMode') }}">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="6" rx="1"/><rect x="5" y="10" width="14" height="6" rx="1"/><rect x="5" y="18" width="14" height="4" rx="1"/></svg>
   </button>
   {% else %}
   <a href="/similar?path={{ path_q }}" class="top-btn" title="{{ _('similarBtn') }}" target="_blank">
@@ -107,11 +118,6 @@ body{padding-top:44px}
 {% if mode == 'comics' %}
 <div id="scrollView"></div>
 
-<div id="lightboxView">
-  <img id="lbImage" alt="">
-  <a class="nav-zone left" id="prevLink"></a>
-  <a class="nav-zone right" id="nextLink"></a>
-</div>
 
 <div id="pageCounter">
   <button class="nav-arrow" id="prevPageBtn" onclick="prevPage()" aria-label="{{ _('prevPage') }}">
@@ -151,19 +157,134 @@ setTimeout(function() {
 
 {% if mode == 'comics' %}
 var _pages = {{ pages|tojson|safe }};
-var _mode = 'scroll';
+var _defaultMode = window.innerWidth < 768 ? 'single' : 'spread';
+var _mode = sessionStorage.getItem('manga_view_mode') || _defaultMode;
 var _currentPage = 0;
 var _hideTimer = null;
+var _scrollTimer = null;
+var _MAX_DOTS = 9;
+
 function showUI() {
   var pc = document.getElementById('pageCounter');
   pc.classList.remove('hidden');
   clearTimeout(_hideTimer);
   _hideTimer = setTimeout(function() { pc.classList.add('hidden'); }, 5000);
 }
-var _MAX_DOTS = 9;
+
+function setMangaMode(mode) {
+  _mode = mode;
+  sessionStorage.setItem('manga_view_mode', mode);
+  var sv = document.getElementById('scrollView');
+  sv.className = 'scrollView ' + mode + '-mode';
+  sv.style.overflowY = mode === 'scroll' ? 'auto' : 'hidden';
+  document.querySelectorAll('.mode-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  renderMode();
+  showUI();
+}
+
+function renderMode() {
+  for (var i = 0; i < _pages.length; i++) {
+    var el = document.getElementById('page-' + i);
+    if (!el) continue;
+    el.classList.remove('active');
+    el.style.display = '';
+  }
+  if (_mode === 'single') {
+    var el = document.getElementById('page-' + _currentPage);
+    if (el) el.classList.add('active');
+  } else if (_mode === 'spread') {
+    var el1 = document.getElementById('page-' + _currentPage);
+    if (el1) el1.classList.add('active');
+    var el2 = document.getElementById('page-' + (_currentPage + 1));
+    if (el2) el2.classList.add('active');
+  } else if (_mode === 'scroll') {
+    for (var i = 0; i < _pages.length; i++) {
+      var el = document.getElementById('page-' + i);
+      if (el) { el.style.display = 'flex'; el.classList.add('active'); }
+    }
+  }
+  updateCounter();
+}
+
+function getScrollPage() {
+  var sv = document.getElementById('scrollView');
+  var mid = sv.scrollTop + sv.clientHeight / 2;
+  for (var i = _pages.length - 1; i >= 0; i--) {
+    var el = document.getElementById('page-' + i);
+    if (el && el.offsetTop <= mid) return i;
+  }
+  return 0;
+}
+
+function prevPage() {
+  if (_mode === 'scroll') {
+    var sv = document.getElementById('scrollView');
+    sv.scrollBy({top: -sv.clientHeight * 0.9, behavior: 'smooth'});
+    return;
+  }
+  if (_mode === 'single') {
+    if (_currentPage > 0) { _currentPage--; renderMode(); }
+  } else if (_mode === 'spread') {
+    if (_currentPage > 1) { _currentPage -= 2; renderMode(); }
+    else if (_currentPage > 0) { _currentPage = 0; renderMode(); }
+  }
+}
+
+function nextPage() {
+  if (_mode === 'scroll') {
+    var sv = document.getElementById('scrollView');
+    sv.scrollBy({top: sv.clientHeight * 0.9, behavior: 'smooth'});
+    return;
+  }
+  if (_mode === 'single') {
+    if (_currentPage < _pages.length - 1) { _currentPage++; renderMode(); }
+  } else if (_mode === 'spread') {
+    if (_currentPage < _pages.length - 2) { _currentPage += 2; renderMode(); }
+    else if (_currentPage < _pages.length - 1) { _currentPage++; renderMode(); }
+  }
+}
+
+function switchToPage(idx) {
+  if (idx < 0 || idx >= _pages.length) return;
+  _currentPage = idx;
+  if (_mode === 'scroll') {
+    var el = document.getElementById('page-' + idx);
+    if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  } else {
+    renderMode();
+  }
+  updateCounter();
+}
+
+function updateCounter() {
+  if (_mode === 'single') {
+    document.getElementById('pageNum').textContent = _currentPage + 1;
+    document.getElementById('pageTotal').textContent = _pages.length;
+    document.getElementById('prevPageBtn').disabled = _currentPage <= 0;
+    document.getElementById('nextPageBtn').disabled = _currentPage >= _pages.length - 1;
+  } else if (_mode === 'spread') {
+    var left = _currentPage + 1;
+    var right = Math.min(left + 1, _pages.length);
+    document.getElementById('pageNum').textContent = left + '-' + right;
+    document.getElementById('pageTotal').textContent = _pages.length;
+    document.getElementById('prevPageBtn').disabled = _currentPage <= 0;
+    document.getElementById('nextPageBtn').disabled = _currentPage >= _pages.length - 2;
+  } else if (_mode === 'scroll') {
+    var sp = getScrollPage();
+    document.getElementById('pageNum').textContent = sp + 1;
+    document.getElementById('pageTotal').textContent = _pages.length;
+    document.getElementById('prevPageBtn').disabled = false;
+    document.getElementById('nextPageBtn').disabled = false;
+  }
+  updateDots();
+  showUI();
+}
+
 function buildDots() {
   var wrap = document.getElementById('dotsWrap');
-  var total = _mode === 'lightbox' ? _pages.length : Math.ceil(_pages.length / 2);
+  var total = _mode === 'spread' ? Math.ceil(_pages.length / 2) : _pages.length;
   if (total <= 1) { wrap.innerHTML = ''; return; }
   var n = total > _MAX_DOTS ? _MAX_DOTS : total;
   var h = '';
@@ -173,20 +294,29 @@ function buildDots() {
   wrap.innerHTML = h;
   updateDots();
 }
+
 function switchToDot(dotIdx) {
-  var total = _mode === 'lightbox' ? _pages.length : Math.ceil(_pages.length / 2);
+  var total = _mode === 'spread' ? Math.ceil(_pages.length / 2) : _pages.length;
   var idx;
   if (total <= _MAX_DOTS) {
     idx = dotIdx;
   } else {
     idx = Math.round(dotIdx / (_MAX_DOTS - 1) * (total - 1));
   }
-  if (_mode !== 'lightbox') { idx = idx * 2; }
+  if (_mode === 'spread') { idx = Math.min(idx * 2, _pages.length - 1); }
   switchToPage(idx);
 }
+
 function updateDots() {
-  var total = _mode === 'lightbox' ? _pages.length : Math.ceil(_pages.length / 2);
-  var cur = _mode === 'lightbox' ? _currentPage : Math.floor(_currentPage / 2);
+  var total = _mode === 'spread' ? Math.ceil(_pages.length / 2) : _pages.length;
+  var cur;
+  if (_mode === 'spread') {
+    cur = Math.floor(_currentPage / 2);
+  } else if (_mode === 'scroll') {
+    cur = getScrollPage();
+  } else {
+    cur = _currentPage;
+  }
   var dots = document.querySelectorAll('#dotsWrap .dot');
   for (var i = 0; i < dots.length; i++) {
     var dotIdx;
@@ -198,78 +328,17 @@ function updateDots() {
     dots[i].classList.toggle('before', dotIdx < cur);
     dots[i].classList.toggle('active', dotIdx === cur);
     dots[i].classList.toggle('after', dotIdx > cur);
-    dots[i].setAttribute('aria-label', _mode === 'lightbox' ? 'Page ' + (dotIdx + 1) : 'Spread ' + (dotIdx + 1));
   }
 }
-function updateCounter() {
-  if (_mode === 'lightbox') {
-    document.getElementById('pageNum').textContent = _currentPage + 1;
-    document.getElementById('pageTotal').textContent = _pages.length;
-    document.getElementById('prevPageBtn').disabled = _currentPage <= 0;
-    document.getElementById('nextPageBtn').disabled = _currentPage >= _pages.length - 1;
-  } else {
-    var left = _currentPage + 1;
-    var right = Math.min(_currentPage + 2, _pages.length);
-    document.getElementById('pageNum').textContent = left + '-' + right;
-    document.getElementById('pageTotal').textContent = _pages.length;
-    document.getElementById('prevPageBtn').disabled = _currentPage <= 0;
-    document.getElementById('nextPageBtn').disabled = _currentPage >= _pages.length - 2;
-  }
-  updateDots();
-  showUI();
+
+function onScroll() {
+  if (_mode !== 'scroll') return;
+  if (_scrollTimer) cancelAnimationFrame(_scrollTimer);
+  _scrollTimer = requestAnimationFrame(function() {
+    updateCounter();
+  });
 }
-function prevPage() {
-  if (_mode === 'lightbox') {
-    if (_currentPage > 0) switchToPage(_currentPage - 1);
-  } else {
-    if (_currentPage > 1) switchToPage(_currentPage - 2);
-  }
-}
-function nextPage() {
-  if (_mode === 'lightbox') {
-    if (_currentPage < _pages.length - 1) switchToPage(_currentPage + 1);
-  } else {
-    if (_currentPage < _pages.length - 2) switchToPage(_currentPage + 2);
-  }
-}
-function switchToPage(idx) {
-  if (idx < 0 || idx >= _pages.length) return;
-  _currentPage = idx;
-  if (_mode === 'lightbox') {
-    document.getElementById('lbImage').src = '/api/media?path=' + _pages[idx].path;
-    var prevLink = document.getElementById('prevLink');
-    if (idx > 0) { prevLink.href = 'javascript:switchToPage(' + (idx - 1) + ')'; prevLink.style.cursor = 'pointer'; }
-    else { prevLink.removeAttribute('href'); prevLink.style.cursor = 'default'; }
-    var nextLink = document.getElementById('nextLink');
-    if (idx < _pages.length - 1) { nextLink.href = 'javascript:switchToPage(' + (idx + 1) + ')'; nextLink.style.cursor = 'pointer'; }
-    else { nextLink.removeAttribute('href'); nextLink.style.cursor = 'default'; }
-  } else {
-    for (var i = 0; i < _pages.length; i++) {
-      var el = document.getElementById('page-' + i);
-      if (el) el.classList.toggle('active', i === idx || i === idx + 1);
-    }
-  }
-  updateCounter();
-}
-function toggleMode() {
-  var scrollView = document.getElementById('scrollView');
-  var lightboxView = document.getElementById('lightboxView');
-  var btn = document.getElementById('toggleModeBtn');
-  if (_mode === 'scroll') {
-    _mode = 'lightbox';
-    scrollView.style.display = 'none';
-    lightboxView.classList.add('open');
-    switchToPage(_currentPage);
-    if (btn) btn.classList.add('active');
-  } else {
-    _mode = 'scroll';
-    scrollView.style.display = 'flex';
-    lightboxView.classList.remove('open');
-    switchToPage(_currentPage);
-    if (btn) btn.classList.remove('active');
-  }
-  showUI();
-}
+
 function buildPages() {
   var container = document.getElementById('scrollView');
   var html = '';
@@ -278,17 +347,25 @@ function buildPages() {
   }
   container.innerHTML = html;
 }
+
 document.addEventListener('keydown', function(e) {
   if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevPage(); }
   else if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); nextPage(); }
-  else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleMode(); }
+  else if (e.key === 'f' || e.key === 'F') {
+    e.preventDefault();
+    var _modes = ['single', 'spread', 'scroll'];
+    var _next = (_modes.indexOf(_mode) + 1) % _modes.length;
+    setMangaMode(_modes[_next]);
+  }
 });
+
 var _touchStartX = 0;
 document.addEventListener('touchstart', function(e) {
   _touchStartX = e.touches[0].clientX;
   showUI();
 }, {passive: true});
 document.addEventListener('touchend', function(e) {
+  if (_mode === 'scroll') return;
   var dx = e.changedTouches[0].clientX - _touchStartX;
   if (Math.abs(dx) > 50) {
     if (dx < 0) nextPage();
@@ -298,7 +375,9 @@ document.addEventListener('touchend', function(e) {
 document.addEventListener('mousemove', showUI);
 buildPages();
 buildDots();
+setMangaMode(_mode);
 switchToPage(0);
+document.getElementById('scrollView').addEventListener('scroll', onScroll, {passive: true});
 {% if preview %}
 function createComic() {
   var title = prompt('Comic title');

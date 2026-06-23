@@ -441,6 +441,20 @@ var ComicsPicker = (function() {
     var path = el.dataset.path;
     var idx = _selectedFiles.indexOf(path);
     if (idx !== -1) {
+      var previewPage = document.querySelector('.preview-page[data-idx="' + idx + '"]');
+      if (previewPage) {
+        previewPage.classList.add('preview-page-exit');
+        setTimeout(function() {
+          _selectedFiles.splice(idx, 1);
+          el.classList.remove('selected');
+          if (_coverPath === path) {
+            _coverPath = _selectedFiles.length > 0 ? _selectedFiles[0] : null;
+          }
+          _updateSelected();
+          _renderItems();
+        }, 250);
+        return;
+      }
       _selectedFiles.splice(idx, 1);
       el.classList.remove('selected');
       if (_coverPath === path) {
@@ -553,6 +567,16 @@ var ComicsPicker = (function() {
   }
 
   function removeFile(idx) {
+    var previewPage = document.querySelector('.preview-page[data-idx="' + idx + '"]');
+    if (previewPage) {
+      previewPage.classList.add('preview-page-exit');
+      setTimeout(function() { _doRemoveFile(idx); }, 250);
+      return;
+    }
+    _doRemoveFile(idx);
+  }
+
+  function _doRemoveFile(idx) {
     var path = _selectedFiles[idx];
     _selectedFiles.splice(idx, 1);
     if (_coverPath === path) {

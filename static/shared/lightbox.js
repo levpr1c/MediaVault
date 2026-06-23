@@ -60,6 +60,7 @@ var Lightbox = (function() {
     this._galleryApplyFilterFn = opts.galleryApplyFilterFn || null;
     this._onRenderMedia = opts.onRenderMedia || null;
     this._onOpenSource = opts.onOpenSource || null;
+    this._arrowNav = opts.arrowNav !== false;
     this._eventsBound = false;
   }
 
@@ -108,8 +109,11 @@ var Lightbox = (function() {
       '</button>' +
       '<div class="lightbox-content">' +
         '<div class="lightbox-media" id="' + this._id('Media') + '">' +
-          '<div class="lb-nav-zone left" id="' + this._id('NavLeft') + '"></div>' +
-          '<div class="lb-nav-zone right" id="' + this._id('NavRight') + '"></div>' +
+          (this._arrowNav
+            ? '<button class="lb-arrow left" id="' + this._id('ArrowLeft') + '" title="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
+              '<button class="lb-arrow right" id="' + this._id('ArrowRight') + '" title="Next"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>'
+            : '<div class="lb-nav-zone left" id="' + this._id('NavLeft') + '"></div>' +
+              '<div class="lb-nav-zone right" id="' + this._id('NavRight') + '"></div>') +
         '</div>' +
         '<div class="lightbox-toolbar" id="' + this._id('Toolbar') + '">' + toolbarBtns + '</div>' +
         panelHtml +
@@ -209,9 +213,16 @@ var Lightbox = (function() {
       if (e.target.tagName === 'IMG' && e.target.classList.contains('zoom-fit') && (!self._dragState || !self._dragState.grabbed)) self._toggleZoom();
     });
 
-    // Navigation zones
-    this._el('NavLeft').addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
-    this._el('NavRight').addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+    // Navigation
+    if (this._arrowNav) {
+      var al = this._el('ArrowLeft');
+      var ar = this._el('ArrowRight');
+      if (al) al.addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
+      if (ar) ar.addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+    } else {
+      this._el('NavLeft').addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
+      this._el('NavRight').addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+    }
 
     if (this._tagPanel) {
       // Tag input events
@@ -374,18 +385,27 @@ var Lightbox = (function() {
         // Re-bind nav events
         var self = this;
         setTimeout(function() {
-          var nl = document.getElementById(self._id('NavLeft'));
-          var nr = document.getElementById(self._id('NavRight'));
-          if (nl) nl.addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
-          if (nr) nr.addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+          if (self._arrowNav) {
+            var al = document.getElementById(self._id('ArrowLeft'));
+            var ar = document.getElementById(self._id('ArrowRight'));
+            if (al) al.addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
+            if (ar) ar.addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+          } else {
+            var nl = document.getElementById(self._id('NavLeft'));
+            var nr = document.getElementById(self._id('NavRight'));
+            if (nl) nl.addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
+            if (nr) nr.addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+          }
         }, 0);
         return;
       }
     }
 
-    media.innerHTML =
-      '<div class="lb-nav-zone left" id="' + this._id('NavLeft') + '"></div>' +
-      '<div class="lb-nav-zone right" id="' + this._id('NavRight') + '"></div>';
+    media.innerHTML = this._arrowNav
+      ? '<button class="lb-arrow left" id="' + this._id('ArrowLeft') + '" title="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
+        '<button class="lb-arrow right" id="' + this._id('ArrowRight') + '" title="Next"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>'
+      : '<div class="lb-nav-zone left" id="' + this._id('NavLeft') + '"></div>' +
+        '<div class="lb-nav-zone right" id="' + this._id('NavRight') + '"></div>';
 
     var mediaUrl = this._mediaUrlFn(file.path);
     var ext = file.name ? file.name.split('.').pop().toLowerCase() : (file.path || '').split('.').pop().toLowerCase();
@@ -420,10 +440,17 @@ var Lightbox = (function() {
     // Re-bind nav events
     var self = this;
     setTimeout(function() {
-      var nl = document.getElementById(self._id('NavLeft'));
-      var nr = document.getElementById(self._id('NavRight'));
-      if (nl) nl.addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
-      if (nr) nr.addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+      if (self._arrowNav) {
+        var al = document.getElementById(self._id('ArrowLeft'));
+        var ar = document.getElementById(self._id('ArrowRight'));
+        if (al) al.addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
+        if (ar) ar.addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+      } else {
+        var nl = document.getElementById(self._id('NavLeft'));
+        var nr = document.getElementById(self._id('NavRight'));
+        if (nl) nl.addEventListener('click', function(e) { e.stopPropagation(); self._prev(); });
+        if (nr) nr.addEventListener('click', function(e) { e.stopPropagation(); self._next(); });
+      }
     }, 0);
   };
 
@@ -1000,6 +1027,12 @@ var Lightbox = (function() {
     '.lb-nav-zone{position:absolute;top:0;bottom:0;width:35%;z-index:5;cursor:pointer}' +
     '.lb-nav-zone.left{left:0}' +
     '.lb-nav-zone.right{right:0}' +
+    '.lb-arrow{position:absolute;top:50%;z-index:10;transform:translateY(-50%);width:40px;height:40px;border:none;background:rgba(0,0,0,.4);color:#fff;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s;backdrop-filter:blur(4px);opacity:0}' +
+    '.shared-lightbox.open .lb-arrow{opacity:1}' +
+    '.lb-arrow:hover{background:rgba(0,0,0,.7);transform:translateY(-50%) scale(1.1)}' +
+    '.lb-arrow.left{left:12px}' +
+    '.lb-arrow.right{right:12px}' +
+    '@media(max-width:768px){.lb-arrow{width:32px;height:32px}.lb-arrow.left{left:6px}.lb-arrow.right{right:6px}}' +
     '.shared-lightbox .lightbox-toolbar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;z-index:15;background:rgba(0,0,0,.65);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.15);padding:4px 6px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.3);transition:opacity .4s ease}' +
     '.shared-lightbox .lightbox-toolbar.lb-toolbar-hidden{opacity:0;pointer-events:none}' +
     '.shared-lightbox .lightbox-toolbar button{background:transparent;border:none;color:rgba(255,255,255,.8);width:30px;height:30px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}' +

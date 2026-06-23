@@ -477,8 +477,18 @@ body { overflow: hidden; }
   break-inside: avoid; margin-bottom: 8px; display: inline-block;
   width: 100%; position: relative; border-radius: 4px; overflow: hidden;
   background: var(--surface2); cursor: grab; line-height: 0;
+  animation: previewEnter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 .comic-preview-content .preview-page:active { cursor: grabbing; }
+.preview-page-exit {
+  opacity: 0 !important;
+  transform: scale(0.8) !important;
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes previewEnter {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
 .comic-preview-content .preview-page img { display: block; width: 100%; height: auto; }
 .comic-preview-content .preview-page .page-num {
   position: absolute; bottom: 4px; right: 4px; background: var(--shadow);
@@ -595,6 +605,28 @@ body { overflow: hidden; }
 }
 
 /* ─── COMICS TAG MANAGEMENT ─── */
+.cm-comics-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 6px;
+  background: var(--input-bg, #fff);
+  color: var(--text-color, #333);
+  font-size: 14px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  grid-column: 1 / -1;
+}
+.cm-comics-search-input:focus {
+  outline: none;
+  border-color: var(--accent-color, #4A90D9);
+}
+.cm-comics-tags-grid-inner {
+  display: grid;
+  grid-template-columns: inherit;
+  gap: inherit;
+  grid-column: 1 / -1;
+}
 .cm-comics-tags-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -676,6 +708,9 @@ body { overflow: hidden; }
 @media(max-width:768px) {
   .cm-comics-tags-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 6px;
+  }
+  .cm-comics-tags-grid-inner {
     gap: 6px;
   }
 }

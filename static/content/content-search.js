@@ -106,6 +106,13 @@ async function doSearch(query) {
     return
   }
   await fetchPage(query, sites, 1)
+  // Auto-fetch more pages until first page fills or API exhausted
+  while (_allResults.length > 0 && _allResults.length < PER_PAGE) {
+    var prevLen = _allResults.length
+    await fetchPage(query, sites, _apiPage + 1, true)
+    if (_allResults.length <= prevLen) break
+  }
+  loading.style.display = 'none'
 }
 
 var aiFilter = document.getElementById('csAiFilter')
@@ -116,7 +123,7 @@ if (aiFilter) {
   })
 }
 
-async function fetchPage(rawQuery, sites, pageNum) {
+async function fetchPage(rawQuery, sites, pageNum, keepLoading) {
   if (_ac && _ac.signal.aborted) return
   loading.style.display = 'block'
   try {
@@ -198,7 +205,7 @@ async function fetchPage(rawQuery, sites, pageNum) {
     _csGrid.clear()
     grid.innerHTML = '<div class="admin-loading" style="color:var(--danger)">' + esc(e.message) + '</div>'
   }
-  loading.style.display = 'none'
+  if (!keepLoading) loading.style.display = 'none'
 }
 
 function renderPage() {

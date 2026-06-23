@@ -171,6 +171,14 @@ var AdminDashboard = (function() {
         '<button class="btn" onclick="AdminDashboard._rescanFolder()" id="admRescanBtn"><span>&#x21bb; Rescan</span></button>' +
         '<span id="admScanStatus" style="font-size:12px;color:var(--text2);margin-left:4px"></span>' +
         '</div>' +
+        '<div id="admScanProgress" class="scan-progress" style="display:none">' +
+        '<div class="scan-progress-row">' +
+        '<span class="fetch-spinner"></span>' +
+        '<span id="admScanProgressText" style="font-size:13px;color:var(--text)">' + _t('settingsRunning') + '...</span>' +
+        '</div>' +
+        '<div class="scan-progress-bar-wrap">' +
+        '<div id="admScanProgressBar" class="scan-progress-bar"></div>' +
+        '</div></div>' +
         '<div class="admin-field-row three-col">' +
         '<div class="admin-field"><label class="admin-field-label"><span data-i18n="adminGalleryDir">' + _t('adminGalleryDir') + '</span></label><input class="admin-field-input" id="galleryDir" value="' + _esc(s.gallery_dir || 'Gallery') + '" placeholder="Gallery"></div>' +
         '<div class="admin-field"><label class="admin-field-label"><span data-i18n="adminComicsDir">' + _t('adminComicsDir') + '</span></label><input class="admin-field-input" id="comicsDir" value="' + _esc(s.comics_dir || 'Comics') + '" placeholder="Comics"></div>' +
@@ -213,16 +221,19 @@ var AdminDashboard = (function() {
   _sections['api-keys'] = {
     _settings: null,
     _cred: null,
+    _backendStatus: null,
 
     render: function(body) {
       _loading(body);
       var self = this;
       Promise.all([
         _api('/api/settings'),
-        _api('/api/credential_status')
+        _api('/api/credential_status'),
+        _api('/api/admin/backends/status').catch(function() { return {}; })
       ]).then(function(results) {
         self._settings = results[0];
         self._cred = results[1];
+        self._backendStatus = results[2] || {};
         self._renderForm(body);
       }).catch(function(e) { _errorFallback(body, e); });
     },
@@ -233,9 +244,14 @@ var AdminDashboard = (function() {
       var r34 = cred.rule34 || {};
       var dan = cred.danbooru || {};
       var fb = s.fetch_backend || {};
+      var bs = this._backendStatus || {};
       var backendLabels = {
         api_raw: _t('backendApiRaw'),
         gallerydl: _t('backendGallerydl'),
+      };
+      var backendIcons = {
+        api_raw: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+        gallerydl: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
       };
       var sites = [
         {id:'rule34', nameKey:'siteRule34', icon:'rule34',
@@ -265,26 +281,34 @@ var AdminDashboard = (function() {
         '<div class="admin-card-desc"><span data-i18n="settingsApiCreds">' + _t('settingsApiCreds') + '</span></div>';
       sites.forEach(function(site) {
         var currentBackend = fb[site.id] || site.backends[0];
-        html += '<div class="backend-row" style="flex-direction:column;align-items:stretch">' +
-          '<div class="backend-site">' +
+        var isAvail = bs[currentBackend] !== false;
+        html += '<div class="backend-card">' +
+          '<div class="backend-card-header">' +
+          '<div class="backend-card-site">' +
           '<span class="backend-icon" id="admIcon' + site.id + '"></span>' +
-          '<span style="font-weight:600"><span data-i18n="' + site.nameKey + '">' + _t(site.nameKey) + '</span></span>' +
+          '<span class="backend-card-name"><span data-i18n="' + site.nameKey + '">' + _t(site.nameKey) + '</span></span>' +
+          '</div>' +
+          '<span class="backend-badge ' + (isAvail ? 'backend-badge-ok' : 'backend-badge-err') + '">' +
+          (backendIcons[currentBackend] || '') +
+          '<span>' + (backendLabels[currentBackend] || currentBackend) + '</span>' +
+          '</span>' +
           '</div>';
         if (site.creds.length > 0) {
-          html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+          html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">';
           site.creds.forEach(function(k) {
             html += '<div class="admin-field" style="flex:1;min-width:120px"><label class="admin-field-label">' + k.label + '</label>' +
               '<input class="admin-field-input" id="adm' + site.id + k.id + '" value="' + _esc(site.vals[k.id] || '') + '" placeholder="' + k.label + '"></div>';
           });
           html += '</div>';
-        } else if (site.note) {
-          html += '<div style="font-size:13px;color:var(--text2);padding:2px 0">' + site.note + '</div>';
         }
-        html += '<div style="display:flex;align-items:center;gap:8px">' +
-          '<span style="font-size:13px;color:var(--text2);white-space:nowrap">Backend:</span>' +
-          '<select class="admin-field-input backend-select" data-site="' + site.id + '">';
+        html += '<div style="display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid var(--border)">' +
+          '<span style="font-size:12px;color:var(--text2);white-space:nowrap">' + _t('backendType') + ':</span>' +
+          '<select class="admin-field-input backend-select" data-site="' + site.id + '" style="font-size:12px;padding:6px 10px">';
         site.backends.forEach(function(b) {
-          html += '<option value="' + b + '"' + (currentBackend === b ? ' selected' : '') + '>' + (backendLabels[b] || b) + '</option>';
+          var bAvail = bs[b] !== false;
+          html += '<option value="' + b + '"' + (currentBackend === b ? ' selected' : '') + '>' +
+            (backendLabels[b] || b) + (bAvail ? '' : ' (N/A)') +
+            '</option>';
         });
         html += '</select></div></div>';
       });
@@ -312,7 +336,7 @@ var AdminDashboard = (function() {
       sites.forEach(function(site) {
         var iconEl = document.getElementById('admIcon' + site.id);
         if (iconEl && window.SiteIcons) {
-          var img = window.SiteIcons.getIconImg(site.id, 16);
+          var img = window.SiteIcons.getIconImg(site.id, 20);
           if (img) iconEl.innerHTML = img;
         }
       });
@@ -594,7 +618,14 @@ var AdminDashboard = (function() {
     _modal(
       '<div class="admin-modal-title"><span data-i18n="dbImport">' + _t('dbImport') + '</span></div>' +
       '<p style="font-size:12px;color:var(--text2);margin-top:4px"><span data-i18n="secConfirmClearAll">' + _t('secConfirmClearAll') + '</span></p>' +
-      '<button class="btn btn-danger" onclick="AdminDashboard._confirmImport()"><span data-i18n="dbImport">' + _t('dbImport') + '</span></button></div>'
+      '<div class="adm-import-file-wrap">' +
+        '<button class="btn" onclick="document.getElementById(\'admImportFile\').click()" style="width:100%;justify-content:center">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+          '<span id="admImportLabel" data-i18n="chooseFile">Choose .db file...</span>' +
+        '</button>' +
+        '<input type="file" id="admImportFile" accept=".db,.sqlite,.sqlite3" onchange="document.getElementById(\'admImportLabel\').textContent=this.files[0]?.name||\'Choose .db file...\'" style="display:none">' +
+      '</div>' +
+      '<button class="btn btn-danger" onclick="AdminDashboard._confirmImport()" style="margin-top:8px"><span data-i18n="dbImport">' + _t('dbImport') + '</span></button></div>'
     );
   }
 
@@ -665,29 +696,87 @@ var AdminDashboard = (function() {
   function _scanFolder() {
     var dir = document.getElementById('admMediaDir').value.trim();
     if (!dir) { _toast(_t('settingsSelectFolder'), 'error'); return; }
-    var st = document.getElementById('admScanStatus');
-    if (st) st.textContent = 'scanning...';
     _api('/api/settings', {method:'POST', body:{media_dir:dir}}).then(function() {
       return _api('/api/scan_folder', {method:'POST'});
     }).then(function(d) {
-      _toast(_t('settingsScan') + ' — ' + (d.scanned || 0) + ' ' + _t('filesCountShort'), 'success');
-      if (st) st.textContent = 'ok (' + (d.scanned || 0) + ' files)';
+      if (d.skipped === 'scan_in_progress') {
+        _toast('Scan already in progress', 'error');
+        return;
+      }
+      _toast('Scan started', 'success');
+      _startScanProgressPoll();
     }).catch(function(e) { 
-      if (st) st.textContent = 'error';
       _toast(e.message, 'error'); 
     });
   }
 
   function _rescanFolder() {
-    var st = document.getElementById('admScanStatus');
-    if (st) st.textContent = 'scanning...';
     _api('/api/scan_folder', {method:'POST'}).then(function(d) {
-      _toast('Rescan — ' + (d.scanned || 0) + ' files');
-      if (st) st.textContent = 'ok (' + (d.scanned || 0) + ' new)';
+      if (d.skipped === 'scan_in_progress') {
+        _toast('Scan already in progress', 'error');
+        return;
+      }
+      _toast('Rescan started', 'success');
+      _startScanProgressPoll();
     }).catch(function(e) {
-      if (st) st.textContent = 'error';
       _toast(e.message, 'error');
     });
+  }
+
+  /* ─── SCAN PROGRESS POLLING ─── */
+
+  var _scanPollTimer = null;
+
+  function _startScanProgressPoll() {
+    _stopScanProgressPoll();
+    var el = document.getElementById('admScanProgress');
+    if (el) el.style.display = 'block';
+    var bar = document.getElementById('admScanProgressBar');
+    if (bar) bar.style.width = '0%';
+    _updateScanProgress();
+    _scanPollTimer = setInterval(_updateScanProgress, 2000);
+  }
+
+  function _stopScanProgressPoll() {
+    if (_scanPollTimer) { clearInterval(_scanPollTimer); _scanPollTimer = null; }
+  }
+
+  function _updateScanProgress() {
+    _api('/api/admin/scan-progress').then(function(data) {
+      var bar = document.getElementById('admScanProgressBar');
+      var text = document.getElementById('admScanProgressText');
+      if (!bar || !text) return;
+      if (data.status === 'scanning') {
+        var pct = data.total_folders > 0
+          ? Math.round(data.folders_done / data.total_folders * 100)
+          : 50;
+        bar.style.width = Math.min(pct, 100) + '%';
+        if (data.total_folders > 0 && data.current_folder) {
+          text.textContent = _t('settingsRunning') + ' — ' + _t('settingsFolder') + ' ' + data.folders_done + '/' + data.total_folders + ': ' + data.current_folder;
+        } else {
+          text.textContent = _t('settingsRunning') + '...';
+        }
+      } else if (data.status === 'done') {
+        bar.style.width = '100%';
+        text.textContent = 'Scan complete';
+        _stopScanProgressPoll();
+        setTimeout(_hideScanProgress, 3000);
+      } else if (data.status === 'error') {
+        text.textContent = _t('settingsError') + ': ' + (data.error || '');
+        _stopScanProgressPoll();
+        setTimeout(_hideScanProgress, 5000);
+      } else if (data.status === 'idle') {
+        _hideScanProgress();
+        _stopScanProgressPoll();
+      }
+    }).catch(function() {
+      _stopScanProgressPoll();
+    });
+  }
+
+  function _hideScanProgress() {
+    var el = document.getElementById('admScanProgress');
+    if (el) el.style.display = 'none';
   }
 
   var _mountTimer = null;
@@ -708,12 +797,13 @@ var AdminDashboard = (function() {
   }
 
   function _checkScanStatus() {
-    _api('/api/scan_status', {method:'GET'}).then(function(d) {
+    _api('/api/admin/scan-progress').then(function(data) {
       var st = document.getElementById('admScanStatus');
       if (st) {
-        if (d.scan_in_progress) {
-          st.textContent = 'scan in progress...';
-        } else if (!st.textContent || st.textContent === 'scan in progress...') {
+        if (data.status === 'scanning') {
+          var folderLabel = data.current_folder || '';
+          st.textContent = 'scanning' + (folderLabel ? ': ' + folderLabel : '...');
+        } else if (data.status === 'idle') {
           st.textContent = '';
         }
       }
@@ -814,6 +904,10 @@ var AdminDashboard = (function() {
     _createFolders: _createFolders,
     _saveFolderSettings: _saveFolderSettings,
     _closeModal: _closeModal,
-    _togglePw: _togglePw
+    _togglePw: _togglePw,
+    _startScanProgressPoll: _startScanProgressPoll,
+    _stopScanProgressPoll: _stopScanProgressPoll,
+    _updateScanProgress: _updateScanProgress,
+    _hideScanProgress: _hideScanProgress
   };
 })();

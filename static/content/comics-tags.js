@@ -11,7 +11,7 @@ export function comicsTagsRender(body) {
   body.innerHTML = `<div class="admin-loading"><span class="fetch-spinner"></span> ${_t('loading')}</div>`
 
   Promise.all([
-    api('/api/categories'),
+    api('/api/categories?sources=nhentai,ehentai,manual'),
     api('/api/comics/list')
   ]).then(([catData, comicsData]) => {
     const categories = catData.categories || []
@@ -39,12 +39,21 @@ function _buildHTML() {
     `<div class="cm-files-body" style="display:flex;gap:16px;height:100%">` +
       buildLeftPanelHtml(_t('tagSearchPlaceholder')) +
       `<div class="cm-comics-tags-grid" id="cmComicsTagsGrid">` +
-        buildComicsGridHTML(_comics) +
+        `<input id="cmComicsSearchQ" class="cm-comics-search-input" placeholder="${_t('searchComics')}">` +
+        `<div class="cm-comics-tags-grid-inner">` +
+          buildComicsGridHTML(_comics) +
+        `</div>` +
       `</div>` +
     `</div></div>`
 }
 
 function _attachEvents(body, signal) {
+  document.getElementById('cmComicsSearchQ')?.addEventListener('input', e => {
+    const q = e.target.value.toLowerCase()
+    const filtered = _comics.filter(c => (c.title || '').toLowerCase().includes(q))
+    document.getElementById('cmComicsTagsGrid').querySelector('.cm-comics-tags-grid-inner').innerHTML = buildComicsGridHTML(filtered)
+  }, { signal })
+
   document.getElementById('cmFilesTagSearchQ')?.addEventListener('input', e => {
     renderLeftTags(document.getElementById('cmFilesLeftContent'), state.cats, e.target.value)
   }, { signal })

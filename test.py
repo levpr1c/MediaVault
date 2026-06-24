@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """check.py — syntax + smoke + locale + dead code + function tests for MediaVault."""
-import sys, os, subprocess, time, signal, json, ast, re, glob, tempfile
+import sys, os, subprocess, time, signal, json, ast, re, glob, tempfile, shutil, hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).parent
@@ -27,7 +27,16 @@ def check_js():
     print('--- JavaScript ---')
     global PASS, FAIL; PASS, FAIL = 0, 0
     for f in sorted(STATIC.rglob('*.js')):
-        r = subprocess.run(['node', '--check', str(f)], capture_output=True)
+        if f.name.endswith('.min.js') or f.name == 'three.module.js':
+            continue
+        src = f.read_text(encoding='utf-8')
+        is_module = bool(re.search(r'\b(?:import|export)\s', src))
+        if is_module:
+            r = subprocess.run(['node', '--input-type=module', '--check', '-'],
+                               input=src.encode(), capture_output=True, timeout=15)
+        else:
+            r = subprocess.run(['node', '--check', str(f)],
+                               capture_output=True, timeout=15)
         label = str(f.relative_to(STATIC))
         (ok if r.returncode == 0 else ng)(f'node --check {label}')
     print(f'  {PASS} passed, {FAIL} failed')
@@ -476,6 +485,183 @@ def check_dead_js():
     return FAIL == 0
 
 
+# ──────────────────────────── Vulture (Python dead code) ─────────────
+
+def check_vulture():
+    """Run vulture for thorough Python dead code detection."""
+    print('--- Vulture ---')
+    global PASS, FAIL; PASS, FAIL = 0, 0
+    r = subprocess.run(
+        [PYTHON, '-m', 'vulture', 'src/', '--min-confidence', '100'],
+        capture_output=True, text=True
+    )
+    if r.returncode == 0:
+        ok('No dead Python code found')
+    else:
+        for line in r.stdout.strip().split('\n'):
+            if not line.strip():
+                continue
+            ng(line.strip())
+    print(f'  {PASS} passed, {FAIL} failed')
+    return FAIL == 0
+
+
+# ──────────────────────────── Duplicate code detection ───────────────
+
+def check_duplicates():
+    """Run jscpd for duplicate code detection across py/js/css/html."""
+    print('--- Duplicates ---')
+    global PASS, FAIL; PASS, FAIL = 0, 0
+    tmpdir = tempfile.mkdtemp()
+    try:
+        r = subprocess.run(
+            ['npx', 'jscpd',
+             '--format', 'py,js,css,html',
+             '--min-tokens', '50', '--min-lines', '5',
+             '--ignore', '**/*.min.*,**/node_modules/**,**/lib/**',
+             '--reporters', 'json',
+             '--output', tmpdir,
+             '--exit-code'],
+            capture_output=True, text=True, timeout=120
+        )
+        report_path = os.path.join(tmpdir, 'jscpd-report.json')
+        if not os.path.exists(report_path):
+            ng('jscpd report not generated')
+            return False
+        with open(report_path, encoding='utf-8') as f:
+            data = json.load(f)
+        stats = data.get('statistics', {}).get('total', {})
+        clones = stats.get('clones', 0)
+        if clones == 0:
+            ok(f'No duplicate fragments found (checked {stats.get("lines","?")} lines)')
+        else:
+            percentage = stats.get('percentage', 0)
+            ng(f'{clones} duplicate fragment(s), {percentage:.1f}% duplication')
+            seen_pairs = set()
+            for dup in data.get('duplicates', []):
+                dup_lines = dup.get('lines', '?')
+                f1 = dup.get('firstFile', {}).get('name', '?')
+                f2 = dup.get('secondFile', {}).get('name', '?')
+                pair = tuple(sorted([f1, f2]))
+                if pair not in seen_pairs:
+                    seen_pairs.add(pair)
+                    ng(f'  {dup_lines} lines: {f1} ↔ {f2}')
+    except json.JSONDecodeError:
+        ng('jscpd output parse error')
+    except KeyError as e:
+        ng(f'jscpd format error: {e}')
+    except subprocess.TimeoutExpired:
+        ng('jscpd timed out (120s)')
+    except Exception as e:
+        ng(f'jscpd error: {e}')
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    print(f'  {PASS} passed, {FAIL} failed')
+    return FAIL == 0
+
+
+# ──────────────────────────── Broken code detection ──────────────────
+
+def check_broken():
+    """Check for broken references: template extends/include, JS imports,
+       Python local imports, static file refs in templates."""
+    print('--- Broken Code ---')
+    global PASS, FAIL; PASS, FAIL = 0, 0
+
+    errors = 0
+
+    # 1. Template extends/include resolution
+    for fpath in sorted(glob.glob(str(ROOT / 'templates/**/*.html'), recursive=True)):
+        with open(fpath, encoding='utf-8') as f:
+            content = f.read()
+        for m in re.finditer(r"\{%\s*(extends|include)\s+['\"]([^'\"]+)['\"]", content):
+            ref_type, ref_path = m.group(1), m.group(2)
+            resolved = ROOT / 'templates' / ref_path.lstrip('/')
+            if not resolved.exists():
+                rel = os.path.relpath(fpath, ROOT)
+                ng(f'template {ref_type} not found: {ref_path} (from {rel})')
+                errors += 1
+
+    # 2. JS ES module import paths
+    for fpath in sorted(glob.glob(str(STATIC / '**/*.js'), recursive=True)):
+        with open(fpath, encoding='utf-8') as f:
+            content = f.read()
+        for m in re.finditer(r"import\s+(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+['\"]([^'\"]+)['\"]", content):
+            imp_path = m.group(1)
+            if imp_path.startswith('.'):
+                base_dir = os.path.dirname(fpath)
+                resolved = os.path.normpath(os.path.join(base_dir, imp_path))
+                # Try with .js extension
+                if not os.path.exists(resolved):
+                    if not resolved.endswith('.js'):
+                        resolved_js = resolved + '.js'
+                        if not os.path.exists(resolved_js):
+                            rel = os.path.relpath(fpath, ROOT)
+                            ng(f'JS import not found: {imp_path} (from {rel})')
+                            errors += 1
+
+    # 3. Python local imports
+    for fpath in sorted(SRC.glob('*.py')):
+        with open(fpath, encoding='utf-8') as f:
+            tree = ast.parse(f.read())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                module = node.module or ''
+                if module.startswith('src.') or module == 'src':
+                    # local import
+                    parts = module.split('.')
+                    mod_path = SRC / f'{parts[-1]}.py'
+                    if not mod_path.exists():
+                        rel = os.path.relpath(fpath, ROOT)
+                        ng(f'Python import not found: {module} (from {rel})')
+                        errors += 1
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    name = alias.name
+                    if name.startswith('src.') or name == 'src':
+                        parts = name.split('.')
+                        mod_path = SRC / f'{parts[-1]}.py'
+                        if not mod_path.exists():
+                            rel = os.path.relpath(fpath, ROOT)
+                            ng(f'Python import not found: {name} (from {rel})')
+                            errors += 1
+
+    # 4. Static file refs in templates (url_for('static', filename=...))
+    for fpath in sorted(glob.glob(str(ROOT / 'templates/**/*.html'), recursive=True)):
+        with open(fpath, encoding='utf-8') as f:
+            content = f.read()
+        for m in re.finditer(r"url_for\s*\(\s*['\"]static['\"]\s*,\s*filename\s*=\s*['\"]([^'\"]+)['\"]", content):
+            static_path = m.group(1)
+            resolved = STATIC / static_path.lstrip('/')
+            if not resolved.exists():
+                rel = os.path.relpath(fpath, ROOT)
+                ng(f'static file not found: {static_path} (from {rel})')
+                errors += 1
+
+    if errors == 0:
+        ok('No broken references found')
+    print(f'  {PASS} passed, {FAIL} failed')
+    return errors == 0
+
+
+# ──────────────────────────── Dependency check ───────────────────────
+
+_DEPS = [
+    ('vulture',   [PYTHON, '-m', 'vulture', '--version'],         'pip install vulture'),
+    ('jscpd',     ['npx', 'jscpd', '--version'],                  'npm install jscpd'),
+]
+
+def check_deps():
+    """Verify required dev dependencies are available."""
+    print('--- Dependencies ---')
+    global PASS, FAIL; PASS, FAIL = 0, 0
+    for name, cmd, hint in _DEPS:
+        r = subprocess.run(cmd, capture_output=True, timeout=15)
+        (ok if r.returncode == 0 else ng)(f'{name} — {hint}')
+    print(f'  {PASS} passed, {FAIL} failed')
+    return FAIL == 0
+
+
 # ──────────────────────────── Function unit tests ────────────────────
 
 _FUNC_TEST_SCRIPT = r'''
@@ -631,8 +817,6 @@ def check_functions():
 
 def fix_unused_keys():
     """Remove unused LOCALE keys from web_app.py and _i18nData in utils.js."""
-    import re
-
     server = _parse_server_locale()
     if server is None:
         print('  Cannot fix: LOCALE not found'); return False
@@ -715,7 +899,6 @@ def fix_unused_keys():
 
 def watch():
     """Watch source files and re-run syntax check on change."""
-    import hashlib
     seen = {}
     def scan():
         files = [*SRC.glob('*.py'), *STATIC.rglob('*.js'), *(STATIC / 'css').glob('*.css')]
@@ -740,26 +923,30 @@ def watch():
 
 
 _CHECK_GROUPS = {
-    'py':   lambda: check_python(),
-    'js':   lambda: check_js(),
-    'css':  lambda: check_css(),
-    'syntax': lambda: syntax_check(),
-    'locale': lambda: check_locale(),
-    'dead':   lambda: check_dead_code() and check_dead_js(),
-    'func':   lambda: check_functions(),
-    'smoke':  lambda: smoke_test(),
+    'py':      lambda: check_python(),
+    'js':      lambda: check_js(),
+    'css':     lambda: check_css(),
+    'syntax':  lambda: syntax_check(),
+    'locale':  lambda: check_locale(),
+    'dead':    lambda: check_dead_code() and check_dead_js(),
+    'vulture': lambda: check_vulture(),
+    'dup':     lambda: check_duplicates(),
+    'broken':  lambda: check_broken(),
+    'deps':    lambda: check_deps(),
+    'func':    lambda: check_functions(),
+    'smoke':   lambda: smoke_test(),
 }
 
 if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Syntax + smoke + locale + dead code + function tests for MediaVault.',
+        description='Syntax + smoke + locale + dead + dup + broken + function tests for MediaVault.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument('--check', nargs='+', metavar='CHECK',
                         choices=list(_CHECK_GROUPS),
-                        help='One or more checks: py, js, css, locale, dead, func, smoke. Default: all')
+                        help='One or more checks: py, js, css, syntax, locale, dead, vulture, dup, broken, func, smoke. Default: all')
     parser.add_argument('--watch', action='store_true', help='watch mode (re-run syntax check)')
     parser.add_argument('--fix', action='store_true', help='remove unused LOCALE keys')
     args = parser.parse_args()
@@ -775,9 +962,13 @@ if __name__ == '__main__':
     else:
         # default: all checks
         ok_syn = syntax_check()
+        ok_vulture = check_vulture()
         ok_loc = check_locale()
         ok_dc = check_dead_code()
         ok_dj = check_dead_js()
+        ok_dup = check_duplicates()
+        ok_broken = check_broken()
+        ok_deps = check_deps()
         ok_ft = check_functions()
         ok_sm = smoke_test()
-        sys.exit(0 if (ok_syn and ok_loc and ok_dc and ok_dj and ok_ft and ok_sm) else 1)
+        sys.exit(0 if (ok_syn and ok_vulture and ok_loc and ok_dc and ok_dj and ok_dup and ok_broken and ok_deps and ok_ft and ok_sm) else 1)

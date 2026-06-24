@@ -151,6 +151,8 @@ var AdminDashboard = (function() {
         '<div class="db-grid">' +
         this._tool('exportDb', 'exportDb', 'export', false) +
         this._tool('dbImport', 'dbImport', 'import', false) +
+        this._tool('findDuplicates', 'findDuplicatesDesc', 'findDup', false) +
+        this._tool('rehashBtn', 'rehashDesc', 'rehash', false) +
         this._tool('settingsCleanDuplicates', 'settingsCleanDuplicates', 'dedup', false) +
         this._tool('cleanThumbCache', 'settingsClearCache', 'clearThumbs', true) +
         this._tool('settingsCleanTagCache', 'settingsCleanTagCache', 'clearTags', true) +
@@ -198,10 +200,12 @@ var AdminDashboard = (function() {
         '<div id="adminProgressText" style="font-size:12px;color:var(--text2)"></div></div>';
     },
 
-    _tool: function(labelKey, descKey, action, danger) {
+        _tool: function(labelKey, descKey, action, danger) {
       var icons = {
         export: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
         import: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+        findDup: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M9 11h4"/><path d="M11 9v4"/></svg>',
+        rehash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
         dedup: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>',
         clearThumbs: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
         clearTags: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
@@ -471,6 +475,8 @@ var AdminDashboard = (function() {
     switch (action) {
       case 'export': return _exportDb();
       case 'import': return _importDb();
+      case 'findDup': return _findDuplicates();
+      case 'rehash': return _rehashAction();
       case 'dedup': confirmKey = 'secConfirmDedup'; apiPath = '/api/deduplicate'; break;
       case 'clearThumbs': confirmKey = 'secConfirmClearThumb'; apiPath = '/api/clear_thumb_cache'; break;
       case 'clearBrowserCache': confirmKey = 'secConfirmClearBrowser'; apiPath = '/api/clear_browser_cache'; break;
@@ -526,6 +532,125 @@ var AdminDashboard = (function() {
     var btn = document.getElementById('adminCancelRegenBtn');
     if (btn) btn.style.display = show ? '' : 'none';
   }
+
+  /* ─── FIND DUPLICATES ─── */
+
+  function _findDuplicates() {
+    _modal(
+      '<div class="admin-modal-title">' + _t('findDuplicatesRunning') + '</div>' +
+      '<p style="color:var(--text2)"><span class="fetch-spinner"></span></p>'
+    );
+    _api('/api/find-duplicates', {method:'POST'}).then(function(data) {
+      if (!data.groups || data.groups.length === 0) {
+        _modal(
+          '<div class="admin-modal-title">' + _t('noDuplicates') + '</div>' +
+          '<div class="admin-modal-actions"><button class="btn" onclick="AdminDashboard._closeModal()">' + _t('close') + '</button></div>'
+        );
+        return;
+      }
+      _renderDuplicateModal(data.groups);
+    var content = document.querySelector('#adminModal .admin-modal-content');
+    if (content) content.style.maxWidth = '900px';
+    }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  function _renderDuplicateModal(groups) {
+    var html = '<div class="admin-modal-title">' + _t('duplicatesFound') + ' ' + groups.length + '</div>' +
+      '<div class="dup-groups" style="max-height:70vh;overflow-y:auto">';
+    groups.forEach(function(g, gi) {
+      html += '<div class="dup-group" style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;padding:12px">' +
+        '<div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:600">' +
+        _esc(g.key) + ' (' + g.files.length + ' ' + _t('files') + ')</div>';
+      g.files.forEach(function(f, fi) {
+        var thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(f.path);
+        var checked = f.keeper ? '' : 'checked';
+        var tagList = (f.tags || '').split(',').filter(function(t){ return t.trim(); });
+        html += '<div class="dup-file" style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:8px;border-radius:8px;border:2px solid transparent;transition:border-color .15s;margin-bottom:4px">' +
+          '<input type="checkbox" class="dup-cb" ' + checked + ' style="display:none" data-path="' + _esc(f.path) + '" data-group="' + gi + '">' +
+          '<div style="width:150px;height:150px;flex-shrink:0;background:var(--surface2);border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center">' +
+          '<img src="' + thumbUrl + '" loading="lazy" style="max-width:150px;max-height:150px;object-fit:contain" onerror="this.style.display=\'none\'">' +
+          '</div>' +
+          '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:13px;font-weight:600;color:var(--text);word-break:break-all;line-height:1.3;margin-bottom:4px">' + _esc(f.name) + '</div>' +
+          (f.is_sample ? '<span style="display:inline-block;font-size:10px;background:var(--accent-glow);color:var(--accent);padding:1px 6px;border-radius:3px;margin-bottom:4px">sample</span>' : '') +
+          (tagList.length > 0 ? '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px">' + tagList.slice(0, 20).map(function(t){
+            return '<span class="tag-chip" style="font-size:10px">' + _esc(t.trim()) + '</span>';
+          }).join('') + (tagList.length > 20 ? '<span style="font-size:10px;color:var(--text2)"> +' + (tagList.length - 20) + '</span>' : '') + '</div>' : '') +
+          '<div style="font-size:11px;color:var(--text2);margin-top:4px">' + _esc(f.path || '') + '</div>' +
+          '</div></div>';
+      });
+      html += '</div>';
+    });
+    html += '</div><div class="admin-modal-actions">' +
+      '<button class="btn" onclick="AdminDashboard._closeModal()">' + _t('cancel') + '</button>' +
+      '<button class="btn btn-danger" onclick="AdminDashboard._removeDupSelected()">' + _t('remDupSelected') + '</button></div>';
+    _modal(html);
+    document.querySelectorAll('.dup-file').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        if (e.target.closest('.dup-cb') || e.target.closest('.tag-chip')) return;
+        var cb = el.querySelector('.dup-cb');
+        if (cb) { cb.checked = !cb.checked; }
+      });
+    });
+  }
+
+  function _removeDupSelected() {
+    var paths = [];
+    document.querySelectorAll('.dup-cb:checked').forEach(function(cb) {
+      paths.push(cb.getAttribute('data-path'));
+    });
+    if (paths.length === 0) { _toast('No files selected', 'error'); return; }
+    _api('/api/remove-duplicates', {method:'POST', body: {paths: paths}}).then(function(data) {
+      _closeModal();
+      _toast(_t('settingsCleared'), 'success');
+    }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  /* ─── REHASH ─── */
+
+  function _rehashAction() {
+    _modal(
+      '<div class="admin-modal-title">' + _t('rehashRunning') + '</div>' +
+      '<p style="color:var(--text2)"><span class="fetch-spinner"></span></p>'
+    );
+    _api('/api/rehash', {method:'POST'}).then(function(data) {
+      if (data.total === 0) {
+        _modal(
+          '<div class="admin-modal-title">' + _t('noDuplicates') + '</div>' +
+          '<div class="admin-modal-actions"><button class="btn" onclick="AdminDashboard._closeModal()">' + _t('close') + '</button></div>'
+        );
+        return;
+      }
+      _pollRehash();
+    }).catch(function(e) { _toast(e.message, 'error'); });
+  }
+
+  function _pollRehash() {
+    var timer = setInterval(function() {
+      _api('/api/rehash-progress').then(function(data) {
+        if (data.status === 'done') {
+          clearInterval(timer);
+          _modal(
+            '<div class="admin-modal-title">' + _t('settingsCleared') + '</div>' +
+            '<div class="admin-modal-actions"><button class="btn" onclick="AdminDashboard._closeModal();AdminDashboard._findDuplicates()">' + _t('findDuplicates') + '</button></div>'
+          );
+        } else if (data.status === 'error') {
+          clearInterval(timer);
+          _toast(data.error || 'Rehash error', 'error');
+          _closeModal();
+        } else {
+          var pct = data.total > 0 ? Math.round(data.done / data.total * 100) : 0;
+          _modal(
+            '<div class="admin-modal-title">' + _t('rehashRunning') + '</div>' +
+            '<div class="progress-bar-wrap" style="background:var(--surface2);border-radius:8px;height:8px;overflow:hidden;margin:8px 0"><div style="height:100%;width:' + pct + '%;background:var(--accent);border-radius:8px;transition:width .3s"></div></div>' +
+            '<p style="color:var(--text2);font-size:13px">' + data.done + '/' + data.total + '</p>'
+          );
+        }
+      }).catch(function() { clearInterval(timer); });
+    }, 1000);
+  }
+
+  /* ─── REGEN SSE ─── */
 
   function _startRegenSSE() {
     if (_regenES) { _regenES.close(); _regenES = null; }
@@ -925,6 +1050,9 @@ var AdminDashboard = (function() {
     _createFolders: _createFolders,
     _saveFolderSettings: _saveFolderSettings,
     _closeModal: _closeModal,
+    _findDuplicates: _findDuplicates,
+    _removeDupSelected: _removeDupSelected,
+    _rehashAction: _rehashAction,
     _togglePw: _togglePw,
     _startScanProgressPoll: _startScanProgressPoll,
     _stopScanProgressPoll: _stopScanProgressPoll,

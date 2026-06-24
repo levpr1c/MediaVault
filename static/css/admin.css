@@ -288,6 +288,10 @@
   margin-top: 20px;
 }
 
+/* ─── DUPLICATE REVIEW ─── */
+.dup-file:hover{border-color:var(--surface3)!important}
+.dup-file:has(.dup-cb:checked){border-color:var(--accent)!important;background:var(--accent-glow)}
+
 /* ─── TOAST ─── */
 .admin-toast {
   position: fixed;

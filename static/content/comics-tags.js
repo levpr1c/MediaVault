@@ -13,7 +13,7 @@ export function comicsTagsRender(body) {
   body.innerHTML = `<div class="admin-loading"><span class="fetch-spinner"></span> ${_t('loading')}</div>`
 
   Promise.all([
-    api('/api/categories?sources=nhentai,ehentai,manual'),
+    api('/api/categories?sources=auto,rule34,danbooru'),
     api('/api/comics/list')
   ]).then(([catData, comicsData]) => {
     const categories = catData.categories || []
@@ -50,24 +50,28 @@ function _buildHTML() {
 }
 
 function _attachEvents(body, signal) {
-  const gridDiv = document.getElementById('cmComicsTagsGrid')
-  if (gridDiv) {
-    _searchDestroy = initComicsSearch(gridDiv, null, null, {
-      _t,
-      onFilter(grid, q) {
-        const inner = grid.querySelector('.cm-comics-tags-grid-inner')
-        if (inner) {
-          inner.innerHTML = buildComicsGridHTML(
-            _comics.filter(c => (c.title || '').toLowerCase().includes(q))
-          )
-        }
-      }
-    })
-  }
-
+  // Render tags FIRST before anything that might throw
   document.getElementById('cmFilesTagSearchQ')?.addEventListener('input', e => {
     renderLeftTags(document.getElementById('cmFilesLeftContent'), state.cats, e.target.value)
   }, { signal })
+  _renderLeftTags()
+
+  const gridDiv = document.getElementById('cmComicsTagsGrid')
+  if (gridDiv) {
+    try {
+      _searchDestroy = initComicsSearch(gridDiv, null, null, {
+        _t,
+        onFilter(grid, q) {
+          const inner = grid.querySelector('.cm-comics-tags-grid-inner')
+          if (inner) {
+            inner.innerHTML = buildComicsGridHTML(
+              _comics.filter(c => (c.title || '').toLowerCase().includes(q))
+            )
+          }
+        }
+      })
+    } catch (_e) {}
+  }
 
   setupDragEvents(body, signal, {
     targetSelector: '.cm-comic-card',
@@ -77,8 +81,6 @@ function _attachEvents(body, signal) {
       _assignTagToComic(comicId, tag, source)
     }
   })
-
-  _renderLeftTags()
 }
 
 function _renderLeftTags() {

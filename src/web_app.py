@@ -243,6 +243,18 @@ LOCALE = {
         'secConfirmClearBrowser': '⚠️ Clear browser cache? All clients will reload thumbnails and media on next visit.',
         'secConfirmClearTag': '⚠️ Clear tag cache for all files? Tags will need to be re-fetched.',
         'secConfirmDedup': '⚠️ Deduplicate database? Duplicate file entries will be removed.',
+        'findDuplicates': '🔍 Find Duplicates',
+        'findDuplicatesDesc': 'Find duplicate files by visual hash, cross-folder, and name patterns.',
+        'findDuplicatesRunning': 'Finding duplicates...',
+        'noDuplicates': 'No duplicates found',
+        'duplicatesFound': 'Duplicate groups found:',
+        'duplicatesReview': 'Review Duplicates',
+        'remDupSelected': 'Remove selected',
+        'rehashBtn': '🧮 Compute hashes',
+        'rehashDesc': 'Compute perceptual hashes for existing files (needed for duplicate detection).',
+        'rehashRunning': 'Computing hashes...',
+        'close': 'Close',
+        'files': 'files',
         'secConfirmClearDb': '⚠️ Clear ALL files from database? This will remove all scanned files.',
         'settingsClearBrowserCache': '🧹 Clear browser cache',
         'settingsClearBrowserCacheDesc': 'Increment cache buster — forces browsers to refetch thumbnails and media.',
@@ -491,6 +503,18 @@ LOCALE = {
         'secConfirmClearBrowser': '⚠️ Сбросить кэш браузера? Все клиенты перезагрузят превью и медиа при следующем визите.',
         'secConfirmClearTag': '⚠️ Очистить кэш тегов для всех файлов? Теги нужно будет получить заново.',
         'secConfirmDedup': '⚠️ Дедуплицировать базу данных? Дублирующиеся записи будут удалены.',
+        'findDuplicates': '🔍 Найти дубликаты',
+        'findDuplicatesDesc': 'Поиск дублирующихся файлов по визуальному хэшу, разным папкам и именам.',
+        'findDuplicatesRunning': 'Поиск дубликатов...',
+        'noDuplicates': 'Дубликаты не найдены',
+        'duplicatesFound': 'Найдено групп дубликатов:',
+        'duplicatesReview': 'Просмотр дубликатов',
+        'remDupSelected': 'Удалить выбранные',
+        'rehashBtn': '🧮 Вычислить хэши',
+        'rehashDesc': 'Вычислить перцептуальные хэши для существующих файлов (нужно для поиска дубликатов).',
+        'rehashRunning': 'Вычисление хэшей...',
+        'close': 'Закрыть',
+        'files': 'файлов',
         'secConfirmClearDb': '⚠️ Удалить ВСЕ файлы из базы данных? Все отсканированные файлы будут удалены.',
         'settingsClearBrowserCache': '🧹 Сбросить кэш браузера',
         'settingsClearBrowserCacheDesc': 'Инкрементировать cache buster — браузеры перезапросят превью и медиафайлы.',
@@ -740,6 +764,23 @@ def _md5_from_filename(filename):
     """Extract MD5 hash from filename if it starts with a 32-char hex string."""
     m = re.match(r'^([0-9a-fA-F]{32})', filename)
     return m.group(1).lower() if m else None
+
+def _compute_dhash(filepath):
+    """Compute difference hash (dHash) for an image file. Returns 16-char hex string or empty string on failure."""
+    try:
+        from PIL import Image
+        Image.MAX_IMAGE_PIXELS = None  # disable decompression bomb check
+        with Image.open(filepath) as img:
+            gray = img.convert('L')
+            small = gray.resize((9, 8), Image.LANCZOS)
+            bits = []
+            for y in range(8):
+                for x in range(8):
+                    bits.append('1' if small.getpixel((x, y)) > small.getpixel((x + 1, y)) else '0')
+            hex_str = hex(int(''.join(bits), 2))[2:]
+            return hex_str.zfill(16)
+    except Exception:
+        return ''
 
 # ── Работа с БД ──
 
@@ -1339,6 +1380,18 @@ def _ensure_db_schema():
             pass
         try:
             db.execute("ALTER TABLE comics ADD COLUMN source_id TEXT DEFAULT ''")
+        except Exception:
+            pass
+        # Миграция: phash для дедупликации
+        try:
+            db.execute("ALTER TABLE files ADD COLUMN phash TEXT DEFAULT ''")
+        except Exception:
+            pass
+        # Индекс для phash
+        try:
+            db.execute('CREATE INDEX IF NOT EXISTS idx_files_phash ON files(phash)')
+        except Exception:
+            pass
         except Exception:
             pass
         # Миграция: tags column for comics
@@ -3391,9 +3444,10 @@ def _quick_scan(force=False):
                         comics_dir = settings.get('comics_dir', 'Comics')
                         dl_dir = settings.get('downloads_dir', 'Downloads')
                         folder_type = {gallery_dir: 'gallery', comics_dir: 'comics', dl_dir: 'downloads'}.get(first_dir, 'gallery')
+                        phash = _compute_dhash(full) if ftype == 'image' else ''
                         db.execute(
-                            'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
-                            [rel, f, ftype, size, mtime, merged, w, h, int(time.time()), folder_type]
+                            'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type, phash) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                            [rel, f, ftype, size, mtime, merged, w, h, int(time.time()), folder_type, phash]
                         )
                         count += 1
                     except Exception as e:
@@ -4023,12 +4077,12 @@ def api_categories():
         if request.method == 'GET':
             sources_param = request.args.get('sources', '')
             if sources_param:
-                sources_list = [s.strip() for s in sources_param.split(',') if s.strip()]
+                sources_list = [s.strip().lower() for s in sources_param.split(',') if s.strip()]
                 placeholders = ','.join('?' * len(sources_list))
                 rows = db.execute(f'''
                     SELECT c.name, c.color, m.tag_name
                     FROM tag_categories c
-                    LEFT JOIN tag_category_members m ON c.name = m.category AND m.source IN ({placeholders})
+                    LEFT JOIN tag_category_members m ON c.name = m.category AND LOWER(m.source) IN ({placeholders})
                     ORDER BY c.name, m.tag_name
                 ''', sources_list).fetchall()
             else:
@@ -4936,6 +4990,152 @@ def api_deduplicate():
         return jsonify({'ok': True, 'removed': len(remove)})
     except Exception as e:
         log_error('deduplicate error: %s', e)
+        return jsonify({'error': str(e)}), 500
+
+# ── Perceptual hash rehash (compute missing) ──
+_rehash_progress = {'status': 'idle', 'done': 0, 'total': 0, 'error': ''}
+
+@app.route('/api/rehash', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_rehash():
+    global _rehash_progress
+    if _rehash_progress['status'] == 'running':
+        return jsonify({'error': 'rehash already running'}), 400
+    try:
+        db = _db_conn()
+        rows = db.execute("SELECT path FROM files WHERE type='image' AND (phash IS NULL OR phash = '')").fetchall()
+        db.close()
+        if not rows:
+            return jsonify({'ok': True, 'done': 0, 'total': 0})
+        total = len(rows)
+        _rehash_progress = {'status': 'running', 'done': 0, 'total': total, 'error': ''}
+        media_dir = settings.get('media_dir', '')
+        def _run():
+            global _rehash_progress
+            db2 = _db_conn()
+            try:
+                for i, (row,) in enumerate(rows):
+                    if _rehash_progress['status'] != 'running':
+                        break
+                    full = os.path.join(media_dir, row) if media_dir else row
+                    if os.path.exists(full):
+                        ph = _compute_dhash(full)
+                        if ph:
+                            db2.execute('UPDATE files SET phash = ? WHERE path = ?', [ph, row])
+                    if i % 50 == 0:
+                        db2.commit()
+                    _rehash_progress['done'] = i + 1
+                db2.commit()
+                _rehash_progress['status'] = 'done'
+            except Exception as e:
+                log_error('rehash error: %s', e)
+                _rehash_progress['status'] = 'error'
+                _rehash_progress['error'] = str(e)
+            finally:
+                db2.close()
+        import threading
+        threading.Thread(target=_run, daemon=True).start()
+        return jsonify({'ok': True, 'total': total})
+    except Exception as e:
+        log_error('rehash error: %s', e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/rehash-progress')
+@admin_required
+@api_error_handler
+def api_rehash_progress():
+    return jsonify(_rehash_progress)
+
+# ── Smart duplicate detection (phash + cross-folder + sample_XXX) ──
+def _has_sample_prefix(name):
+    return name.lower().startswith('sample_')
+
+def _has_real_tags(tags_str):
+    if not tags_str:
+        return False
+    return any(t.strip() for t in tags_str.split(','))
+
+@app.route('/api/find-duplicates', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_find_duplicates():
+    try:
+        db = _db_conn()
+        media_dir = settings.get('media_dir', '')
+        rows = db.execute("SELECT path, name, type, COALESCE(size,0) as sz, COALESCE(phash,'') as phash, COALESCE(folder_type,'') as folder_type, COALESCE(tags,'') as tags FROM files").fetchall()
+        # Auto-compute phash for files missing it (images only)
+        compute_count = 0
+        for i, (path, name, ftype, sz, phash, folder_type, tags) in enumerate(rows):
+            if not phash and ftype == 'image':
+                full = os.path.join(media_dir, path) if media_dir else path
+                if os.path.exists(full):
+                    ph = _compute_dhash(full)
+                    if ph:
+                        db.execute('UPDATE files SET phash = ? WHERE path = ?', [ph, path])
+                        rows[i] = (path, name, ftype, sz, ph, folder_type, tags)
+                        compute_count += 1
+                        if compute_count % 50 == 0:
+                            db.commit()
+        db.commit()
+        db.close()
+        # Group by phash only (cross-folder by design)
+        phash_groups = {}
+        for path, name, ftype, sz, phash, folder_type, tags in rows:
+            if phash:
+                phash_groups.setdefault(phash, []).append({'path': path, 'name': name, 'size': sz, 'type': ftype, 'folder_type': folder_type, 'tags': tags})
+        groups = []
+        for phash, flist in phash_groups.items():
+            if len(flist) > 1:
+                for f in flist:
+                    f['is_sample'] = _has_sample_prefix(f['name'])
+                # Sort: non-sample first, then files WITH tags first, then by size desc
+                flist.sort(key=lambda x: (x['is_sample'], not _has_real_tags(x.get('tags', '')), -x['size']))
+                # Mark keeper:
+                # - If any file lacks real tags → files WITHOUT tags are suggested (checked), files WITH tags are keepers
+                # - If ALL files have tags (or none do) → first is keeper, rest checked
+                tag_mask = [_has_real_tags(f.get('tags', '')) for f in flist]
+                any_without = any(not t for t in tag_mask)
+                for i, f in enumerate(flist):
+                    if any_without:
+                        f['keeper'] = tag_mask[i]
+                    else:
+                        f['keeper'] = (i == 0)
+                groups.append({'key': 'phash:' + phash[:8], 'files': flist, 'type': 'phash'})
+        return jsonify({'ok': True, 'groups': groups, 'total': len(groups), 'computed': compute_count})
+    except Exception as e:
+        log_error('find-duplicates error: %s', e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/remove-duplicates', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_remove_duplicates():
+    data = request.get_json(force=True, silent=True)
+    if data is None:
+        return jsonify({'error': 'invalid json'}), 400
+    paths = data.get('paths', [])
+    if not paths:
+        return jsonify({'error': 'no paths'}), 400
+    try:
+        db = _db_conn()
+        media_dir = settings.get('media_dir', '')
+        deleted = 0
+        for p in paths:
+            full = os.path.join(media_dir, p) if media_dir else p
+            try:
+                if os.path.exists(full):
+                    os.remove(full)
+            except OSError as e:
+                log_warning('remove-duplicates: could not delete file %s: %s', p, e)
+            db.execute('DELETE FROM files WHERE path = ?', [p])
+            deleted += 1
+        db.commit()
+        db.close()
+        log_info('remove-duplicates: removed %d files from DB + disk', deleted)
+        return jsonify({'ok': True, 'removed': deleted})
+    except Exception as e:
+        log_error('remove-duplicates error: %s', e)
         return jsonify({'error': str(e)}), 500
 
 # ── Comics/Manga API ──

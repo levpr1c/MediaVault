@@ -248,7 +248,7 @@ body { overflow: hidden; }
 
 /* ─── COMICS SECTION ─── */
 #cmComics { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.cm-comics-grid { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0; align-items: flex-start; }
+.cm-comics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; padding: 4px 0; }
 .cm-comic-card {
   height: 280px; flex: 0 1 auto;
   display: flex;
@@ -316,9 +316,7 @@ body { overflow: hidden; }
   max-height: min(920px, 90vh);
   position: relative; z-index: 1;
 }
-#comicsModalOverlay #modalInner.preview-expanded {
-  width: min(2100px, calc(100vw - 60px));
-}
+
 #comicsModalOverlay .comic-modal {
   flex: 1; min-width: 0; max-height: 90vh;
   background: var(--surface); border: none; display: flex;
@@ -355,17 +353,17 @@ body { overflow: hidden; }
   padding: 14px 20px; border-top: 1px solid var(--border);
 }
 
-/* ─── COMIC PREVIEW (left panel) — slides out without affecting grid ─── */
+/* ─── COMIC PREVIEW (right panel) — slides out to the left, pushes picker ─── */
 #comicPreviewOverlay {
-  position: absolute; left: 0; top: 0; height: 100%;
   width: 0; overflow: hidden; background: var(--surface);
   display: flex; flex-direction: column;
   transition: width .25s ease;
-  border-radius: 12px 0 0 12px; z-index: 2;
+  border-radius: 0 12px 12px 0; z-index: 2;
+  flex-shrink: 0;
 }
 #comicPreviewOverlay.preview-open {
   width: 480px; padding: 16px; overflow-y: auto;
-  border-right: 1px solid var(--border);
+  border-left: 1px solid var(--border);
 }
 #previewToggleBtn {
   flex: 0 0 28px; width: 28px; align-self: stretch; border: none;
@@ -581,8 +579,7 @@ body { overflow: hidden; }
   .cm-files-left-content { max-height: 160px; }
   .cm-files-gallery { column-width: 110px; column-gap: 6px; }
   .cm-files-gallery.fixed { grid-template-columns: repeat(2, 1fr); }
-  .cm-comics-grid { justify-content: center; }
-  .cm-comic-card { max-width: 240px; }
+  .cm-comics-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .cm-comic-add-card { flex-basis: 160px; }
   .cm-comics-tags-grid { overflow: hidden; }
   .cm-comics-tags-grid-inner {
@@ -594,9 +591,9 @@ body { overflow: hidden; }
   #modalInner { flex-direction: column; width: 100%; max-height: 95vh; }
   #comicPreviewOverlay {
     position: relative; left: auto; top: auto; height: auto;
-    width: 0; border-right: none; border-radius: 0;
+    width: 0; border-left: none; border-radius: 0;
   }
-  #comicPreviewOverlay.preview-open { width: 100%; max-height: 350px; border-right: none; }
+  #comicPreviewOverlay.preview-open { width: 100%; max-height: 350px; border-left: none; }
   #previewToggleBtn { display: none; }
   #cpageGrid .cpage-item { width: calc(33.33% - 6px); }
   /* ─── MOBILE CM HEADER DROPDOWNS ─── */
@@ -624,8 +621,9 @@ body { overflow: hidden; }
 /* ─── COMICS SEARCH ─── */
 .cm-comics-search-wrapper {
   position: relative;
-  margin-bottom: 16px;
-  grid-column: 1 / -1;
+  margin: 0 auto 16px;
+  max-width: 480px;
+  width: 100%;
 }
 .cm-comics-search-icon {
   position: absolute;

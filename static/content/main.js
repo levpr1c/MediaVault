@@ -1,7 +1,7 @@
 import { _t, toast } from './utils.js'
 import { tagsRender, tagsDestroy } from './tags.js'
 import { filesRender, filesDestroy, onFileSearch } from './tags-manage/tags-manage.js'
-import { comicsRender, comicsDestroy, initModalEvents, ctSelectPage, ctSaveAll } from './comics.js'
+import { comicsRender, comicsDestroy, initModalEvents } from './comics.js'
 import { comicsTagsRender, comicsTagsDestroy } from './comics-tags.js'
 
 const sections = {
@@ -103,6 +103,6 @@ export function init() {
   }
 }
 
-window.ContentManager = { init, load: loadSection, registerMobileSection, ctSelectPage, ctSaveAll }
+window.ContentManager = { init, load: loadSection, registerMobileSection }
 
 init()

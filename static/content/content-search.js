@@ -8,6 +8,12 @@ let _currentPage = 1
 let _apiPage = 1
 let _pageSize = 20
 const _FETCH_MULTIPLIER = 3
+let _hasMore = true
+
+const topBar = document.getElementById('csPaginationTop')
+const prevBtnTop = document.getElementById('csPrevPageTop')
+const nextBtnTop = document.getElementById('csNextPageTop')
+const pageNumbersTopEl = document.getElementById('csPageNumbersTop')
 
 const searchInput = document.getElementById('csInput')
 const searchBtn = document.getElementById('csSearchBtn')
@@ -110,8 +116,10 @@ async function doSearch(query) {
   _apiPage = 1
   _allResults = []
   _currentPage = 1
+  _hasMore = true
   _csGrid.setLoading(true)
   bottomBar.style.display = 'none'
+  if (topBar) topBar.style.display = 'none'
   var sites = getActiveSites()
   if (!sites) {
     _csGrid.clear()
@@ -136,9 +144,9 @@ if (aiFilter) {
   })
 }
 
-async function fetchPage(rawQuery, sites, pageNum, keepLoading) {
+async function fetchPage(rawQuery, sites, pageNum, keepLoading, showLoading) {
   if (_ac && _ac.signal.aborted) return
-  loading.style.display = 'block'
+  if (showLoading !== false) loading.style.display = 'block'
   try {
     var filterAi = document.getElementById('csAiFilter') && document.getElementById('csAiFilter').checked
     var url = '/api/content-search?q=' + encodeURIComponent(rawQuery) + '&sites=' + encodeURIComponent(sites) + '&page=' + pageNum + (filterAi ? '&filter_ai=1' : '')
@@ -186,9 +194,14 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading) {
       var items = siteData.results || []
       items.forEach(function(r) { r._source = shortName; newItems.push(r) })
     }
-    if (!newItems.length && _allResults.length === 0) {
-      _csGrid.setEmpty(true)
-      loading.style.display = 'none'
+    if (!newItems.length) {
+      _hasMore = false
+      if (_allResults.length === 0) {
+        _csGrid.setEmpty(true)
+        loading.style.display = 'none'
+        return
+      }
+      if (!keepLoading) loading.style.display = 'none'
       return
     }
     _apiPage = pageNum
@@ -231,7 +244,10 @@ function renderPage() {
   var totalPages = Math.max(1, Math.ceil(_allResults.length / _pageSize))
   prevBtn.disabled = _currentPage <= 1
   nextBtn.disabled = _currentPage >= totalPages
+  if (prevBtnTop) prevBtnTop.disabled = prevBtn.disabled
+  if (nextBtnTop) nextBtnTop.disabled = nextBtn.disabled
   bottomBar.style.display = 'flex'
+  if (topBar) topBar.style.display = 'flex'
   renderPageNumbers(totalPages)
 }
 
@@ -257,12 +273,20 @@ function renderPageNumbers(totalPages) {
     html += '<button class="page-num" data-page="' + totalPages + '">' + totalPages + '</button>'
   }
   pageNumbersEl.innerHTML = html
+  if (pageNumbersTopEl) pageNumbersTopEl.innerHTML = html
   // Attach click handlers
   pageNumbersEl.querySelectorAll('.page-num').forEach(function(btn) {
     btn.addEventListener('click', function() {
       goToPage(parseInt(btn.dataset.page))
     })
   })
+  if (pageNumbersTopEl) {
+    pageNumbersTopEl.querySelectorAll('.page-num').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        goToPage(parseInt(btn.dataset.page))
+      })
+    })
+  }
 }
 
 async function goToPage(page) {
@@ -273,7 +297,7 @@ async function goToPage(page) {
   var totalPages = Math.max(1, Math.ceil(_allResults.length / _pageSize))
   _currentPage = Math.max(1, Math.min(page, totalPages))
   var fetchTarget = _currentPage * _pageSize + _pageSize * _FETCH_MULTIPLIER / 2
-  if (_allResults.length < fetchTarget) {
+  if (_allResults.length < fetchTarget && _hasMore) {
     var q = searchInput.value.trim()
     var sites = getActiveSites()
     if (q && sites) {
@@ -283,11 +307,12 @@ async function goToPage(page) {
         if (_allResults.length >= _currentPage * _pageSize + _pageSize * _FETCH_MULTIPLIER) break
         if (signal.aborted) return
         var prevLen = _allResults.length
-        await fetchPage(q, sites, _apiPage + 1, true)
+        await fetchPage(q, sites, _apiPage + 1, true, false)
         if (_allResults.length <= prevLen) break
       }
     }
   }
+  loading.style.display = 'none'
   if (!signal.aborted) renderPage()
 }
 
@@ -298,6 +323,16 @@ prevBtn.addEventListener('click', function() {
 nextBtn.addEventListener('click', function() {
   goToPage(_currentPage + 1)
 })
+if (prevBtnTop) {
+  prevBtnTop.addEventListener('click', function() {
+    goToPage(_currentPage - 1)
+  })
+}
+if (nextBtnTop) {
+  nextBtnTop.addEventListener('click', function() {
+    goToPage(_currentPage + 1)
+  })
+}
 
 // Card HTML — MV .file-card style
 function cardHTML(r) {
@@ -712,6 +747,7 @@ MobileSearch.register('content-search', {
     grid.innerHTML = ''
     loading.style.display = 'none'
     bottomBar.style.display = 'none'
+    if (topBar) topBar.style.display = 'none'
   },
   getInitialValue: function() {
     return searchInput.value

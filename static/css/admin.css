@@ -26,8 +26,8 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 24px;
-  margin-bottom: 16px;
+  padding: 28px;
+  margin-bottom: 20px;
   transition: border-color var(--transition);
 }
 .admin-card:hover { border-color: var(--border-light); }
@@ -45,7 +45,7 @@
 .admin-card-desc {
   font-size: 13px;
   color: var(--text2);
-  margin: -8px 0 16px;
+  margin: -8px 0 20px;
   line-height: 1.5;
 }
 
@@ -118,7 +118,7 @@
 .action-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 /* ─── DB TOOL GRID ─── */
@@ -183,8 +183,9 @@
   display: flex;
   gap: 10px;
   align-items: flex-end;
+  flex-wrap: wrap;
 }
-.admin-field-row .admin-field { flex: 1; }
+.admin-field-row .admin-field { flex: 1; min-width: 140px; }
 
 /* ─── CREDENTIAL BACKEND SELECTOR ─── */
 .cred-option {
@@ -344,7 +345,7 @@
   border-radius: 0; transition: all .15s; flex-shrink: 0; text-decoration: none;
 }
 .admin-header a:hover { color: var(--text); }
-.admin-header a.active { color: var(--accent); background: var(--accent-glow); }
+.admin-header a.active { color: var(--accent); background: var(--accent-glow); font-weight: 700; }
 .hdr-nav-label { display: none; }
 @media (min-width: 768px) {
   .admin-header { gap: 0; border-bottom: 1px solid var(--border); }
@@ -356,10 +357,11 @@
     gap: 8px;
   }
   .admin-header a:hover { background: var(--surface2); color: var(--text); }
-  .admin-header a.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--accent-glow); }
+  .admin-header a.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--accent-glow); font-weight: 700; }
   .admin-header a svg { width: 16px; height: 16px; flex-shrink: 0; }
   .hdr-nav-label { display: inline; }
 }
+.hdr-mobile .admin-header { display: none; }
 
 /* ─── ADMIN IMPORT BUTTON ─── */
 .admin-import-btn { margin-top: 8px; }
@@ -374,9 +376,9 @@
 /* ─── BACKEND CREDENTIALS ROW ─── */
 .backend-card-credentials {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-top: 10px;
+  margin-top: 14px;
 }
 
 /* ─── BACKEND FIELD WRAPPER ─── */
@@ -425,7 +427,18 @@
 @media(max-width:768px) {
   .admin-main { padding: 16px; }
   .admin-page-title { font-size: 18px; }
+  .admin-card { padding: 18px; }
+  .admin-table th,
+  .admin-table td { padding: 8px 10px; }
+  .admin-table th:nth-child(1),
+  .admin-table td:nth-child(1) { width: auto; }
+  .admin-table th:nth-child(2),
+  .admin-table td:nth-child(2) { width: auto; }
+  .admin-table th:nth-child(3),
+  .admin-table td:nth-child(3) { width: auto; }
   .db-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .backend-field-wrap { min-width: 100%; }
+  .backend-header-actions { flex-wrap: wrap; }
 }
 .pw-field {
   display: flex;
@@ -498,6 +511,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .backend-card-site {
   display: flex;

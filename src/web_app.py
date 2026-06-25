@@ -4417,15 +4417,19 @@ def api_auto_scan():
     if not media_dir:
         return jsonify({'error': 'no media dir'}), 400
     paths = data.get('paths', [])
+    total_all = len(paths)
     if not paths:
         log_info('auto_scan: no paths provided, walking media_dir')
+        all_files = []
         for root, dirs, files in os.walk(media_dir):
             dirs[:] = [d for d in dirs if not d.startswith('.')]
             for f in files:
                 if f.startswith('.'): continue
                 rel = os.path.relpath(os.path.join(root, f), media_dir)
-                paths.append(rel)
-        log_info('auto_scan: found %d files', len(paths))
+                all_files.append(rel)
+        total_all = len(all_files)
+        paths = [p for p in all_files if not p.startswith('Comics/') and not p.startswith('Downloads/nHentai/')]
+        log_info('auto_scan: found %d files (total %d with Comics/nHentai)', len(paths), total_all)
     _ensure_db_schema()
     _ensure_auto_scan_table()
     _ensure_scan_results_table()
@@ -4440,6 +4444,8 @@ def api_auto_scan():
 
     def generate():
         try:
+            comics_count = total_all - len(paths)
+            yield f'data: {json.dumps({"type": "info", "total_filtered": len(paths), "total_all": total_all, "comics_count": comics_count})}\n\n'
             saved = 0
             errors = 0
             skipped = 0

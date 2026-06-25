@@ -218,6 +218,8 @@ var TagfetchAuto = (function() {
       var found = 0;
       var totalScanned = 0;
       var totalSkipped = 0;
+      var totalAllFiles = 0;
+      var totalFilteredFiles = 0;
 
       // Освобождение кнопок управления после завершения (done/cancel/error)
       function releaseControls() {
@@ -244,7 +246,11 @@ var TagfetchAuto = (function() {
               var raw = line.trim();
               if (raw.startsWith('data: ')) raw = raw.slice(6);
               var data = JSON.parse(raw);
-              if (data.type === 'progress') {
+              if (data.type === 'info') {
+                totalAllFiles = data.total_all || 0;
+                totalFilteredFiles = data.total_filtered || 0;
+                if (bs) bs.textContent = 'Total ' + totalAllFiles + ' files (' + totalFilteredFiles + ' without comics)';
+              } else if (data.type === 'progress') {
                 totalScanned = data.index || totalScanned;
                 var total = data.total || 0;
                 if (data.status === 'ok') {

@@ -229,6 +229,9 @@
   justify-content: center;
   gap: 6px;
 }
+#csPaginationTop {
+  margin-bottom: 8px;
+}
 
 /* Skeleton loading */
 .cs-grid-loading {

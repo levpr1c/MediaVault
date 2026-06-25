@@ -167,6 +167,7 @@ _HARDCODED_USED = frozenset([
     'backendApiRaw', 'backendGallerydl',
     'siteRule34', 'siteDanbooru', 'siteNhentai', 'siteKemono', 'siteCoomer',
     'siteEhentai',
+    'findOriginalsFound', 'totalFilesWithoutTags',
 ])
 
 def _extract_html_keys():

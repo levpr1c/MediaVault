@@ -79,8 +79,8 @@ var AdminDashboard = (function() {
       var self = this;
       var html = '<div class="admin-card"><div class="admin-card-header">' +
         '<span class="admin-card-title"><span data-i18n="navUsers">' + _t('navUsers') + '</span></span>' +
-        '<button class="btn btn-sm btn-primary" onclick="AdminDashboard._addUser()">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle;margin-right:4px"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>' +
+        '<button class="action-btn action-btn-primary" onclick="AdminDashboard._addUser()">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>' +
         '<span data-i18n="userAddBtn">' + _t('userAddBtn') + '</span></button>' +
         '</div><div class="admin-table-wrap">';
       if (_users.length === 0) {
@@ -99,16 +99,16 @@ var AdminDashboard = (function() {
             '<td>' + self._roleBadge(u.role) + '</td>' +
             '<td style="text-align:right"><div class="action-group" style="justify-content:flex-end">' +
             '<button class="action-btn" onclick="AdminDashboard._setPassword(' + u.id + ')">' +
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:4px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
             '<span data-i18n="userSetPasswordBtn">' + _t('userSetPasswordBtn') + '</span></button>';
           if (!isSelf) {
             html += '<button class="action-btn" onclick="AdminDashboard._toggleRole(' + u.id + ')">' +
-              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:4px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>' +
               '<span data-i18n="' + (u.role === 'admin' ? 'userRoleUser' : 'userRoleAdmin') + '">' + _t(u.role === 'admin' ? 'userRoleUser' : 'userRoleAdmin') + '</span></button>';
           }
           if (!isSelf && !isLastAdmin) {
             html += '<button class="action-btn danger" onclick="AdminDashboard._deleteUser(' + u.id + ', \'' + _esc(u.username) + '\')">' +
-              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:4px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
               '<span data-i18n="delete">' + _t('delete') + '</span></button>';
           }
           html += '</div></td></tr>';
@@ -168,9 +168,9 @@ var AdminDashboard = (function() {
         '<div class="admin-field"><input class="admin-field-input" id="admMediaDirFolders" value="' + _esc(s.media_dir || '') + '" readonly style="background:var(--surface2);cursor:default"></div>' +
         '<div class="admin-field"><input class="admin-field-input" id="admMediaDir" value="' + _esc(s.media_dir || '') + '" placeholder="/path/to/media"></div>' +
         '<div style="display:flex;gap:8px;margin-top:8px;margin-bottom:16px">' +
-        '<button class="btn" onclick="AdminDashboard._pickFolder()"><span data-i18n="settingsSystemDialog">' + _t('settingsSystemDialog') + '</span></button>' +
-        '<button class="btn btn-primary" onclick="AdminDashboard._scanFolder()"><span data-i18n="settingsScan">' + _t('settingsScan') + '</span></button>' +
-        '<button class="btn" onclick="AdminDashboard._rescanFolder()" id="admRescanBtn"><span>&#x21bb; Rescan</span></button>' +
+        '<button class="action-btn" onclick="AdminDashboard._pickFolder()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span data-i18n="settingsSystemDialog">' + _t('settingsSystemDialog') + '</span></button>' +
+        '<button class="action-btn action-btn-primary" onclick="AdminDashboard._scanFolder()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span data-i18n="settingsScan">' + _t('settingsScan') + '</span></button>' +
+        '<button class="action-btn" onclick="AdminDashboard._rescanFolder()" id="admRescanBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg><span>&#x21bb; Rescan</span></button>' +
         '<span id="admScanStatus" style="font-size:12px;color:var(--text2);margin-left:4px"></span>' +
         '</div>' +
         '<div id="admScanProgress" class="scan-progress" style="display:none">' +
@@ -187,13 +187,13 @@ var AdminDashboard = (function() {
         '<div class="admin-field"><label class="admin-field-label"><span data-i18n="settingsDownloadsDir">' + _t('settingsDownloadsDir') + '</span></label><input class="admin-field-input" id="downloadsDir" value="' + _esc(s.downloads_dir || 'Downloads') + '" placeholder="Downloads"></div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:12px;margin-top:8px">' +
-        '<button class="btn btn-primary" onclick="AdminDashboard._saveFolderSettings()"><span data-i18n="settingsSaveStart">' + _t('settingsSaveStart') + '</span></button>' +
-        '<button class="btn" onclick="AdminDashboard._createFolders()" id="admCreateFolders"><span data-i18n="settingsCreateFolders">' + _t('settingsCreateFolders') + '</span></button>' +
+        '<button class="action-btn action-btn-primary" onclick="AdminDashboard._saveFolderSettings()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span data-i18n="settingsSaveStart">' + _t('settingsSaveStart') + '</span></button>' +
+        '<button class="action-btn" onclick="AdminDashboard._createFolders()" id="admCreateFolders"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span data-i18n="settingsCreateFolders">' + _t('settingsCreateFolders') + '</span></button>' +
         '</div>' +
         '</div>' +
         '<div class="admin-card" id="adminProgressCard" style="display:none">' +
         '<div class="admin-card-header"><span class="admin-card-title"><span data-i18n="settingsRunning">' + _t('settingsRunning') + '</span></span>' +
-        '<button class="btn btn-small btn-danger" id="adminCancelRegenBtn" style="display:none" onclick="AdminDashboard._cancelRegen()"><span data-i18n="cancel">' + _t('cancel') + '</span></button>' +
+        '<button class="action-btn danger" id="adminCancelRegenBtn" style="display:none" onclick="AdminDashboard._cancelRegen()"><span data-i18n="cancel">' + _t('cancel') + '</span></button>' +
         '</div>' +
         '<div class="progress-bar-wrap" style="background:var(--surface2);border-radius:8px;height:8px;overflow:hidden;margin:8px 0">' +
         '<div id="adminProgressBar" style="height:100%;width:0%;background:var(--accent);border-radius:8px;transition:width .3s"></div></div>' +

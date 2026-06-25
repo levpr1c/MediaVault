@@ -98,6 +98,11 @@ _scan_progress = {
     'error': ''
 }
 
+# Прогресс поиска оригиналов (find-originals background task)
+_find_originals_progress = {}
+_find_originals_task_counter = 0
+_find_originals_lock = threading.Lock()
+
 # ── Путь к БД (всегда в скрытой папке) ──
 
 _DB_DIR = os.path.expanduser('~/.local/share/MediaVault')
@@ -313,10 +318,10 @@ LOCALE = {
         'navGroups': 'Groups',
         'contentSearch': 'Content Search',
         'contentSearchPlaceholder': 'Search all sites by tag…',
+        'contentSearchPageSize': 'Page:',
         'contentSearchBtn': 'Search',
         'contentSearchNoResults': 'No results found',
         'contentSearchError': 'Search failed',
-        'contentSearchLoadMore': 'Load More',
         'contentSearchSelectSource': 'Select at least one source',
         'contentSearchAiFilter': 'Hide AI',
         'contentSearchStorageEmpty': 'Storage appears empty — your drive may not be mounted',
@@ -458,6 +463,18 @@ LOCALE = {
         'similarBtn': 'Similar',
         'allFiles': 'All files',
         'noResults': 'No results',
+        'filesWithoutTags': 'Files Without Tags',
+        'filesWithoutTagsTitle': 'Files Without Real Tags',
+        'totalFilesWithoutTags': 'Total: {n} files',
+        'allFilesHaveTags': 'All files have tags',
+        'findOriginals': 'Find Originals',
+        'findOriginalsDesc': 'Find original images and tags for sample_XXX files from booru APIs',
+        'findOriginalsRunning': 'Searching for originals...',
+        'findOriginalsFound': 'Found {n} original(s)',
+        'downloadOriginal': 'Download \u0026 Tag',
+        'downloadOriginalDone': 'Downloaded and tagged',
+        'noOriginalsFound': 'No originals found',
+        'findOriginalsError': 'Failed to find originals',
     },
     'ru': {
         'adminSettings': 'Администрирование и настройки',
@@ -572,10 +589,10 @@ LOCALE = {
         'navGroups': 'Группы',
         'contentSearch': 'Поиск контента',
         'contentSearchPlaceholder': 'Поиск на всех сайтах по тегу…',
+        'contentSearchPageSize': 'Страница:',
         'contentSearchBtn': 'Найти',
         'contentSearchNoResults': 'Ничего не найдено',
         'contentSearchError': 'Ошибка поиска',
-        'contentSearchLoadMore': 'Загрузить ещё',
         'contentSearchSelectSource': 'Выберите хотя бы один источник',
         'contentSearchAiFilter': 'Без AI',
         'contentSearchStorageEmpty': 'Хранилище пустое — возможно, накопитель не подключён',
@@ -717,6 +734,18 @@ LOCALE = {
         'similarBtn': 'Похожие',
         'allFiles': 'Все файлы',
         'noResults': 'Нет результатов',
+        'filesWithoutTags': 'Файлы без тегов',
+        'filesWithoutTagsTitle': 'Файлы без реальных тегов',
+        'totalFilesWithoutTags': 'Всего: {n} файлов',
+        'allFilesHaveTags': 'У всех файлов есть теги',
+        'findOriginals': 'Найти оригиналы',
+        'findOriginalsDesc': 'Поиск оригиналов для sample_XXX файлов через booru API',
+        'findOriginalsRunning': 'Поиск оригиналов...',
+        'findOriginalsFound': 'Найдено {n} оригинал(ов)',
+        'downloadOriginal': 'Скачать и тегировать',
+        'downloadOriginalDone': 'Скачано и тегировано',
+        'noOriginalsFound': 'Оригиналы не найдены',
+        'findOriginalsError': 'Ошибка поиска оригиналов',
     },
 }
 
@@ -5136,6 +5165,163 @@ def api_remove_duplicates():
         return jsonify({'ok': True, 'removed': deleted})
     except Exception as e:
         log_error('remove-duplicates error: %s', e)
+        return jsonify({'error': str(e)}), 500
+
+# ── Files Without Real Tags ──
+
+@app.route('/api/content-mgmt/files-without-tags')
+@auth_required
+@api_error_handler
+def api_files_without_tags():
+    try:
+        db = _db_conn()
+        rows = db.execute("SELECT path, name, type, COALESCE(tags,'') as tags FROM files LIMIT 500").fetchall()
+        result = []
+        for path, name, ftype, tags in rows:
+            if not _has_non_meta_tags(tags):
+                result.append({'path': path, 'name': name, 'type': ftype, 'tags': tags})
+        db.close()
+        return jsonify({'ok': True, 'files': result})
+    except Exception as e:
+        log_error('files-without-tags error: %s', e)
+        return jsonify({'error': str(e)}), 500
+
+# ── Find Originals (sample_XXX → MD5 → booru API) ──
+
+def _find_sample_originals_task(task_id):
+    """Background task: query DB for sample_XXX files, look up on booru APIs, store progress."""
+    try:
+        with _find_originals_lock:
+            _find_originals_progress[task_id] = {'status': 'running', 'total': 0, 'found': 0, 'errors': 0, 'done': 0, 'results': {}}
+        db = _db_conn()
+        rows = db.execute("SELECT path, name, COALESCE(tags,'') as tags FROM files WHERE name LIKE 'sample_%'").fetchall()
+        db.close()
+        md5_map = {}
+        for path, name, tags in rows:
+            basename = os.path.splitext(name)[0]
+            if basename.startswith('sample_'):
+                md5 = basename[7:]
+                if md5 and len(md5) == 32 and all(c in '0123456789abcdef' for c in md5.lower()):
+                    md5_map.setdefault(md5, []).append({'path': path, 'name': name, 'tags': tags})
+        with _find_originals_lock:
+            _find_originals_progress[task_id]['total'] = len(md5_map)
+        creds = settings.get('credentials', {})
+        r34_cred = creds.get('rule34', {})
+        dan_cred = creds.get('danbooru', {})
+        results = {}
+        for i, md5 in enumerate(md5_map):
+            if i > 0:
+                time.sleep(1)
+            with _find_originals_lock:
+                if _find_originals_progress[task_id]['status'] == 'cancelled':
+                    return
+            originals = []
+            r34 = fetch_rule34(md5, uid=r34_cred.get('uid', ''), key=r34_cred.get('key', ''))
+            if r34.get('tags'):
+                originals.append({'source': 'rule34', 'file_url': r34.get('file_url', ''), 'tags': r34['tags']})
+            dan = fetch_danbooru(md5, login=dan_cred.get('login', ''), api_key=dan_cred.get('key', ''))
+            if dan.get('tags'):
+                flat_tags = dan['tags']
+                if dan.get('tag_general'):
+                    flat_tags.extend(dan['tag_general'])
+                originals.append({'source': 'danbooru', 'file_url': dan.get('large_file_url', '') or dan.get('file_url', ''), 'tags': flat_tags})
+            if originals:
+                results[md5] = {'sample_files': md5_map[md5], 'originals': originals}
+            with _find_originals_lock:
+                p = _find_originals_progress[task_id]
+                p['done'] += 1
+                if originals:
+                    p['found'] += 1
+                p['results'] = results
+        with _find_originals_lock:
+            _find_originals_progress[task_id]['status'] = 'done'
+            _find_originals_progress[task_id]['results'] = results
+    except Exception as e:
+        log_error('find-originals task error: %s', e)
+        with _find_originals_lock:
+            _find_originals_progress[task_id]['status'] = 'error'
+            _find_originals_progress[task_id]['error'] = str(e)
+
+@app.route('/api/find-originals', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_find_originals():
+    try:
+        global _find_originals_task_counter
+        with _find_originals_lock:
+            _find_originals_task_counter += 1
+            task_id = str(_find_originals_task_counter)
+        log_info('find-originals: starting background task %s', task_id)
+        t = threading.Thread(target=_find_sample_originals_task, args=(task_id,), daemon=True)
+        t.start()
+        return jsonify({'ok': True, 'task_id': task_id})
+    except Exception as e:
+        log_error('find-originals error: %s', e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/find-originals-progress/<task_id>')
+@admin_required
+@api_error_handler
+def api_find_originals_progress(task_id):
+    with _find_originals_lock:
+        p = _find_originals_progress.get(task_id)
+        if p is None:
+            return jsonify({'error': 'task not found'}), 404
+        return jsonify({k: p[k] for k in p})
+
+@app.route('/api/download-original', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_download_original():
+    data = request.get_json(force=True, silent=True)
+    if data is None:
+        return jsonify({'error': 'invalid json'}), 400
+    md5 = data.get('md5', '')
+    file_url = data.get('file_url', '')
+    source = data.get('source', '')
+    tags = data.get('tags', [])
+    if not md5 or not file_url:
+        return jsonify({'error': 'md5 and file_url required'}), 400
+    try:
+        media_dir = settings.get('media_dir', '')
+        if not media_dir:
+            return jsonify({'error': 'media_dir not set'}), 400
+        r = requests.get(file_url, headers={'User-Agent': UA}, timeout=60)
+        if r.status_code != 200:
+            return jsonify({'error': f'HTTP {r.status_code}'}), 400
+        ext = os.path.splitext(file_url.split('?')[0])[1] or '.jpg'
+        filename = f'{md5}{ext}'
+        rel_dir = 'downloads/originals'
+        rel_path = os.path.join(rel_dir, filename)
+        dest_dir = os.path.join(media_dir, rel_dir)
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, filename)
+        with open(dest, 'wb') as f:
+            f.write(r.content)
+        tags_str = ','.join(tags) if isinstance(tags, list) else tags
+        ftype = 'image'
+        mtime = int(time.time())
+        db = _db_conn()
+        # Remove sample files from disk first
+        sample_rows = db.execute("SELECT path FROM files WHERE name LIKE ?", [f'sample_{md5}%']).fetchall()
+        for (spath,) in sample_rows:
+            sample_full = os.path.join(media_dir, spath) if media_dir else spath
+            try:
+                if os.path.exists(sample_full):
+                    os.remove(sample_full)
+            except OSError as e:
+                log_warning('download-original: could not delete sample file %s: %s', spath, e)
+        # Remove sample entries for this md5
+        db.execute("DELETE FROM files WHERE name LIKE ?", [f'sample_{md5}%'])
+        # Insert new file
+        db.execute("INSERT OR REPLACE INTO files (path, name, type, size, mtime, tags) VALUES (?, ?, ?, ?, ?, ?)",
+                   [rel_path, filename, ftype, len(r.content), mtime, tags_str])
+        db.commit()
+        db.close()
+        log_info_green('download-original: saved %s with %d tags from %s', filename, len(tags) if isinstance(tags, list) else 1, source)
+        return jsonify({'ok': True, 'path': rel_path, 'tags': tags_str})
+    except Exception as e:
+        log_error('download-original error: %s', e)
         return jsonify({'error': str(e)}), 500
 
 # ── Comics/Manga API ──

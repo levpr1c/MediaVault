@@ -71,19 +71,33 @@
             <div id="galleryFolderFilters" class="toolbar-group"></div>
           </div>
         </div>
+        <div id="galleryPaginationTop" class="gallery-pagination-bar">
+          <button class="tool-btn page-prev-next" id="pagePrevTop">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            <span data-i18n="prevPage">Prev</span>
+          </button>
+          <span id="pageNumbersTop" class="page-numbers"></span>
+          <button class="tool-btn page-prev-next" id="pageNextTop">
+            <span data-i18n="nextPage">Next</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
         <div id="gallery" class="shared-grid">
           <div class="gallery-empty">
             <h2 data-i18n="mvNoFiles">{{ _('mvNoFiles') }}</h2>
             <p data-i18n="mvNoFilesDesc">{{ _('mvNoFilesDesc') }}</p>
           </div>
         </div>
-        <div id="galleryPagination">
-          <button class="tool-btn tool-btn-icon" id="pagePrev">‹</button>
-          <span id="pageNumbers"></span>
-          <button class="tool-btn tool-btn-icon" id="pageNext">›</button>
-        </div>
-        <div class="gallery-footer-links">
-          <a href="/popular-tags" class="btn btn-sm" data-i18n="mvPopularTags">{{ _('mvPopularTags') }}</a>
+        <div id="galleryPagination" class="gallery-pagination-bar">
+          <button class="tool-btn page-prev-next" id="pagePrev">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            <span data-i18n="prevPage">Prev</span>
+          </button>
+          <span id="pageNumbers" class="page-numbers"></span>
+          <button class="tool-btn page-prev-next" id="pageNext">
+            <span data-i18n="nextPage">Next</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
         </div>
         <div id="mvBottomSection">
           <div id="categorizedTagsMobile"></div>

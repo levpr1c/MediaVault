@@ -558,11 +558,11 @@ var MediaVaultGallery = (function() {
       else if (_currentPage >= total - half) { start = total - maxVisible + 1; }
       else { start = _currentPage - half; end = _currentPage + half; }
     }
-    if (start > 1) { html += '<button class="tool-btn page-num" data-page="1">1</button>'; if (start > 2) html += '<span style="padding:0 4px;color:var(--text2)">\u2026</span>'; }
+    if (start > 1) { html += '<button class="page-num" data-page="1">1</button>'; if (start > 2) html += '<span class="page-num-ellipsis">\u2026</span>'; }
     for (var i = start; i <= end; i++) {
-      html += '<button class="tool-btn page-num' + (i === _currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+      html += '<button class="page-num' + (i === _currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
     }
-    if (end < total) { if (end < total - 1) html += '<span style="padding:0 4px;color:var(--text2)">\u2026</span>'; html += '<button class="tool-btn page-num" data-page="' + total + '">' + total + '</button>'; }
+    if (end < total) { if (end < total - 1) html += '<span class="page-num-ellipsis">\u2026</span>'; html += '<button class="page-num" data-page="' + total + '">' + total + '</button>'; }
     document.getElementById('pageNumbers').innerHTML = html;
     var numT = document.getElementById('pageNumbersTop');
     if (numT) numT.innerHTML = html;

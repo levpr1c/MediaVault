@@ -1,6 +1,77 @@
 import { _t, api, esc, isImageExt, isVideoExt, toast, hexToRgba, debounce } from '../utils.js'
 import { buildLeftPanelHtml, renderLeftTags, setupDragEvents } from '../../shared/grid-renderer.js'
 
+function _modal(html) {
+  var overlay = document.getElementById('cmModal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'cmModal';
+    overlay.className = 'admin-modal';
+    overlay.addEventListener('click', function(e) {
+      var el = e.target;
+      if (el === overlay || el.closest('[data-modal-close]')) {
+        _closeModal();
+      }
+    });
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = '<div class="admin-modal-content" style="max-width:800px">' + html + '</div>';
+  overlay.classList.add('open');
+}
+
+function _closeModal() {
+  var overlay = document.getElementById('cmModal');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function _showFilesWithoutTags() {
+  _modal(
+    '<div class="admin-modal-title"><span class="fetch-spinner"></span> ' + _t('filesWithoutTags') + '</div>' +
+    '<div class="admin-modal-actions"><button class="btn" data-modal-close>' + _t('cancel') + '</button></div>'
+  );
+  api('/api/content-mgmt/files-without-tags').then(function(data) {
+    var files = data.files || [];
+    if (files.length === 0) {
+      _modal(
+        '<div class="admin-modal-title">' + _t('filesWithoutTagsTitle') + '</div>' +
+        '<p style="color:var(--text2)">' + _t('allFilesHaveTags') + '</p>' +
+        '<div class="admin-modal-actions"><button class="btn" data-modal-close>' + _t('close') + '</button></div>'
+      );
+      return;
+    }
+    var html = '<div class="admin-modal-title">' + _t('filesWithoutTagsTitle') + '</div>' +
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">' +
+      _t('totalFilesWithoutTags', {n: files.length}) + '</div>' +
+      '<div style="max-height:65vh;overflow-y:auto">';
+    files.forEach(function(f) {
+      var thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(f.path);
+      var tagList = (f.tags || '').split(',').filter(function(t){ return t.trim(); });
+      html += '<div class="dup-file" style="display:flex;align-items:flex-start;gap:12px;padding:8px;border-radius:8px;border:2px solid transparent;margin-bottom:4px;cursor:default">' +
+        '<div style="width:80px;height:80px;flex-shrink:0;background:var(--surface2);border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center">' +
+        '<img src="' + thumbUrl + '" loading="lazy" style="max-width:80px;max-height:80px;object-fit:contain" onerror="this.style.display=\'none\'">' +
+        '</div>' +
+        '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text);word-break:break-all;line-height:1.3;margin-bottom:2px">' + esc(f.name) + '</div>' +
+        (tagList.length > 0
+          ? '<div style="display:flex;flex-wrap:wrap;gap:2px">' +
+            tagList.map(function(t){ return '<span class="tag-chip" style="font-size:10px">' + esc(t.trim()) + '</span>'; }).join('') +
+            '</div>'
+          : '<span style="font-size:11px;color:var(--text2)">—</span>') +
+        '<div style="font-size:10px;color:var(--text2);margin-top:2px">' + esc(f.path) + '</div>' +
+        '</div></div>';
+    });
+    html += '</div>' +
+      '<div class="admin-modal-actions"><button class="btn" data-modal-close>' + _t('close') + '</button></div>';
+    _modal(html);
+  }).catch(function(e) {
+    _modal(
+      '<div class="admin-modal-title">' + _t('settingsError') + '</div>' +
+      '<p style="color:var(--text2)">' + esc(e.message) + '</p>' +
+      '<div class="admin-modal-actions"><button class="btn" data-modal-close>' + _t('close') + '</button></div>'
+    );
+  });
+}
+
 let _ac = null
 let _allFiles = []
 let _filteredFiles = []
@@ -121,6 +192,15 @@ function _buildToolbar() {
     `<button class="cm-files-tb-action thumb-size ${_thumbSize === 140 ? 'active' : ''}" data-action="thumbsize" data-size="140" title="S">S</button>` +
     `<button class="cm-files-tb-action thumb-size ${_thumbSize === 180 ? 'active' : ''}" data-action="thumbsize" data-size="180" title="M">M</button>` +
     `<button class="cm-files-tb-action thumb-size ${_thumbSize === 220 ? 'active' : ''}" data-action="thumbsize" data-size="220" title="L">L</button>` +
+    `<span class="cm-files-tb-sep"></span>` +
+    `<button class="action-btn" data-action="files-without-tags" title="${_t('filesWithoutTags')}">` +
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 14l2 2 4-4"/><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>` +
+      `<span>${_t('filesWithoutTags')}</span>` +
+    `</button>` +
+    `<button class="action-btn" data-action="find-originals" title="${_t('findOriginals')}">` +
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>` +
+      `<span>${_t('findOriginals')}</span>` +
+    `</button>` +
   `</div>`
 }
 
@@ -261,7 +341,11 @@ function _attachEvents(body, signal) {
       'toggle-sort': toggleSort,
       'thumbsize': () => setThumbSize(parseInt(el.dataset.size, 10)),
       'pagesize': () => setPageSize(parseInt(el.dataset.size, 10)),
-      'page': () => _goToPage(_currentPage + parseInt(el.dataset.dir, 10))
+      'page': () => _goToPage(_currentPage + parseInt(el.dataset.dir, 10)),
+      'files-without-tags': _showFilesWithoutTags,
+      'find-originals': function() {
+        if (window.FindOriginals) window.FindOriginals.open();
+      }
     }
     actions[el.dataset.action]?.()
   }, { signal })

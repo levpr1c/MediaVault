@@ -121,32 +121,6 @@
   gap: 4px;
   flex-wrap: wrap;
 }
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  font-size: 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all var(--transition);
-  font-family: var(--font-btn);
-  white-space: nowrap;
-}
-.action-btn:hover {
-  background: var(--surface2);
-  color: var(--text);
-  border-color: var(--border-light);
-}
-.action-btn.danger:hover {
-  background: color-mix(in srgb, var(--danger) 15%, transparent);
-  color: var(--danger);
-  border-color: var(--danger);
-}
-
 /* ─── DB TOOL GRID ─── */
 .db-grid {
   display: grid;

@@ -1,24 +1,24 @@
 import { _t, api, esc, toast } from './utils.js'
 
 let _ac = null
+let _pageAc = null
 let _autocompleteTimer = null
 let _allResults = []
 let _currentPage = 1
 let _apiPage = 1
-let _totalPages = 1
-const PER_PAGE = 30
+let _pageSize = 20
+const _FETCH_MULTIPLIER = 3
 
 const searchInput = document.getElementById('csInput')
 const searchBtn = document.getElementById('csSearchBtn')
 const grid = document.getElementById('csGrid')
 const loading = document.getElementById('csLoading')
-const empty = document.getElementById('csEmpty')
 const autocomplete = document.getElementById('csAutocomplete')
-const pagination = document.getElementById('csPagination')
-const pageInfo = document.getElementById('csPageInfo')
+const bottomBar = document.getElementById('csBottomBar')
 const prevBtn = document.getElementById('csPrevPage')
 const nextBtn = document.getElementById('csNextPage')
-const loadMoreBtn = document.getElementById('csLoadMore')
+const pageNumbersEl = document.getElementById('csPageNumbers')
+const sizeBtns = document.querySelectorAll('.cs-page-size-btn')
 const sourceCbs = document.querySelectorAll('.cs-source input')
 
 let _csGrid = null
@@ -35,7 +35,20 @@ sourceCbs.forEach(function(cb) {
   })
 })
 
-// ── Search handlers ──
+// Page size buttons
+sizeBtns.forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    sizeBtns.forEach(function(b) { b.classList.remove('active') })
+    btn.classList.add('active')
+    _pageSize = parseInt(btn.dataset.size)
+    if (_allResults.length > 0) {
+      _currentPage = 1
+      renderPage()
+    }
+  })
+})
+
+// Search handlers
 searchBtn.addEventListener('click', function() {
   var q = searchInput.value.trim()
   if (q) doSearch(q)
@@ -48,7 +61,7 @@ searchInput.addEventListener('keydown', function(e) {
   }
 })
 
-// ── Autocomplete ──
+// Autocomplete
 searchInput.addEventListener('input', function() {
   clearTimeout(_autocompleteTimer)
   var q = searchInput.value.trim()
@@ -87,7 +100,7 @@ async function fetchAutocomplete(q) {
   } catch(_) { hideAutocomplete() }
 }
 
-// ── Search ──
+// Search
 async function doSearch(query) {
   if (_ac) _ac.abort()
   _ac = new AbortController()
@@ -96,8 +109,9 @@ async function doSearch(query) {
   hideAutocomplete()
   _apiPage = 1
   _allResults = []
+  _currentPage = 1
   _csGrid.setLoading(true)
-  pagination.style.display = 'none'
+  bottomBar.style.display = 'none'
   var sites = getActiveSites()
   if (!sites) {
     _csGrid.clear()
@@ -105,8 +119,8 @@ async function doSearch(query) {
     return
   }
   await fetchPage(query, sites, 1)
-  // Auto-fetch more pages until first page fills or API exhausted
-  while (_allResults.length > 0 && _allResults.length < PER_PAGE) {
+  var fetchTarget = _pageSize * _FETCH_MULTIPLIER
+  while (_allResults.length > 0 && _allResults.length < fetchTarget) {
     var prevLen = _allResults.length
     await fetchPage(query, sites, _apiPage + 1, true)
     if (_allResults.length <= prevLen) break
@@ -148,7 +162,9 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading) {
         warnEl = document.createElement('div')
         warnEl.id = 'csNhWarning'
         warnEl.style.cssText = 'background:var(--warning,#f59e0b);color:#fff;padding:8px 14px;border-radius:8px;margin-bottom:12px;font-size:13px'
-        grid.parentNode.insertBefore(warnEl, grid)
+        if (bottomBar && bottomBar.parentNode) {
+          grid.parentNode.insertBefore(warnEl, bottomBar)
+        }
       }
       warnEl.textContent = _t('contentSearchNhWarning')
       warnEl.style.display = 'block'
@@ -177,9 +193,8 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading) {
     }
     _apiPage = pageNum
     _allResults = _allResults.concat(newItems)
-    _totalPages = Math.max(1, Math.ceil(_allResults.length / PER_PAGE))
+    var totalPages = Math.max(1, Math.ceil(_allResults.length / _pageSize))
     renderPage()
-    updateLoadMoreBtn()
     // Show total count from each source
     var totalCounts = []
     for (var sk in (data.results || {})) {
@@ -194,8 +209,9 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading) {
     if (!csTotal) {
       csTotal = document.createElement('div')
       csTotal.id = 'csTotal'
-      csTotal.style.cssText = 'font-size:12px;color:var(--text2);margin-top:8px;text-align:center'
-      loadMoreBtn.parentNode.insertBefore(csTotal, loadMoreBtn.nextSibling)
+      if (bottomBar && bottomBar.parentNode) {
+        bottomBar.parentNode.insertBefore(csTotal, bottomBar.nextSibling)
+      }
     }
     csTotal.textContent = totalCounts.length ? 'Total: ' + totalCounts.join(' | ') : ''
   } catch(e) {
@@ -207,51 +223,101 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading) {
 }
 
 function renderPage() {
-  var start = (_currentPage - 1) * PER_PAGE
-  var end = Math.min(start + PER_PAGE, _allResults.length)
+  var start = (_currentPage - 1) * _pageSize
+  var end = Math.min(start + _pageSize, _allResults.length)
   var pageItems = _allResults.slice(start, end)
   _csPageStart = start
   _csGrid.render(pageItems)
-  pageInfo.textContent = _currentPage + '/' + _totalPages
+  var totalPages = Math.max(1, Math.ceil(_allResults.length / _pageSize))
   prevBtn.disabled = _currentPage <= 1
-  nextBtn.disabled = _currentPage >= _totalPages
-  pagination.style.display = 'flex'
+  nextBtn.disabled = _currentPage >= totalPages
+  bottomBar.style.display = 'flex'
+  renderPageNumbers(totalPages)
 }
 
-function updateLoadMoreBtn() {
-  loadMoreBtn.style.display = _allResults.length > 0 ? 'inline-flex' : 'none'
+function renderPageNumbers(totalPages) {
+  var html = ''
+  var maxVisible = 7
+  var start = 1, end = totalPages
+  if (totalPages > maxVisible) {
+    var half = Math.floor(maxVisible / 2)
+    if (_currentPage <= half + 1) { end = maxVisible }
+    else if (_currentPage >= totalPages - half) { start = totalPages - maxVisible + 1 }
+    else { start = _currentPage - half; end = _currentPage + half }
+  }
+  if (start > 1) {
+    html += '<button class="page-num" data-page="1">1</button>'
+    if (start > 2) html += '<span class="page-num-ellipsis">...</span>'
+  }
+  for (var i = start; i <= end; i++) {
+    html += '<button class="page-num' + (i === _currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>'
+  }
+  if (end < totalPages) {
+    if (end < totalPages - 1) html += '<span class="page-num-ellipsis">...</span>'
+    html += '<button class="page-num" data-page="' + totalPages + '">' + totalPages + '</button>'
+  }
+  pageNumbersEl.innerHTML = html
+  // Attach click handlers
+  pageNumbersEl.querySelectorAll('.page-num').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      goToPage(parseInt(btn.dataset.page))
+    })
+  })
 }
 
-// ── Pagination ──
+async function goToPage(page) {
+  if (_pageAc) _pageAc.abort()
+  var ac = new AbortController()
+  _pageAc = ac
+  var signal = ac.signal
+  var totalPages = Math.max(1, Math.ceil(_allResults.length / _pageSize))
+  _currentPage = Math.max(1, Math.min(page, totalPages))
+  var fetchTarget = _currentPage * _pageSize + _pageSize * _FETCH_MULTIPLIER / 2
+  if (_allResults.length < fetchTarget) {
+    var q = searchInput.value.trim()
+    var sites = getActiveSites()
+    if (q && sites) {
+      var needed = fetchTarget - _allResults.length
+      var apiPagesNeeded = Math.ceil(needed / 30) + 1
+      for (var i = 0; i < apiPagesNeeded; i++) {
+        if (_allResults.length >= _currentPage * _pageSize + _pageSize * _FETCH_MULTIPLIER) break
+        if (signal.aborted) return
+        var prevLen = _allResults.length
+        await fetchPage(q, sites, _apiPage + 1, true)
+        if (_allResults.length <= prevLen) break
+      }
+    }
+  }
+  if (!signal.aborted) renderPage()
+}
+
+// Pagination
 prevBtn.addEventListener('click', function() {
-  if (_currentPage > 1) { _currentPage--; renderPage() }
+  goToPage(_currentPage - 1)
 })
 nextBtn.addEventListener('click', function() {
-  if (_currentPage < _totalPages) { _currentPage++; renderPage() }
-})
-loadMoreBtn.addEventListener('click', function() {
-  var q = searchInput.value.trim()
-  var sites = getActiveSites()
-  if (q && sites) fetchPage(q, sites, _apiPage + 1)
+  goToPage(_currentPage + 1)
 })
 
-// ── Card HTML ──
+// Card HTML — MV .file-card style
 function cardHTML(r) {
   var imgSrc = r.preview_url || r.large_file_url || r.sample_url || r.thumbnail || r.file_url || ''
   var tagsStr = Array.isArray(r.tags) ? r.tags.join(', ') : (r.tags || '')
   var sourceLabel = { r34: 'R34', dan: 'Dan', nhentai: 'NH', eh: 'EH' }[r._source] || r._source
-  return '<div class="cs-card"' + (r._source === 'nhentai' ? ' data-gid="' + esc(r.id) + '"' : '') + '>' +
-    '<img class="cs-card-thumb" src="' + esc(imgSrc) + '" alt="" loading="lazy"' +
-    ' onerror="this.src=\'\'; this.classList.add(\'cs-img-error\'); this.parentElement.classList.add(\'cs-thumb-fail\')">' +
-    '<div class="cs-card-body">' +
-    '<div class="cs-card-id">#' + esc(String(r.id)) + ' &middot; ' + sourceLabel + '</div>' +
-    '<div class="cs-card-tags" title="' + esc(tagsStr) + '">' + esc(truncate(tagsStr, 80)) + '</div>' +
-    '</div></div>'
+  var truncatedTags = tagsStr.length > 80 ? tagsStr.slice(0, 80) + '...' : tagsStr
+  var imgTag = imgSrc ? '<img src="' + esc(imgSrc) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : ''
+  return '<div class="file-card"' + (r._source === 'nhentai' ? ' data-gid="' + esc(r.id) + '"' : '') + '>' +
+    '<div class="file-card-thumb">' + imgTag + '</div>' +
+    '<div class="file-card-body">' +
+    '<div class="file-card-content">' +
+    '<div class="file-card-name">#' + esc(String(r.id)) + ' \u00B7 ' + sourceLabel + '</div>' +
+    '<div class="file-card-tags">' +
+    '<span class="tag-chip" style="font-size:10px;padding:1px 5px;border-radius:4px;background:var(--surface2);color:var(--text2)">' + esc(truncatedTags || 'no tags') + '</span>' +
+    '</div>' +
+    '</div></div></div>'
 }
 
-function truncate(s, n) { return s.length > n ? s.slice(0, n) + '...' : s }
-
-// ── Skeleton ──
+// Skeleton
 function renderSkeletons(n) {
   var html = ''
   for (var i = 0; i < n; i++) {
@@ -260,7 +326,7 @@ function renderSkeletons(n) {
   return html
 }
 
-// ── SharedGrid ──
+// SharedGrid
 _csGrid = new SharedGrid(grid, {
   getItemHtml: function(r) { return cardHTML(r) },
   onItemClick: function(item, idx) { showLightbox(_csPageStart + idx) },
@@ -269,7 +335,7 @@ _csGrid = new SharedGrid(grid, {
   emptyHtml: '<div class="shared-grid-empty">' + _t('mediaDirEmpty') + '</div>'
 })
 
-// ── Shared Lightbox ──
+// Shared Lightbox
 var csLightbox;
 try {
   csLightbox = new Lightbox({
@@ -316,7 +382,6 @@ try {
           tags: file.tags || '',
         };
 
-        // Check if already downloaded
         var checkUrl = '/api/content-search/check-manga-dir?gid=' + encodeURIComponent(gid) +
           '&media_id=' + encodeURIComponent(file._mid) +
           '&title=' + encodeURIComponent(file._galleryTitle || '');
@@ -370,7 +435,6 @@ try {
       });
     },
     onRenderMedia: function(file, media, lb) {
-      // Clean up previous manga keyboard handler
       var oldViewer = document.getElementById(lb._id('MangaViewer'));
       if (oldViewer && oldViewer._kbCleanup) { oldViewer._kbCleanup(); }
       // NHentai multi-page manga viewer
@@ -421,7 +485,7 @@ try {
   csLightbox = { close: function(){}, open: function(){} }
 }
 
-// ── Lazy-load manga viewer helpers ──
+// Lazy-load manga viewer helpers
 function buildMangaViewer(file, media, lb) {
   var CHUNK = 10;
   var totalPages = file._pageUrls.length;
@@ -488,7 +552,6 @@ function buildMangaViewer(file, media, lb) {
     currentSpread = idx;
     track.style.transform = 'translateX(-' + (idx * 100) + '%)';
     updateCounter();
-    // Pre-load next chunk
     if (loadedUpTo < totalPages && currentSpread >= Math.floor(loadedUpTo / 2) - 2) {
       loadSpreads();
     }
@@ -513,7 +576,6 @@ function buildMangaViewer(file, media, lb) {
   nextBtn.addEventListener('mouseenter', function() { this.style.background = 'rgba(0,0,0,.8)'; });
   nextBtn.addEventListener('mouseleave', function() { this.style.background = 'rgba(0,0,0,.5)'; });
 
-  // Document keyboard: PgUp/PgDn navigate spreads, arrows stay for lightbox item nav
   var kbHandler = function(e) {
     var v = document.getElementById(lb._id('MangaViewer'));
     if (!v) return;
@@ -550,7 +612,6 @@ function updateNhCategories(lb, tbc) {
 }
 
 function showLightbox(index) {
-  // Build tag→category map and category list from all results
   var tagToCat = {};
   var catNames = {};
   var catColors = {};
@@ -561,7 +622,6 @@ function showLightbox(index) {
       tbc[cat].forEach(function(t) { tagToCat[t] = cat; });
     }
   });
-  // Also read cat_colors from last API response
   if (window._csCatColors) {
     for (var c in window._csCatColors) { catColors[c] = window._csCatColors[c]; }
   }
@@ -582,7 +642,6 @@ function showLightbox(index) {
       path = r.file_url || r.sample_url || r.preview_url
     }
     var srcSite = r._source === 'nhentai' ? 'NHentai' : (r._source === 'eh' ? 'E-Hentai' : (r._source === 'r34' ? 'Rule34' : (r._source === 'dan' ? 'Danbooru' : r._source)))
-    // Source URL to open on original website
     var srcUrl = ''
     if (r._source === 'nhentai') srcUrl = 'https://nhentai.net/g/' + r.id + '/'
     else if (r._source === 'dan') srcUrl = 'https://danbooru.donmai.us/posts/' + r.id
@@ -616,7 +675,7 @@ function showLightbox(index) {
   csLightbox.open(index, items)
 }
 
-// ── Init: read URL params ──
+// Init: read URL params
 var params = new URLSearchParams(window.location.search)
 var siteParam = params.get('site')
 var qParam = params.get('q')
@@ -652,8 +711,7 @@ MobileSearch.register('content-search', {
     _csGrid.clear()
     grid.innerHTML = ''
     loading.style.display = 'none'
-    pagination.style.display = 'none'
-    empty.style.display = 'none'
+    bottomBar.style.display = 'none'
   },
   getInitialValue: function() {
     return searchInput.value

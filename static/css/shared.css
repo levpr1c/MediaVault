@@ -268,6 +268,45 @@ html{scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
   flex-wrap: wrap;
 }
 
+/* ─── STANDARDIZED ACTION BUTTON ─── */
+.action-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 1px solid var(--border);
+  border-radius: 8px; background: transparent;
+  color: var(--text2); font-size: 12px; font-weight: 600;
+  font-family: var(--font-btn); cursor: pointer;
+  white-space: nowrap; line-height: 1.4;
+  transition: all var(--transition); text-decoration: none;
+  flex-shrink: 0;
+}
+.action-btn:hover {
+  background: var(--surface2); color: var(--text);
+  border-color: var(--border-light);
+}
+.action-btn.active,
+.action-btn.selected {
+  background: var(--accent); color: #fff;
+  border-color: var(--accent);
+}
+.action-btn svg {
+  flex-shrink: 0;
+  display: block;
+}
+.action-btn.danger:hover {
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+  color: var(--danger); border-color: var(--danger);
+}
+.action-btn:disabled {
+  opacity: .4; cursor: default; pointer-events: none;
+}
+.action-btn-primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.action-btn-primary:hover {
+  background: var(--accent-hover); border-color: var(--accent-hover);
+  box-shadow: 0 2px 16px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
 /* ─── SHARED TAG PANEL (categories sidebar) ─── */
 .shared-tag-panel {
   width: 260px;

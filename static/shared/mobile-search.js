@@ -30,45 +30,6 @@ var MobileSearch = (function() {
         _registry[_current].onClear()
       }
     })
-
-    _bindToolbarDropdown()
-  }
-
-  function _bindToolbarDropdown() {
-    var ddBtn = document.getElementById('mobileToolbarBtn')
-    var dd = document.getElementById('mobileToolbarDropdown')
-    if (ddBtn && dd) {
-      ddBtn.addEventListener('click', function(e) {
-        e.stopPropagation()
-        dd.classList.toggle('open')
-        ddBtn.classList.toggle('active')
-      })
-      document.addEventListener('click', function(e) {
-        if (dd.classList.contains('open') && !dd.contains(e.target) && e.target !== ddBtn && !ddBtn.contains(e.target)) {
-          dd.classList.remove('open')
-          ddBtn.classList.remove('active')
-        }
-      })
-    }
-
-    // Sort button: proxy to desktop sort button
-    var sortBtn = document.getElementById('mobTbSortBtn')
-    if (sortBtn) {
-      sortBtn.addEventListener('click', function() {
-        var desktop = document.getElementById('sortDateBtn') || document.getElementById('cmSortBtn')
-        if (desktop) desktop.click()
-      })
-    }
-
-    // Filter button: proxy to desktop filter button
-    var filterBtn = document.getElementById('mobTbFetchedBtn')
-    if (filterBtn) {
-      filterBtn.addEventListener('click', function() {
-        var desktop = document.getElementById('fetchedOnlyBtn')
-        if (desktop) desktop.click()
-        filterBtn.classList.toggle('active')
-      })
-    }
   }
 
   function register(page, callbacks) {

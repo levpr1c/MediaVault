@@ -18,21 +18,7 @@
   }
   if (drawerBtn) drawerBtn.addEventListener('click', toggleDrawer);
 
-  // Mobile search bar toggle
-  var searchBtn = document.getElementById('mobileSearchBtn');
-  var searchBar = document.getElementById('mobileSearchBar');
-  if (searchBtn && searchBar) {
-    searchBtn.addEventListener('click', function() {
-      searchBar.classList.toggle('open');
-      searchBtn.classList.toggle('active');
-      if (searchBar.classList.contains('open')) {
-        setTimeout(function() {
-          var inp = searchBar.querySelector('input');
-          if (inp) inp.focus();
-        }, 100);
-      }
-    });
-  }
+
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { if (drawer) drawer.classList.remove('open'); if (drawerBtn) drawerBtn.classList.remove('active'); } });
   document.addEventListener('click', function(e) {
     if (drawer && drawer.classList.contains('open') && !drawer.contains(e.target) && e.target !== drawerBtn && !drawerBtn.contains(e.target)) {

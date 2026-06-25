@@ -3,7 +3,17 @@
 <link rel="stylesheet" href="/static/css/content-search.css?v=2">
 {% endblock %}
 {% block title %}{{ _('contentSearch') }}{% endblock %}
-{% block hdr_drawer %}{% endblock %}
+{% block hdr_drawer %}
+<div class="mv-drawer-body">
+  <div class="mv-drawer-row" id="drawerSources"></div>
+  <div class="mv-drawer-row" id="drawerPageSizeCs">
+    <span class="mv-drawer-label" data-i18n="contentSearchPageSize">{{ _('contentSearchPageSize') }}</span>
+    <button class="tool-btn cs-page-size-btn active" data-size="20">20</button>
+    <button class="tool-btn cs-page-size-btn" data-size="30">30</button>
+    <button class="tool-btn cs-page-size-btn" data-size="50">50</button>
+  </div>
+</div>
+{% endblock %}
 {% block content %}
 <div id="contentView">
   <main class="admin-main">
@@ -41,6 +51,12 @@
         <span class="cs-ai-toggle-track"></span>
         <span class="cs-ai-toggle-lbl" data-i18n="contentSearchAiFilter">{{ _('contentSearchAiFilter') }}</span>
       </label>
+      <span class="cs-sources-sep"></span>
+      <div class="cs-top-page-size">
+        <button class="cs-page-size-btn active" data-size="20">20</button>
+        <button class="cs-page-size-btn" data-size="30">30</button>
+        <button class="cs-page-size-btn" data-size="50">50</button>
+      </div>
     </div>
 
     <div id="csLoading" class="admin-loading" style="display:none">

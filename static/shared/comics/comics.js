@@ -190,10 +190,10 @@ var ComicsPicker = (function() {
     var toggle = document.getElementById('previewToggleBtn') || document.getElementById('comicPreviewToggle');
     if (_previewOpen) {
       prev.classList.add('preview-open');
-      toggle.querySelector('svg').innerHTML = '<path d="M9 18l6-6-6-6"/>';
+      toggle.querySelector('svg').innerHTML = '<path d="M15 18l-6-6 6-6"/>';
     } else {
       prev.classList.remove('preview-open');
-      toggle.querySelector('svg').innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+      toggle.querySelector('svg').innerHTML = '<path d="M9 18l6-6-6-6"/>';
     }
   }
 

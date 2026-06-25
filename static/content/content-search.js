@@ -753,3 +753,26 @@ MobileSearch.register('content-search', {
     return searchInput.value
   }
 })
+
+// Mobile drawer: populate source checkboxes
+(function() {
+  var drawerSources = document.getElementById('drawerSources')
+  if (!drawerSources) return
+  drawerSources.innerHTML = '<span class="mv-drawer-label" data-i18n="contentSearchSource">Source</span>'
+  sourceCbs.forEach(function(cb, i) {
+    var label = document.querySelectorAll('.cs-source')[i]
+    if (!label) return
+    var text = label.querySelector('.cs-source-lbl')
+    var clone = document.createElement('label')
+    clone.className = 'mv-drawer-cb'
+    clone.innerHTML =
+      '<input type="checkbox" value="' + cb.value + '"' + (cb.checked ? ' checked' : '') + '>' +
+      '<span>' + (text ? text.textContent : cb.value) + '</span>'
+    clone.querySelector('input').addEventListener('change', function() {
+      cb.checked = this.checked
+      var q = searchInput.value.trim()
+      if (q) doSearch(q)
+    })
+    drawerSources.appendChild(clone)
+  })
+})()

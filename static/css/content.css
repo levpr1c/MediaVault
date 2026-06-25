@@ -353,27 +353,30 @@ body { overflow: hidden; }
   padding: 14px 20px; border-top: 1px solid var(--border);
 }
 
-/* ─── COMIC PREVIEW (right panel) — slides out to the left, pushes picker ─── */
+/* ─── COMIC PREVIEW (left panel) — expands left, pushes picker right ─── */
 #comicPreviewOverlay {
   width: 0; overflow: hidden; background: var(--surface);
   display: flex; flex-direction: column;
   transition: width .25s ease;
-  border-radius: 0 12px 12px 0; z-index: 2;
+  border-radius: 12px 0 0 12px; z-index: 2;
   flex-shrink: 0;
 }
 #comicPreviewOverlay.preview-open {
   width: 480px; padding: 16px; overflow-y: auto;
-  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
 }
 #previewToggleBtn {
   flex: 0 0 28px; width: 28px; align-self: stretch; border: none;
   background: var(--surface); border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border); color: var(--text2);
+  color: var(--text2);
   cursor: pointer; display: flex; align-items: center;
   justify-content: center; padding: 0;
   transition: background .15s, color .15s; flex-shrink: 0; z-index: 3;
+  order: 1;
 }
 #previewToggleBtn:hover { background: var(--surface2); color: var(--text); }
+#comicPreviewOverlay { order: 0; }
+#comicsAddModal { order: 2; flex: 1; min-width: 0; }
 
 /* ─── FILE PICKER GRID ─── */
 #cpageSearch {
@@ -436,12 +439,12 @@ body { overflow: hidden; }
 .cpage-dir-name { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 600; text-align: center; }
 
 #cpageGrid {
-  display: flex; flex-wrap: wrap; gap: 6px; padding: 2px;
-  justify-content: flex-start; align-content: flex-start;
+  column-count: 5; column-gap: 6px; padding: 2px;
 }
 #cpageGrid .cpage-item {
-  margin-bottom: 0; display: flex; flex-direction: column;
-  width: calc(16.66% - 7px); position: relative; cursor: pointer; border-radius: 8px;
+  break-inside: avoid; margin-bottom: 6px;
+  display: flex; flex-direction: column;
+  position: relative; cursor: pointer; border-radius: 8px;
   overflow: hidden; background: var(--surface2);
   border: 2px solid transparent; transition: border-color .15s, background .15s;
 }
@@ -624,6 +627,7 @@ body { overflow: hidden; }
   margin: 0 auto 16px;
   max-width: 480px;
   width: 100%;
+  grid-column: 1 / -1;
 }
 .cm-comics-search-icon {
   position: absolute;

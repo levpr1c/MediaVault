@@ -174,6 +174,27 @@
   font-weight: 500;
 }
 
+/* Separator + top page size in sources row */
+.cs-sources-sep {
+  width: 1px; height: 28px; background: var(--border); flex-shrink: 0;
+}
+.cs-top-page-size {
+  display: flex; align-items: center; gap: 2px;
+}
+.cs-top-page-size .cs-page-size-btn {
+  padding: 5px 10px; border: none; border-radius: 6px;
+  background: transparent; color: var(--text2); cursor: pointer;
+  font-size: 12px; font-weight: 600; font-family: var(--font-btn);
+  transition: all .15s;
+}
+.cs-top-page-size .cs-page-size-btn:hover { background: var(--surface2); color: var(--text); }
+.cs-top-page-size .cs-page-size-btn.active { background: var(--accent); color: #fff; }
+
+/* Mobile: hide inline sources, show in drawer */
+@media (max-width: 767px) {
+  .cs-sources { display: none; }
+}
+
 /* ─── Bottom bar (pagination + page size) ─── */
 .cs-bottom-bar {
   display: none;

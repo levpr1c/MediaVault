@@ -93,6 +93,7 @@ _scan_progress_lock = threading.Lock()
 _scan_progress = {
     'status': 'idle',       # idle | scanning | done | error
     'current_folder': '',
+    'type': '',
     'total_folders': 0,
     'folders_done': 0,
     'error': ''
@@ -3518,6 +3519,181 @@ def _quick_scan(force=False):
         _scan_in_progress = False
         _scan_lock.release()
     return (count, errors)
+
+def _full_scan():
+    """Полное сканирование: обходит весь media_dir, синхронизирует БД с диском.
+
+    Выполняет DELETE (файлы в БД, но не на диске),
+    UPDATE (файлы на диске и в БД — обновляет метаданные),
+    INSERT (новые файлы).
+
+    Возвращает (added, updated, deleted, errors).
+    """
+    global _scan_in_progress, _scan_lock
+    if not _scan_lock.acquire(blocking=False):
+        log_info('full_scan: scan already in progress, skipping')
+        return (0, 0, 0, 0)
+    _scan_in_progress = True
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'full_scan'
+        _scan_progress['type'] = 'full'
+        _scan_progress['current_folder'] = ''
+        _scan_progress['total_folders'] = 0
+        _scan_progress['folders_done'] = 0
+        _scan_progress['error'] = ''
+
+    added = 0
+    updated = 0
+    deleted = 0
+    errors = 0
+    try:
+        media_dir = settings.get('media_dir', '')
+        if not media_dir:
+            log_info('full_scan: no media_dir set')
+            with _scan_progress_lock:
+                _scan_progress['status'] = 'idle'
+            return (0, 0, 0, 0)
+
+        log_info_green('full_scan: starting full rescan of %s', media_dir)
+
+        with _scan_progress_lock:
+            _scan_progress['current_folder'] = 'Collecting files from disk...'
+
+        disk_paths = set()
+        for root, dirs, files in os.walk(media_dir):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            for f in files:
+                if f.startswith('.'):
+                    continue
+                ext = os.path.splitext(f)[1].lower()
+                if ext not in _MEDIA_EXTS:
+                    continue
+                full = os.path.join(root, f)
+                rel = os.path.relpath(full, media_dir)
+                disk_paths.add(rel)
+
+        total_files = len(disk_paths)
+        with _scan_progress_lock:
+            _scan_progress['total_folders'] = total_files
+            _scan_progress['folders_done'] = 0
+            _scan_progress['current_folder'] = 'Comparing with database...'
+
+        log_info('full_scan: found %d files on disk', total_files)
+
+        _ensure_db_schema()
+        db = _db_conn()
+        try:
+            db_paths = set(row[0] for row in db.execute('SELECT path FROM files').fetchall())
+            paths_to_delete = db_paths - disk_paths
+            paths_to_update = disk_paths & db_paths
+            paths_to_insert = disk_paths - db_paths
+
+            log_info('full_scan: %d to delete, %d to update, %d to insert',
+                     len(paths_to_delete), len(paths_to_update), len(paths_to_insert))
+
+            if paths_to_delete:
+                with _scan_progress_lock:
+                    _scan_progress['current_folder'] = 'Removing deleted files...'
+                for path in paths_to_delete:
+                    try:
+                        db.execute('DELETE FROM files WHERE path = ?', [path])
+                        deleted += 1
+                    except Exception as e:
+                        log_error('full_scan delete error path=%s: %s', path, e)
+                        errors += 1
+                    with _scan_progress_lock:
+                        _scan_progress['folders_done'] += 1
+
+            if paths_to_update:
+                with _scan_progress_lock:
+                    _scan_progress['current_folder'] = 'Updating existing files...'
+                for rel in paths_to_update:
+                    try:
+                        full = os.path.join(media_dir, rel)
+                        ext = os.path.splitext(rel)[1].lower()
+                        auto_tags = _get_auto_tags(full)
+                        auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
+                        merged = ','.join(sorted(auto_set)) if auto_set else ''
+                        ftype = _get_file_type(ext)
+                        size = os.path.getsize(full)
+                        mtime = int(os.path.getmtime(full))
+                        w, h = _get_image_dimensions(full) if ftype == 'image' else (0, 0)
+                        phash = _compute_dhash(full) if ftype == 'image' else ''
+                        db.execute(
+                            'UPDATE files SET size=?, mtime=?, width=?, height=?, tags=?, phash=? WHERE path=?',
+                            [size, mtime, w, h, merged, phash, rel]
+                        )
+                        updated += 1
+                    except Exception as e:
+                        log_error('full_scan update error path=%s: %s', rel, e)
+                        errors += 1
+                    with _scan_progress_lock:
+                        _scan_progress['folders_done'] += 1
+
+            if paths_to_insert:
+                with _scan_progress_lock:
+                    _scan_progress['current_folder'] = 'Adding new files...'
+                for rel in paths_to_insert:
+                    try:
+                        full = os.path.join(media_dir, rel)
+                        fname = os.path.basename(full)
+                        ext = os.path.splitext(fname)[1].lower()
+                        auto_tags = _get_auto_tags(full)
+                        auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
+                        merged = ','.join(sorted(auto_set)) if auto_set else ''
+                        ftype = _get_file_type(ext)
+                        size = os.path.getsize(full)
+                        mtime = int(os.path.getmtime(full))
+                        w, h = _get_image_dimensions(full) if ftype == 'image' else (0, 0)
+                        first_dir = rel.split('/')[0] if '/' in rel else ''
+                        gallery_dir = settings.get('gallery_dir', 'Gallery')
+                        comics_dir = settings.get('comics_dir', 'Comics')
+                        dl_dir = settings.get('downloads_dir', 'Downloads')
+                        folder_type = {gallery_dir: 'gallery', comics_dir: 'comics', dl_dir: 'downloads'}.get(first_dir, 'gallery')
+                        phash = _compute_dhash(full) if ftype == 'image' else ''
+                        db.execute(
+                            'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type, phash) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                            [rel, fname, ftype, size, mtime, merged, w, h, int(time.time()), folder_type, phash]
+                        )
+                        added += 1
+                    except Exception as e:
+                        log_error('full_scan insert error path=%s: %s', rel, e)
+                        errors += 1
+                    with _scan_progress_lock:
+                        _scan_progress['folders_done'] += 1
+        finally:
+            db.commit()
+            db.close()
+
+        log_info_green('full_scan done: +%d added, %d updated, %d deleted, %d errors (total %d on disk)',
+                       added, updated, deleted, errors, total_files)
+        with _scan_progress_lock:
+            _scan_progress['status'] = 'done'
+    except Exception as e:
+        log_error('full_scan error: %s', e)
+        with _scan_progress_lock:
+            _scan_progress['status'] = 'error'
+            _scan_progress['error'] = str(e)
+    finally:
+        _scan_in_progress = False
+        _scan_lock.release()
+    return (added, updated, deleted, errors)
+
+# Полное сканирование (кнопка Full Rescan). Запускает _full_scan() в фоне.
+@app.route('/api/rescan/full', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_rescan_full():
+    log_info('rescan_full: full rescan requested')
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        log_info('rescan_full: no media_dir set')
+        return jsonify({'ok': False, 'error': 'no media_dir'}), 400
+    if _scan_in_progress:
+        log_info('rescan_full: scan already in progress')
+        return jsonify({'ok': True, 'async': True, 'skipped': 'scan_in_progress'})
+    threading.Thread(target=_full_scan, daemon=True).start()
+    return jsonify({'ok': True, 'async': True})
 
 # Ручное сканирование папки (кнопка Scan/Rescan). Запускает _quick_scan(force=True) в фоне.
 @app.route('/api/scan_folder', methods=['POST'])

@@ -190,11 +190,6 @@
 .cs-top-page-size .cs-page-size-btn:hover { background: var(--surface2); color: var(--text); }
 .cs-top-page-size .cs-page-size-btn.active { background: var(--accent); color: #fff; }
 
-/* Mobile: hide inline sources, show in drawer */
-@media (max-width: 767px) {
-  .cs-sources { display: none; }
-}
-
 /* ─── Bottom bar (pagination + page size) ─── */
 .cs-bottom-bar {
   display: none;
@@ -304,7 +299,8 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .cs-sources { flex-wrap: wrap; }
+  .cs-sources { flex-wrap: wrap; gap: 4px; }
+  .cs-source { padding: 4px 10px; font-size: 12px; }
   .cs-bottom-bar { gap: 6px; }
   .cs-pagination-bar .page-prev-next span { display: none; }
   .cs-pagination-bar .page-prev-next { padding: 4px 8px; min-height: 28px; }

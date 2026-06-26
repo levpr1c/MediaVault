@@ -139,6 +139,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);transition:b
   .mv-mh-brand .short{display:inline}
   .mv-mh-brand{font-size:14px}
 }
+/* ─── CM BRAND SHORT/LONG ─── */
+.hdr-brand-short{display:none}
+.hdr-brand-long{display:inline}
+@media(max-width:767px){
+  .hdr-brand-long{display:none}
+  .hdr-brand-short{display:inline}
+}
 /* ─── ШАПКА (HEADER) ─── */
 header{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
 header h1{font-size:18px;font-weight:600;margin-right:auto;white-space:nowrap;font-family:var(--font-heading)}

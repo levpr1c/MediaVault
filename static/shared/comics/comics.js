@@ -27,15 +27,24 @@ var ComicsPicker = (function() {
     if (_sourceFilter === 'gallery') {
       return _galleryData.filter(function(f) { return f.path.indexOf('Gallery/') === 0; });
     }
+    if (_sourceFilter === 'downloads') {
+      return _galleryData.filter(function(f) { return f.path.indexOf('Downloads/') === 0; });
+    }
+    if (_sourceFilter === 'comics') {
+      return _galleryData.filter(function(f) { return f.path.indexOf('Comics/') === 0; });
+    }
     return _galleryData;
   }
 
   function _buildSourceBar() {
     var bar = document.getElementById('cpageSourceBar');
     if (!bar) return;
+    var active = function(s) { return _sourceFilter === s ? ' active' : ''; };
     bar.innerHTML =
-      '<button class="cpage-source-btn' + (_sourceFilter === 'all' ? ' active' : '') + '" data-source="all" onclick="ComicsPicker.setSource(\'all\')">' + Shared.t('allFiles') + '</button>' +
-      '<button class="cpage-source-btn' + (_sourceFilter === 'gallery' ? ' active' : '') + '" data-source="gallery" onclick="ComicsPicker.setSource(\'gallery\')">Gallery</button>';
+      '<button class="cpage-source-btn' + active('all') + '" data-source="all" onclick="ComicsPicker.setSource(\'all\')">' + Shared.t('allFiles') + '</button>' +
+      '<button class="cpage-source-btn' + active('gallery') + '" data-source="gallery" onclick="ComicsPicker.setSource(\'gallery\')">Gallery</button>' +
+      '<button class="cpage-source-btn' + active('downloads') + '" data-source="downloads" onclick="ComicsPicker.setSource(\'downloads\')">Downloads</button>' +
+      '<button class="cpage-source-btn' + active('comics') + '" data-source="comics" onclick="ComicsPicker.setSource(\'comics\')">Comics</button>';
   }
 
   function setSource(source) {
@@ -209,7 +218,11 @@ var ComicsPicker = (function() {
   }
 
   function togglePreview() {
-    /* Sidebar always visible — no-op */
+    _previewOpen = !_previewOpen;
+    var overlay = document.getElementById('comicPreviewOverlay');
+    if (overlay) {
+      overlay.classList.toggle('preview-open', _previewOpen);
+    }
   }
 
   function _escHtml(s) {
@@ -359,7 +372,6 @@ var ComicsPicker = (function() {
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>' +
         '</span>';
     }
-    html += '<span class="cpage-folder-seg" onclick="ComicsPicker.navigateToDir(\'\')" data-i18n="allFiles">' + Shared.t('allFiles') + '</span>';
     var cum = '';
     parts.forEach(function(p, i) {
       cum += (i > 0 ? '/' : '') + p;

@@ -313,7 +313,7 @@ body { overflow: hidden; }
   overflow: hidden; border-radius: 16px;
   box-shadow: 0 8px 40px var(--shadow);
   width: min(1400px, calc(100vw - 40px));
-  max-height: min(920px, 90vh);
+  max-height: min(1100px, 95vh);
   position: relative; z-index: 1;
 }
 
@@ -353,13 +353,19 @@ body { overflow: hidden; }
   padding: 14px 20px; border-top: 1px solid var(--border);
 }
 
-/* ─── COMIC PREVIEW SIDEBAR (always visible, fixed width) ─── */
+/* ─── COMIC PREVIEW SIDEBAR (hidden by default, toggled via .preview-open) ─── */
 #comicPreviewOverlay {
-  width: 320px; flex-shrink: 0;
+  width: 0; flex-shrink: 0;
   display: flex; flex-direction: column;
-  border-right: 1px solid var(--border);
+  border-right: none;
   background: var(--surface);
   border-radius: 16px 0 0 16px;
+  padding: 0; overflow: hidden;
+  transition: width .2s ease, padding .2s ease, border-color .2s ease;
+}
+#comicPreviewOverlay.preview-open {
+  width: 320px;
+  border-right: 1px solid var(--border);
   padding: 16px; overflow: hidden;
 }
 #comicsAddModal { flex: 1; min-width: 0; }
@@ -612,8 +618,15 @@ body { overflow: hidden; }
   #comicsModalOverlay.open { padding: 10px; flex-direction: column-reverse; }
   #modalInner { flex-direction: column; width: 100%; max-height: 95vh; border-radius: 12px; }
   #comicPreviewOverlay {
-    width: 100%; max-height: 200px; border-right: none;
-    border-radius: 0; border-bottom: 1px solid var(--border);
+    width: 100%; max-height: 0; border-right: none;
+    border-radius: 0; border-bottom: none;
+    padding: 0 16px; overflow: hidden;
+    transition: max-height .2s ease, padding .2s ease, border-color .2s ease;
+  }
+  #comicPreviewOverlay.preview-open {
+    max-height: 200px;
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
   }
   #cpageGrid .cpage-item { width: calc(50% - 6px); }
   /* ─── MOBILE CM HEADER DROPDOWNS ─── */

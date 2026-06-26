@@ -83,6 +83,12 @@
             <span data-i18n="sortByName">By name</span>
           </button>
         </div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px">
+          <button class="tool-btn" onclick="ComicsPicker.togglePreview()" title="{{ _('preview') }}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span data-i18n="preview">Preview</span>
+          </button>
+        </div>
         <div id="cpageSourceBar" class="cpage-source-bar"></div>
         <div id="cpageFolderBar" class="cpage-folder-bar"></div>
         <div id="cpageGrid"></div>

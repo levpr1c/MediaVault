@@ -152,6 +152,7 @@ var _i18nData = {
     mvSearchByTag: 'Search by tag',
     mvToggleSidebar: 'Sidebar',
     mvPopularTags: 'Popular Tags',
+    popularTags: 'Popular Tags',
     mvCategorized: 'Categories',
     mvManageTags: 'Manage',
     home: 'Home',
@@ -198,6 +199,7 @@ var _i18nData = {
     svNoTags: 'No tags yet',
 
     // Comics
+    preview: 'Preview',
     previewComic: 'Preview comic',
     createComic: 'Create comic',
     showPreview: 'Show preview',
@@ -265,6 +267,7 @@ var _i18nData = {
     tagBulkDelete: 'Delete selected',
     sortByNameTitle: 'Sort by name',
     confirmDelete: 'Confirm delete?',
+    preview: 'Preview',
     openInViewer: 'Open in viewer',
     previewComic: 'Preview',
     showPreview: 'Show preview',
@@ -463,6 +466,7 @@ var _i18nData = {
     mvSearchByTag: 'Поиск по тегу',
     mvToggleSidebar: 'Сайдбар',
     mvPopularTags: 'Популярные теги',
+    popularTags: 'Популярные теги',
     mvCategorized: 'Категории',
     mvManageTags: 'Управление',
     home: 'Главная',
@@ -501,6 +505,7 @@ var _i18nData = {
     sortByNameTitle: 'Стандартная сортировка (по имени)',
 
     // Comics
+    preview: 'Просмотр',
     previewComic: 'Предпросмотр',
     createComic: 'Создать комикс',
     showPreview: 'Показать',
@@ -568,6 +573,7 @@ var _i18nData = {
     tagBulkDelete: 'Удалить выбранные',
     sortByNameTitle: 'Сортировать по имени',
     confirmDelete: 'Подтвердить удаление?',
+    preview: 'Просмотр',
     openInViewer: 'Открыть в просмотрщике',
     previewComic: 'Предпросмотр',
     showPreview: 'Показать превью',

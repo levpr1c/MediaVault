@@ -313,7 +313,7 @@ body { overflow: hidden; }
   overflow: hidden; border-radius: 16px;
   box-shadow: 0 8px 40px var(--shadow);
   width: min(1400px, calc(100vw - 40px));
-  max-height: min(1100px, 95vh);
+  max-height: min(1300px, 95vh);
   position: relative; z-index: 1;
 }
 
@@ -419,7 +419,7 @@ body { overflow: hidden; }
 
 /* ─── SOURCE FILTER PILLS ─── */
 .cpage-source-bar {
-  display: flex; gap: 6px; margin-bottom: 10px; flex-shrink: 0;
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; flex-shrink: 0;
 }
 .cpage-source-btn {
   padding: 6px 16px; border-radius: 20px; border: 1.5px solid var(--border);

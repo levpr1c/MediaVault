@@ -1065,6 +1065,7 @@ var AdminDashboard = (function() {
     _pickFolder: _pickFolder,
     _scanFolder: _scanFolder,
     _rescanFolder: _rescanFolder,
+    _fullRescan: _fullRescan,
     _checkMount: _checkMount,
     _createFolders: _createFolders,
     _saveFolderSettings: _saveFolderSettings,

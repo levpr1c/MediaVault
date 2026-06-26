@@ -8,8 +8,6 @@ var ComicsPicker = (function() {
   var _coverPath = null;
   var _dragIdx = -1;
   var _dragAttached = false;
-  var _previewTimer = null;
-  var _previewEl = null;
   var _cpageSortMode = 'name';
   var _previewOpen = false;
   var _editingId = null;
@@ -25,13 +23,25 @@ var ComicsPicker = (function() {
 
   function _getFilteredGalleryData() {
     if (_sourceFilter === 'gallery') {
-      return _galleryData.filter(function(f) { return f.path.indexOf('Gallery/') === 0; });
+      return _galleryData.filter(function(f) {
+        if (f.path.indexOf('Comics/') === 0) return false;
+        if (f.path.indexOf('Downloads/nHentai/') === 0) return false;
+        if (f.path.indexOf('Gallery/') === 0) return true;
+        if (f.path.indexOf('Downloads/rule34/') === 0) return true;
+        if (f.path.indexOf('Downloads/danbooru/') === 0) return true;
+        if (f.path.indexOf('/') === -1) return true;
+        return false;
+      });
     }
     if (_sourceFilter === 'downloads') {
-      return _galleryData.filter(function(f) { return f.path.indexOf('Downloads/') === 0; });
+      return _galleryData.filter(function(f) {
+        return f.path.indexOf('Downloads/') === 0 && f.path.indexOf('Downloads/nHentai/') !== 0;
+      });
     }
     if (_sourceFilter === 'comics') {
-      return _galleryData.filter(function(f) { return f.path.indexOf('Comics/') === 0; });
+      return _galleryData.filter(function(f) {
+        return f.path.indexOf('Comics/') === 0 || f.path.indexOf('Downloads/nHentai/') === 0;
+      });
     }
     return _galleryData;
   }
@@ -77,92 +87,8 @@ var ComicsPicker = (function() {
     }
     document.addEventListener('keydown', _escHandler);
     _attachDragDrop();
-    _initPreview();
   }
 
-  function _initPreview() {
-    _previewEl = document.createElement('div');
-    _previewEl.id = 'cpagePreview';
-    document.body.appendChild(_previewEl);
-    var grid = document.getElementById('cpageGrid');
-    if (!grid) return;
-    var currentItem = null;
-    var hideTimer = null;
-    function cancelHide() {
-      clearTimeout(hideTimer);
-      hideTimer = null;
-    }
-    function doHide() {
-      cancelHide();
-      _hidePreview();
-    }
-    grid.addEventListener('mouseover', function(e) {
-      var item = e.target.closest('.cpage-item');
-      if (item === currentItem) return;
-      currentItem = item;
-      cancelHide();
-      if (item) _schedulePreview(item);
-      else hideTimer = setTimeout(doHide, 400);
-    });
-    grid.addEventListener('mouseleave', function() {
-      currentItem = null;
-      cancelHide();
-      hideTimer = setTimeout(doHide, 400);
-    });
-    _previewEl.addEventListener('mouseenter', function() {
-      cancelHide();
-    });
-    _previewEl.addEventListener('mouseleave', function() {
-      hideTimer = setTimeout(doHide, 400);
-    });
-  }
-
-  function _schedulePreview(item) {
-    _hidePreview();
-    _previewTimer = setTimeout(function() {
-      var path = item.dataset.path;
-      if (!path) return;
-      var fileData = _galleryData.filter(function(f) { return f.path === path; })[0];
-      if (!fileData) return;
-      var scale = 2.4;
-      var rect = item.getBoundingClientRect();
-      var w = rect.width * scale;
-      var h = rect.height * scale;
-      if (fileData.width && fileData.height && fileData.type === 'image') {
-        var ar = fileData.width / fileData.height;
-        if (ar > 1) h = w / ar;
-        else w = h * ar;
-      }
-      var maxH = window.innerHeight - 40;
-      if (h > maxH) { h = maxH; w = h * (fileData.width && fileData.height ? fileData.width / fileData.height : 1); }
-      var maxW = window.innerWidth - 40;
-      if (w > maxW) { w = maxW; h = fileData.width ? w / (fileData.width / fileData.height) : w; }
-      var left = rect.right + 15;
-      if (left + w > window.innerWidth - 10) left = rect.left - 15 - w;
-      var top = rect.top + (rect.height - h) / 2;
-      if (top < 5) top = 5;
-      if (top + h > window.innerHeight - 5) top = window.innerHeight - 5 - h;
-      _previewEl.style.width = w + 'px';
-      _previewEl.style.height = h + 'px';
-      _previewEl.style.left = left + 'px';
-      _previewEl.style.top = top + 'px';
-      if (fileData.type === 'video') {
-        _previewEl.innerHTML = '<video src="/api/media?path=' + encodeURIComponent(path) + _cbSuffix() + '" autoplay muted loop playsinline controls></video>';
-      } else {
-        _previewEl.innerHTML = '<img src="/api/media?path=' + encodeURIComponent(path) + _cbSuffix() + '" alt="">';
-      }
-      _previewEl.classList.add('show');
-    }, 300);
-  }
-
-  function _hidePreview() {
-    clearTimeout(_previewTimer);
-    _previewTimer = null;
-    if (_previewEl) {
-      _previewEl.classList.remove('show');
-      _previewEl.innerHTML = '';
-    }
-  }
 
   function openPicker(opts) {
     opts = opts || {};

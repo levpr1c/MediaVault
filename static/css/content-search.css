@@ -299,10 +299,9 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .cs-sources { flex-wrap: wrap; gap: 4px; }
-  .cs-source { padding: 4px 10px; font-size: 12px; }
+  .cs-sources { display: none; }
   .cs-grid.shared-grid { --shared-grid-col-width: calc(50% - 6px); }
-  .cs-grid.shared-grid .file-card-thumb img { height: 140px; object-fit: cover; }
+  .cs-grid.shared-grid .file-card-thumb img { height: auto; }
   .cs-bottom-bar { gap: 6px; }
   .cs-pagination-bar .page-prev-next span { display: none; }
   .cs-pagination-bar .page-prev-next { padding: 4px 8px; min-height: 28px; }

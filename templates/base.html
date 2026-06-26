@@ -43,7 +43,7 @@ var CONFIG = {
 {% if page and page != 'home' %}
 <div id="appHeader">
   <div class="hdr-desktop">
-    <h1 class="mv-mh-brand">{% block hdr_brand %}{% if request.path.startswith('/content-mgmt/') or request.path == '/content-search' %}CONTENT-MGMT{% else %}MEDIAVAULT{% endif %}{% endblock %}</h1>
+    <h1 class="mv-mh-brand">{% block hdr_brand %}{% if request.path.startswith('/content-mgmt/') or request.path == '/content-search' %}<span class="hdr-brand-long">CONTENT-MGMT</span><span class="hdr-brand-short">C-MGMT</span>{% else %}MEDIAVAULT{% endif %}{% endblock %}</h1>
     <nav class="hdr-tabs">{% block hdr_tabs %}
 {% if request.path.startswith('/content-mgmt/') or request.path == '/content-search' %}
       <div class="cm-hdr-left">
@@ -253,7 +253,7 @@ var CONFIG = {
       </a>
     </div>
     <div class="mv-mh-row2" id="mobileSearchBar">{% block hdr_search %}
-{% if request.path != '/admin' and request.path != '/settings' %}
+{% if request.path != '/admin' and request.path != '/settings' and not request.path.startswith('/mediavault/comics') %}
       <button class="mv-mh-icon mv-mh-menu-btn" id="mobileMenuBtn" title="Menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>

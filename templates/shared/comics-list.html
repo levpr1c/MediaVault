@@ -65,9 +65,6 @@
       <div class="file-count-info" id="fileCountInfo" style="margin-bottom:8px">{{ _('selected').replace('{n}', '0') }}</div>
       <div class="comic-preview-content" id="comicPreviewContent"></div>
     </div>
-    <button id="previewToggleBtn" onclick="ComicsPicker.togglePreview()" title="{{ _('showPreview') }}">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M9 18l6-6-6-6"/></svg>
-    </button>
     <div id="comicsAddModal" class="comic-modal">
       <div class="comic-modal-header">
         <h2>{{ _('createComic') }}</h2>
@@ -86,6 +83,7 @@
             <span data-i18n="sortByName">By name</span>
           </button>
         </div>
+        <div id="cpageSourceBar" class="cpage-source-bar"></div>
         <div id="cpageFolderBar" class="cpage-folder-bar"></div>
         <div id="cpageGrid"></div>
       </div>

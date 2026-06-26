@@ -3408,6 +3408,7 @@ def _quick_scan(force=False):
 
     with _scan_progress_lock:
         _scan_progress['status'] = 'scanning'
+        _scan_progress['type'] = 'quick'
         _scan_progress['current_folder'] = ''
         _scan_progress['total_folders'] = 0
         _scan_progress['folders_done'] = 0

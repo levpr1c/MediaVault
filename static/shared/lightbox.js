@@ -1009,7 +1009,7 @@ var Lightbox = (function() {
   var css = document.createElement('style');
   css.id = id;
   css.textContent =
-    '.shared-lightbox{position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;transform:scale(.96)}' +
+    '.shared-lightbox{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10001;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;transform:scale(.96)}' +
     '.shared-lightbox.open{opacity:1;pointer-events:auto;transform:scale(1)}' +
     '.shared-lightbox.closing{opacity:0;transform:scale(.96)}' +
     '.shared-lightbox .lightbox-close{position:absolute;top:16px;right:16px;z-index:20;background:rgba(0,0,0,.3);border:none;color:#fff;width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}' +

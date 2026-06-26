@@ -355,6 +355,7 @@ LOCALE = {
         'cmSectionTags': 'TAGS',
         'cmSectionComics': 'COMICS',
         'cmSectionSearch': 'SEARCH',
+        'navImages': 'Images',
         'tags': 'TAGS',
 
         'sortByName': 'By name',
@@ -367,6 +368,7 @@ LOCALE = {
         'openInViewer': 'Open in viewer',
         'unsavedConfirm': 'You have unsaved changes. Continue?',
         'cancel': 'Cancel',
+        'cancelled': 'Cancelled',
         'comicNamePlaceholder': 'Comic title',
         'searchFiles': 'Search files…',
         'searchComics': 'Search comics…',
@@ -467,13 +469,18 @@ LOCALE = {
         'filesWithoutTagsTitle': 'Files Without Real Tags',
         'totalFilesWithoutTags': 'Total: {n} files',
         'allFilesHaveTags': 'All files have tags',
-        'findOriginals': 'Find Originals',
-        'findOriginalsDesc': 'Find original images and tags for sample_XXX files from booru APIs',
+        'findOriginals': 'Sample → Original (r34)',
+        'findOriginalsDesc': 'Replace sample files with originals and tags from booru APIs',
         'findOriginalsRunning': 'Searching for originals...',
         'findOriginalsFound': 'Found {n} original(s)',
         'downloadOriginal': 'Download \u0026 Tag',
         'downloadOriginalDone': 'Downloaded and tagged',
         'noOriginalsFound': 'No originals found',
+        'replaceAll': 'Replace All',
+        'replaceAllDone': 'All originals replaced',
+        'autoScroll': 'Auto-scroll',
+        'autoScrollOn': 'Auto-scroll enabled',
+        'autoScrollOff': 'Auto-scroll disabled',
         'findOriginalsError': 'Failed to find originals',
     },
     'ru': {
@@ -574,6 +581,7 @@ LOCALE = {
         'bulkTagExit': '✕ Выйти',
         'selected': 'Выбрано: {n}',
         'cancel': 'Отмена',
+        'cancelled': 'Отменено',
         'svLoading': 'Загрузка...',
         'svTapForTags': 'Нажми на фото чтобы показать теги',
         'svNoTags': 'Тегов пока нет',
@@ -626,6 +634,7 @@ LOCALE = {
         'cmSectionTags': 'ТЕГИ',
         'cmSectionComics': 'КОМИКСЫ',
         'cmSectionSearch': 'ПОИСК',
+        'navImages': 'Изображения',
         'tags': 'ТЕГИ',
         'sortByName': 'По имени',
         'sortByNewest': 'Сначала новые',
@@ -738,13 +747,18 @@ LOCALE = {
         'filesWithoutTagsTitle': 'Файлы без реальных тегов',
         'totalFilesWithoutTags': 'Всего: {n} файлов',
         'allFilesHaveTags': 'У всех файлов есть теги',
-        'findOriginals': 'Найти оригиналы',
-        'findOriginalsDesc': 'Поиск оригиналов для sample_XXX файлов через booru API',
+        'findOriginals': 'Замена sample на оригинал (r34)',
+        'findOriginalsDesc': 'Замена sample_XXX файлов на оригиналы и теги через booru API',
         'findOriginalsRunning': 'Поиск оригиналов...',
         'findOriginalsFound': 'Найдено {n} оригинал(ов)',
         'downloadOriginal': 'Скачать и тегировать',
         'downloadOriginalDone': 'Скачано и тегировано',
         'noOriginalsFound': 'Оригиналы не найдены',
+        'replaceAll': 'Заменить все',
+        'replaceAllDone': 'Все оригиналы заменены',
+        'autoScroll': 'Автоскролл',
+        'autoScrollOn': 'Автоскролл включён',
+        'autoScrollOff': 'Автоскролл выключен',
         'findOriginalsError': 'Ошибка поиска оригиналов',
     },
 }
@@ -5181,11 +5195,11 @@ def api_remove_duplicates():
 def api_files_without_tags():
     try:
         db = _db_conn()
-        rows = db.execute("SELECT path, name, type, COALESCE(tags,'') as tags FROM files LIMIT 500").fetchall()
+        rows = db.execute("SELECT path, name, type, COALESCE(tags,'') as tags, width, height, mtime FROM files ORDER BY name ASC").fetchall()
         result = []
-        for path, name, ftype, tags in rows:
+        for path, name, ftype, tags, width, height, mtime in rows:
             if not _has_non_meta_tags(tags):
-                result.append({'path': path, 'name': name, 'type': ftype, 'tags': tags})
+                result.append({'path': path, 'name': name, 'type': ftype, 'tags': tags, 'width': width, 'height': height, 'mtime': mtime})
         db.close()
         return jsonify({'ok': True, 'files': result})
     except Exception as e:
@@ -5221,16 +5235,23 @@ def _find_sample_originals_task(task_id):
             with _find_originals_lock:
                 if _find_originals_progress[task_id]['status'] == 'cancelled':
                     return
+            sample_names = ', '.join(s['name'] for s in md5_map[md5])
             originals = []
             r34 = fetch_rule34(md5, uid=r34_cred.get('uid', ''), key=r34_cred.get('key', ''))
             if r34.get('tags'):
+                log_debug('find-originals[%s] r34 FOUND for %s [md5=%s] (%d tags)', task_id, sample_names, md5, len(r34['tags']))
                 originals.append({'source': 'rule34', 'file_url': r34.get('file_url', ''), 'tags': r34['tags']})
+            else:
+                log_debug('find-originals[%s] r34 NOT FOUND for %s [md5=%s]', task_id, sample_names, md5)
             dan = fetch_danbooru(md5, login=dan_cred.get('login', ''), api_key=dan_cred.get('key', ''))
             if dan.get('tags'):
+                log_debug('find-originals[%s] dan FOUND for %s [md5=%s] (%d tags)', task_id, sample_names, md5, len(dan['tags']))
                 flat_tags = dan['tags']
                 if dan.get('tag_general'):
                     flat_tags.extend(dan['tag_general'])
                 originals.append({'source': 'danbooru', 'file_url': dan.get('large_file_url', '') or dan.get('file_url', ''), 'tags': flat_tags})
+            else:
+                log_debug('find-originals[%s] dan NOT FOUND for %s [md5=%s]', task_id, sample_names, md5)
             if originals:
                 results[md5] = {'sample_files': md5_map[md5], 'originals': originals}
             with _find_originals_lock:
@@ -5275,6 +5296,18 @@ def api_find_originals_progress(task_id):
             return jsonify({'error': 'task not found'}), 404
         return jsonify({k: p[k] for k in p})
 
+@app.route('/api/find-originals-cancel/<task_id>', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_find_originals_cancel(task_id):
+    with _find_originals_lock:
+        p = _find_originals_progress.get(task_id)
+        if p is None:
+            return jsonify({'error': 'task not found'}), 404
+        p['status'] = 'cancelled'
+    log_info('find-originals: cancelled task %s', task_id)
+    return jsonify({'ok': True})
+
 @app.route('/api/download-original', methods=['POST'])
 @admin_required
 @api_error_handler
@@ -5297,7 +5330,15 @@ def api_download_original():
             return jsonify({'error': f'HTTP {r.status_code}'}), 400
         ext = os.path.splitext(file_url.split('?')[0])[1] or '.jpg'
         filename = f'{md5}{ext}'
-        rel_dir = 'downloads/originals'
+        
+        # Map source to download directory (same logic as content-search)
+        source_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'eh': 'ehentai'}
+        source_dir = source_map.get(source.lower(), source.lower())
+        if not source_dir or source_dir == 'unknown':
+            source_dir = 'unknown'
+        
+        dl_dir = settings.get('downloads_dir', 'Downloads')
+        rel_dir = os.path.join(dl_dir, source_dir)
         rel_path = os.path.join(rel_dir, filename)
         dest_dir = os.path.join(media_dir, rel_dir)
         os.makedirs(dest_dir, exist_ok=True)

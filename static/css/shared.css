@@ -131,7 +131,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);transition:b
 .mv-mh-search-icon{flex-shrink:0;color:var(--text2);margin-right:6px}
 .mv-mh-search input{flex:1;background:none;border:none;padding:8px 0;font-size:13px;color:var(--text);outline:none;min-width:0;font-family:var(--font)}
 .mv-mh-search input::placeholder{color:var(--text2)}
-#mobileSearchBar{display:flex;align-items:center;gap:6px;padding:0 10px 7px}
+#mobileSearchBar{display:flex;align-items:center;gap:4px;padding:0 10px 7px}
+.mv-mh-row2{padding:5px 10px 7px;margin-top:5px}
+.mv-mh-brand .short{display:none}
+@media(max-width:400px){
+  .mv-mh-brand .long{display:none}
+  .mv-mh-brand .short{display:inline}
+  .mv-mh-brand{font-size:14px}
+}
 /* ─── ШАПКА (HEADER) ─── */
 header{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
 header h1{font-size:18px;font-weight:600;margin-right:auto;white-space:nowrap;font-family:var(--font-heading)}

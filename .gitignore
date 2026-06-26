@@ -34,3 +34,6 @@ dist/
 scratch/
 tmp/
 *.log
+
+# OpenCode session state
+.omo/

@@ -24,51 +24,53 @@ function _closeModal() {
   if (overlay) overlay.classList.remove('open');
 }
 
+var _untaggedFiles = [];
+var _untaggedMode = false;
+
 function _showFilesWithoutTags() {
-  _modal(
-    '<div class="admin-modal-title"><span class="fetch-spinner"></span> ' + _t('filesWithoutTags') + '</div>' +
-    '<div class="admin-modal-actions"><button class="btn" data-modal-close>' + _t('cancel') + '</button></div>'
-  );
+  if (_untaggedMode) {
+    // Back to normal view
+    _untaggedMode = false;
+    _untaggedFiles = [];
+    _filterFiles();
+    _currentPage = 1;
+    var searchInput = document.getElementById('cmFilesSearch');
+    if (searchInput) searchInput.value = _searchQ;
+    _renderGallery();
+    var count = document.getElementById('cmFilesCount');
+    if (count) count.textContent = '' + _filteredFiles.length;
+    var btn = document.querySelector('[data-action="files-without-tags"]');
+    if (btn) btn.classList.remove('active');
+    return;
+  }
+  // Show loading state in gallery
+  var gallery = document.getElementById('cmFilesGallery');
+  if (gallery) gallery.innerHTML = '<div class="admin-loading"><span class="fetch-spinner"></span> ' + _t('filesWithoutTags') + '</div>';
+  var btn = document.querySelector('[data-action="files-without-tags"]');
+  if (btn) btn.classList.add('active');
   api('/api/content-mgmt/files-without-tags').then(function(data) {
-    var files = data.files || [];
-    if (files.length === 0) {
-      _modal(
-        '<div class="admin-modal-title">' + _t('filesWithoutTagsTitle') + '</div>' +
-        '<p style="color:var(--text2)">' + _t('allFilesHaveTags') + '</p>' +
-        '<div class="admin-modal-actions"><button class="btn" data-modal-close>' + _t('close') + '</button></div>'
-      );
+    _untaggedFiles = data.files || [];
+    if (_untaggedFiles.length === 0) {
+      _untaggedMode = false;
+      toast(_t('allFilesHaveTags'), 'info');
+      if (gallery) _renderGallery();
+      if (btn) btn.classList.remove('active');
       return;
     }
-    var html = '<div class="admin-modal-title">' + _t('filesWithoutTagsTitle') + '</div>' +
-      '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">' +
-      _t('totalFilesWithoutTags', {n: files.length}) + '</div>' +
-      '<div style="max-height:65vh;overflow-y:auto">';
-    files.forEach(function(f) {
-      var thumbUrl = '/api/thumbnail?path=' + encodeURIComponent(f.path);
-      var tagList = (f.tags || '').split(',').filter(function(t){ return t.trim(); });
-      html += '<div class="dup-file" style="display:flex;align-items:flex-start;gap:12px;padding:8px;border-radius:8px;border:2px solid transparent;margin-bottom:4px;cursor:default">' +
-        '<div style="width:80px;height:80px;flex-shrink:0;background:var(--surface2);border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center">' +
-        '<img src="' + thumbUrl + '" loading="lazy" style="max-width:80px;max-height:80px;object-fit:contain" onerror="this.style.display=\'none\'">' +
-        '</div>' +
-        '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:13px;font-weight:600;color:var(--text);word-break:break-all;line-height:1.3;margin-bottom:2px">' + esc(f.name) + '</div>' +
-        (tagList.length > 0
-          ? '<div style="display:flex;flex-wrap:wrap;gap:2px">' +
-            tagList.map(function(t){ return '<span class="tag-chip" style="font-size:10px">' + esc(t.trim()) + '</span>'; }).join('') +
-            '</div>'
-          : '<span style="font-size:11px;color:var(--text2)">—</span>') +
-        '<div style="font-size:10px;color:var(--text2);margin-top:2px">' + esc(f.path) + '</div>' +
-        '</div></div>';
-    });
-    html += '</div>' +
-      '<div class="admin-modal-actions"><button class="btn" data-modal-close>' + _t('close') + '</button></div>';
-    _modal(html);
+    _untaggedMode = true;
+    _currentPage = 1;
+    _searchQ = '';
+    var searchInput = document.getElementById('cmFilesSearch');
+    if (searchInput) searchInput.value = '';
+    _filterFiles();
+    var count = document.getElementById('cmFilesCount');
+    if (count) count.textContent = '' + _filteredFiles.length;
+    _renderGallery();
   }).catch(function(e) {
-    _modal(
-      '<div class="admin-modal-title">' + _t('settingsError') + '</div>' +
-      '<p style="color:var(--text2)">' + esc(e.message) + '</p>' +
-      '<div class="admin-modal-actions"><button class="btn" data-modal-close>' + _t('close') + '</button></div>'
-    );
+    _untaggedMode = false;
+    if (btn) btn.classList.remove('active');
+    toast(e.message, 'error');
+    _renderGallery();
   });
 }
 
@@ -87,6 +89,8 @@ let _popTags = []
 let _lbInstance = null
 
 export function filesRender(body) {
+  _untaggedMode = false
+  _untaggedFiles = []
   _currentPage = 1
   _ac = new AbortController()
   const s = _ac.signal
@@ -96,7 +100,7 @@ export function filesRender(body) {
 
   Promise.all([
     api('/api/categories'),
-    api('/api/gallery?per_page=0'),
+    api('/api/gallery?per_page=0&folders=gallery,downloads'),
     api('/api/popular_tags')
   ]).then(([catData, galData, popData]) => {
     const cats = catData.categories || []
@@ -105,6 +109,10 @@ export function filesRender(body) {
     state.tagToCat = {}
     state.catCache = {}
     state.cats.forEach(c => c.tags.forEach(t => { state.tagToCat[t] = c.name; state.catCache[t] = c.color }))
+    const catMap = catData.cat_map || {}
+    Object.keys(catMap).forEach(t => {
+      if (!state.tagToCat[t]) { state.tagToCat[t] = catMap[t] }
+    })
 
     _allFiles = (galData.files || []).filter(f => f.path)
     _sortFiles()
@@ -150,6 +158,13 @@ function _sortFiles() {
 }
 
 function _filterFiles() {
+  if (_untaggedMode) {
+    const source = _untaggedFiles;
+    if (!_searchQ || typeof _searchQ !== 'string') { _filteredFiles = source.slice(); return }
+    const q = _searchQ.toLowerCase()
+    _filteredFiles = source.filter(f => (f.name || '').toLowerCase().includes(q))
+    return
+  }
   if (!_searchQ || typeof _searchQ !== 'string') { _filteredFiles = _allFiles.slice(); return }
   const q = _searchQ.toLowerCase()
   _filteredFiles = _allFiles.filter(f => (f.name || '').toLowerCase().includes(q))
@@ -228,9 +243,9 @@ function _buildRightPanel() {
       `</div>` +
     `</div>` +
     `<div class="cm-files-pagination" id="cmFilesPagination">` +
-      `<button class="cm-files-tb-action" data-action="page" data-dir="-1">‹</button>` +
-      `<span id="cmFilesPageInfo"></span>` +
-      `<button class="cm-files-tb-action" data-action="page" data-dir="1">›</button>` +
+      `<button class="cm-files-tb-action" data-action="page-prev">‹</button>` +
+      `<span id="cmFilesPageNumbers" style="display:flex;align-items:center;gap:4px"></span>` +
+      `<button class="cm-files-tb-action" data-action="page-next">›</button>` +
     `</div>` +
   `</div>`
 }
@@ -306,13 +321,41 @@ function _renderPagination() {
   }
   el.style.display = 'flex'
   const total = _totalPages()
-  const info = document.getElementById('cmFilesPageInfo')
-  if (info) info.textContent = `${_currentPage} / ${total}`
-  const btns = el.querySelectorAll('[data-action="page"]')
-  if (btns.length >= 2) {
-    btns[0].disabled = _currentPage <= 1
-    btns[1].disabled = _currentPage >= total
+  const prevBtn = el.querySelector('[data-action="page-prev"]')
+  const nextBtn = el.querySelector('[data-action="page-next"]')
+  if (prevBtn) prevBtn.disabled = _currentPage <= 1
+  if (nextBtn) nextBtn.disabled = _currentPage >= total
+
+  const numEl = document.getElementById('cmFilesPageNumbers')
+  if (!numEl) return
+
+  // generate page numbers with ellipsis
+  let html = ''
+  const maxVisible = 7
+  let start = 1, end = total
+  if (total > maxVisible) {
+    const half = Math.floor(maxVisible / 2)
+    if (_currentPage <= half + 1) {
+      end = maxVisible
+    } else if (_currentPage >= total - half) {
+      start = total - maxVisible + 1
+    } else {
+      start = _currentPage - half
+      end = _currentPage + half
+    }
   }
+  if (start > 1) {
+    html += '<button class="cm-files-tb-action page-num" data-action="page-goto" data-page="1">1</button>'
+    if (start > 2) html += '<span class="page-num-ellipsis" style="color:var(--text2);font-size:11px">…</span>'
+  }
+  for (let i = start; i <= end; i++) {
+    html += '<button class="cm-files-tb-action page-num' + (i === _currentPage ? ' active' : '') + '" data-action="page-goto" data-page="' + i + '">' + i + '</button>'
+  }
+  if (end < total) {
+    if (end < total - 1) html += '<span class="page-num-ellipsis" style="color:var(--text2);font-size:11px">…</span>'
+    html += '<button class="cm-files-tb-action page-num" data-action="page-goto" data-page="' + total + '">' + total + '</button>'
+  }
+  numEl.innerHTML = html
 }
 
 function _attachEvents(body, signal) {
@@ -341,7 +384,9 @@ function _attachEvents(body, signal) {
       'toggle-sort': toggleSort,
       'thumbsize': () => setThumbSize(parseInt(el.dataset.size, 10)),
       'pagesize': () => setPageSize(parseInt(el.dataset.size, 10)),
-      'page': () => _goToPage(_currentPage + parseInt(el.dataset.dir, 10)),
+      'page-prev': () => _goToPage(_currentPage - 1),
+      'page-next': () => _goToPage(_currentPage + 1),
+      'page-goto': () => _goToPage(parseInt(el.dataset.page, 10)),
       'files-without-tags': _showFilesWithoutTags,
       'find-originals': function() {
         if (window.FindOriginals) window.FindOriginals.open();
@@ -445,7 +490,7 @@ function viewFile(path) {
         return state.cats.map(function(c) { return { name: c.name, color: c.color } })
       },
       getTagCategoryNameFn: function(tag) {
-        return state.catCache[tag] || ''
+        return state.tagToCat[tag] || ''
       },
       getVisualOrderFn: function() { return getVisualOrder() },
       hexToRgba: hexToRgba

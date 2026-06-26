@@ -359,8 +359,9 @@
   .admin-header a:hover { background: var(--surface2); color: var(--text); }
   .admin-header a.active { color: var(--accent); background: var(--accent-glow); font-weight: 700; }
   .admin-header a svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .hdr-nav-label { display: inline; }
 }
-.hdr-mobile .admin-header { display: none; }
+.admin-header a:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent); }
 
 /* ─── ADMIN IMPORT BUTTON ─── */
 .admin-import-btn { margin-top: 8px; }

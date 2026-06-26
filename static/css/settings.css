@@ -1,23 +1,4 @@
-/* ─── SETTINGS TAB ROW ─── */
-.settings-tabs-row {
-  display: flex; align-items: center; gap: 2px;
-  align-self: stretch; padding: 2px 3px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px;
-}
-.settings-tab-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 4px 12px; border-radius: 6px; border: none;
-  background: transparent; color: var(--text2);
-  font-size: 13px; font-weight: 500; cursor: pointer;
-  font-family: var(--font-btn); transition: all .2s; white-space: nowrap;
-  height: 32px;
-}
-.settings-tab-btn:hover { background: var(--surface2); color: var(--text); }
-.settings-tab-btn.active {
-  background: var(--accent); color: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,.12);
-}
+/* ─── SETTINGS TAB CONTENT ─── */
 .settings-tab-content {
   display: none;
 }

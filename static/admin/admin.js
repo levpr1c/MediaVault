@@ -159,6 +159,7 @@ var AdminDashboard = (function() {
         this._tool('settingsCleanDb', 'settingsCleanDb', 'clearFiles', true) +
         this._tool('regenAllThumbs', 'settingsRegenThumbnails', 'regenThumbs', false) +
         this._tool('genMissingThumbs', 'settingsRegenMissing', 'regenMissing', false) +
+        this._tool('findOriginals', 'findOriginalsDesc', 'findOriginals', false) +
         this._tool('settingsCleanAll', 'settingsCleanAll', 'clearAll', true) +
         '</div></div>' +
         // Folders card
@@ -212,6 +213,7 @@ var AdminDashboard = (function() {
         clearFiles: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="9" y1="14" x2="15" y2="14"/></svg>',
         regenThumbs: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
         regenMissing: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/><circle cx="12" cy="12" r="1"/></svg>',
+        findOriginals: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>',
         clearAll: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
       };
       return '<div class="db-tool' + (danger ? ' danger' : '') + '" onclick="AdminDashboard._dbAction(\'' + action + '\')">' +
@@ -485,6 +487,7 @@ var AdminDashboard = (function() {
       case 'clearAll': confirmKey = 'secConfirmClearAll'; apiPath = '/api/delete_all'; break;
       case 'regenThumbs': confirmKey = 'secConfirmRegenThumb'; apiPath = 'sse'; break;
       case 'regenMissing': apiPath = '/api/generate_missing_thumbnails'; break;
+      case 'findOriginals': return FindOriginals.open();
     }
     if (confirmKey) {
       _modal(
@@ -1007,7 +1010,7 @@ var AdminDashboard = (function() {
     if (!_sections[name]) return;
     _stopMountWatch();
     _current = name;
-    var navEls = document.querySelectorAll('.admin-nav-item, .mv-mh-icon[data-section]');
+    var navEls = document.querySelectorAll('.admin-nav-item, .mv-mh-icon[data-section], .admin-header a[data-section]');
     navEls.forEach(function(el) {
       el.classList.toggle('active', el.dataset.section === name);
     });

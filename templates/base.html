@@ -120,7 +120,7 @@ var CONFIG = {
   <span class="hdr-group-label" data-i18n="navMediaVault">MediaVault</span>
   <a href="/mediavault/gallery" class="hdr-link{% if request.path == '/mediavault/gallery' or request.path == '/mediavault/view' %} active{% endif %}" data-i18n="mvGallery">Gallery</a>
   <a href="/mediavault/comics" class="hdr-link{% if request.path == '/mediavault/comics' or '/comics/view' in request.path %} active{% endif %}" data-i18n="mvComics">Comics</a>
-  <a href="/popular-tags" class="hdr-link" data-i18n="mvPopularTags">{{ _('popularTags') }}</a>
+  <a href="/popular-tags" class="action-btn" data-i18n="mvPopularTags"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><path d="M7 7h.01"/></svg> {{ _('popularTags') }}</a>
 </div>
 {% if session.role == 'admin' %}
 <div class="hdr-group-sep"></div>
@@ -179,6 +179,9 @@ var CONFIG = {
         </a>
         <a href="/mediavault/comics" class="mv-mh-icon" title="Comics">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </a>
+        <a href="/popular-tags" class="mv-mh-icon" title="Popular Tags" data-i18n="mvPopularTags">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><path d="M7 7h.01"/></svg>
         </a>
 {% else %}
         <div class="cm-hdr-tf" id="cmHdrTfMob">

@@ -43,6 +43,7 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 #categorizedTags{margin-top:12px}
 .sidebar-section{margin-top:12px}
 .sidebar-action{width:100%;justify-content:flex-start;margin-top:8px;font-size:13px;text-align:center}
+.sidebar-section:has(.sidebar-action){display:flex;flex-direction:column;gap:8px}
 
 /* ─── ПАНЕЛЬ ИНСТРУМЕНТОВ ГАЛЕРЕИ ─── */
 #galleryToolbar{border-bottom:1px solid var(--border);margin-bottom:12px}

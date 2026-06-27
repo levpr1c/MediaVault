@@ -1,6 +1,6 @@
 # MediaVault
 
-A Flask SPA (`src/web_app.py`, 5214+ строк, 98+ роутов, 50 `@admin_required`, 9 `@auth_required`, 77 `@api_error_handler`) + `src/credential_store.py` (124). Three sub-applications: **MV** (`/mediavault/`, read-only), **CM** (`/content-mgmt/`, admin-only), **Admin** (`/admin`). 17 Jinja2 templates, 32 JS modules (9778 строк без lib/), 8 CSS files (2585 строк).
+A Flask SPA (`src/web_app.py`, 5921 строк, 108+ роутов, 59 `@admin_required`, 13 `@auth_required`, 87 `@api_error_handler`) + `src/credential_store.py` (124). Three sub-applications: **MV** (`/mediavault/`, read-only), **CM** (`/content-mgmt/`, admin-only), **Admin** (`/admin`). 17 Jinja2 templates, 32 JS modules (10051 строк без lib/), 8 CSS files (2932 строк). Flask single-file (no blueprints), SQLite with WAL.
 
 ## Core Conventions
 
@@ -94,8 +94,29 @@ A Flask SPA (`src/web_app.py`, 5214+ строк, 98+ роутов, 50 `@admin_re
 - `.mv-mh-icon:focus-visible` uses `box-shadow` instead of `outline`
 - `.admin-header` visible on mobile (no longer hidden)
 
+### Mobile Content-Search Sources
+- Mobile drawer (`#drawerSources`) populated with 4 source checkboxes (R34, Dan, NHentai, EH) + AI filter toggle clone
+- Bidirectional sync between desktop sources and drawer checkboxes
+- `contentSearchSource` locale key added (EN: "Source", RU: "Источник")
+
+### Mobile Search
+- `#csInput` visible on mobile via `.mobile-search-hide` override with `!important` in `content-search.css`
+- `MobileSearch.register(...)` call wrapped in try-catch — module crash doesn't block the rest of the page
+- Fallback AI toggle in `content-search.html` dispatches `change` on `origAi` to trigger search when JS module fails
+- `.cs-ai-toggle.mv-drawer-toggle` classes kept (not `.mv-drawer-cb`) for mobile drawer AI toggle
+
+### Full Scan Tag Preservation
+- `_full_scan()` UPDATE reads existing `files.tags`, merges with `auto_tags` instead of overwriting (web_app.py:3652-3661)
+- `DELETE FROM file_tags WHERE path=?` executed before all 4 `DELETE FROM files` sites (full_scan, relocate_file, dedup, remove-duplicates)
+- Phash-based move detection: matches deleted paths to inserted paths by phash, UPDATEs path instead of DELETE+INSERT, preserving all tags. Counter `moved` added to log.
+
+### Comics-Tags Preview + Scan
+- Click on `.cm-comic-card` fetches `/api/comics/get` → opens Lightbox (`prefix:cmct`, `tagPanel:false`, `arrowNav:true`) with all comic pages
+- Toolbar with Scan (`action-btn-primary`) and Full Rescan buttons + `#cmScanProgress` bar with spinner/text/progress-bar
+- Polling: `_startCmScan()` / `_startCmFullRescan()` → POST API → `_startCmScanProgressPoll()` polls `/api/admin/scan-progress` every 2s
+
 ### Locale
-- 271 keys en/ru (271 each)
+- 274 keys en/ru (274 each)
 - Synced with JS `_i18nData` in `static/shared/utils.js`
 
 ### Known Issues
@@ -103,6 +124,7 @@ A Flask SPA (`src/web_app.py`, 5214+ строк, 98+ роутов, 50 `@admin_re
 - Settings page: `SettingsApp.switchTab()` in `settings.html` — JS works with `.settings-tab-btn` class
 - Key `popularTags` used in HTML but not in LOCALE dict (DB-generated)
 - Duplicate values: `navAdmin`/`userRoleAdmin` → "Admin", `cmSectionTags`/`tags` → "TAGS", `contentSearchBtn`/`navSearch` → "Search" — pre-existing
+- `MobileSearch.register()` throws "is not a function" on content-search page (root cause unknown, mitigated by try-catch + CSS `!important` override)
 
 ## Development commands
 
@@ -137,13 +159,14 @@ venv/bin/pyinstaller mediavault.spec --clean --noconfirm
 - `static/shared/lightbox.js`: Lightbox class with arrowNav option
 - `static/shared/icons.js`: SiteIcons.getIcon
 - `static/admin/admin.js`: 5 sections + scan progress polling; `loadSection()` updates `.active` on nav links
+- `static/content/content-search.js`: Content-search SPA module (812 строк) — drawer sources sync, MobileSearch.register try-catch guard, AI filter toggle
 - `static/content/comics-picker.js`: Preview animation
 - `static/shared/find-originals.js`: Background thread for finding originals
 - `static/shared/grid-renderer.js`: ES-module for comics-tags.js, tags-manage.js (buildLeftPanelHtml, renderLeftTags, setupDragEvents, comicCardHTML, buildComicsGridHTML)
 
 ## Frameworks
 
-**Testing**: Custom CLI `test.py` (783+ строки) — not pytest. Includes:
+**Testing**: Custom CLI `test.py` (975 строк) — not pytest. Includes:
 - `--check py`: `python -m py_compile src/*.py`
 - `--check js`: `node --check static/**/*.js`
 - `--check css`: CSS files exist and non-empty

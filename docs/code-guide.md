@@ -38,7 +38,7 @@
 
 ## 1. Что это вообще такое?
 
-**MediaVault** — это Flask-приложение (один файл `src/web_app.py`, ~4460 строк, 90 роутов, 48 `@admin_required`, 5 `@auth_required`, 69 `@api_error_handler`) с 18 Jinja2-шаблонами, 30 JS-файлами и 2 модулями бэкендов (`gallery-dl`, `api_raw`):
+**MediaVault** — это Flask-приложение (один файл `src/web_app.py`, 5921 строка, 108+ роутов, 59 `@admin_required`, 13 `@auth_required`, 87 `@api_error_handler`) с 17 Jinja2-шаблонами, 32 JS-файлами и 2 модулями бэкендов (`gallery-dl`, `api_raw`):
 
 1. **Скачивает теги** с Rule34.xxx, Danbooru и NHentai по MD5-хешу файла
 2. **Позволяет тегировать** свою медиа-коллекцию (картинки, видео)
@@ -212,7 +212,7 @@ MediaVault/
 | Файл | Строк | Что делает |
 |------|-------|------------|
 | **Python** | | |
-| `web_app.py` | ~4460 | **Весь сервер** — 90 роутов, БД, кэш, i18n, auth, backends |
+| `web_app.py` | 5921 | **Весь сервер** — 108+ роутов, БД, кэш, i18n, auth, backends |
 | `credential_store.py` | 67 | Хранилище API-ключей (Keyring / plain text) |
 | `backends/__init__.py` | 41 | BACKENDS registry, fetch_tags(), search_tags() |
 | `backends/api_raw.py` | 210 | ApiRawBackend: Rule34 + Danbooru + NHentai fetch + search |
@@ -321,7 +321,7 @@ flowchart TD
 - Все INSERT'ы в **одной транзакции** — быстро и атомарно
 - Если `media_dir` не настроен — сканирование пропускается
 
-### Файл: `test.py` (782 строки)
+### Файл: `test.py` (975 строк)
 
 Скрипт `venv/bin/python test.py` выполняет:
 1. **Синтаксические проверки** (`--check py` / `--check js` / `--check css`): компиляция Python, AST-парсинг i18n, проверка JS через node
@@ -3104,6 +3104,74 @@ if (file._gid && file._mid) {
 - CM 4-секционный грид использует класс `.hm-cm-grid` (вместо inline style)
 - Responsive breakpoints: 960px (wrap + 2-col grid), 768px (stack), 650px (1-col)
 - Account button SVG: padding 8px, размер 36×36
+
+---
+
+### 24.19 Сессия 27.06.2026 — Mobile Search Fix
+
+**Проблема:** На мобильных устройствах (≤768px) поле поиска `#csInput` на странице `/content-search` было скрыто через CSS-класс `.mobile-search-hide`, а `MobileSearch.register()` бросал `TypeError: MobileSearch.register is not a function`, блокируя весь ES-модуль.
+
+#### 24.19.1 CSS: `!important` override в content-search.css
+
+В `content-search.css` (строка 362) добавлен оверрайд — `.mobile-search-hide` принудительно показывается в контексте `.cs-search-box`:
+
+```css
+.cs-search-box .mobile-search-hide { display: block !important; }
+```
+
+Это прямое нарушение правила «никакого `!important`» (раздел 7.4), но обоснованное: `mediavault.css` (строка 258) устанавливает `.mobile-search-hide{display:none!important}` — без `!important` в content-search.css победить это невозможно. Альтернатива (для removal класса на JS) не работала из-за сломанного `MobileSearch.register()`.
+
+#### 24.19.2 JS: try-catch вокруг MobileSearch.register
+
+В `content/content-search.js` (строки 736-758):
+
+```javascript
+try {
+  MobileSearch.register('content-search', {
+    input: csInput,
+    clearBtn: document.querySelector('.cs-clear-btn'),
+    onSearch: function(query) { ... }
+  });
+} catch(e) {
+  console.warn('[content-search] MobileSearch.register failed:', e);
+}
+```
+
+Без try-catch ошибка блокирует весь ES-модуль (свойство ES-модулей — top-level ошибка каскадно отменяет весь скрипт). С try-catch модуль продолжает работу, и все остальные функции (search, pagination, source sync) остаются работоспособными.
+
+**Root cause неизвестен:** `typeof MobileSearch.register === 'function'` возвращает `true`, но вызов падает с `TypeError: MobileSearch.register is not a function`. Возможно, связано с тем, что ES-модуль импортируется до того, как IIFE-скрипт `MobileSearch` успел зарегистрироваться. Но `content/main.js` (тоже ES-модуль) не использует `MobileSearch.register` — только content-search.js, который загружается позже.
+
+#### 24.19.3 Fallback AI toggle в HTML
+
+В `content-search.html` добавлен inline fallback AI-переключатель, который активируется при ошибке JS-модуля:
+
+```html
+<label class="cs-ai-toggle mv-drawer-toggle" style="display:none;">
+  <span class="cs-ai-inner">
+    <input type="checkbox" id="origAi" ...>
+    <span data-i18n="aiFilter">AI Filter</span>
+  </span>
+</label>
+```
+
+Стиль `display:none` снимается, когда JS-модуль не смог добавить AI-переключатель в mobile drawer. Этот fallback также диспатчит `change` на `origAi`, чтобы триггерить поиск.
+
+**Mobile drawer AI toggle:** классы `.cs-ai-toggle.mv-drawer-toggle` сохранены (не `.mv-drawer-cb`) — это важно для CSS-селекторов drawer.
+
+#### 24.19.4 Key files
+
+| Файл | Изменения |
+|------|-----------|
+| `static/css/content-search.css` | `.cs-search-box .mobile-search-hide { display: block !important; }` |
+| `static/content/content-search.js` | try-catch вокруг `MobileSearch.register`, drawer toggle class fix |
+| `templates/content-search.html` | Fallback AI toggle с `display:none` + dispatchEvent('change') |
+
+#### 24.19.5 Known Issue
+
+`MobileSearch.register()` бросает TypeError на странице content-search. Root cause не найден. **Полностью не исправлено** — работает обход через CSS `!important` override и fallback AI toggle. При попытке исправить корневую причину потребуется:
+1. Проверить порядок загрузки `MobileSearch` (IIFE в `init.js` или `base.html`) относительно `content-search.js` (ES-модуль)
+2. Проверить не конфликтует ли `MobileSearch` с другим глобальным скриптом
+3. Возможно, баг в самом `MobileSearch.register` при повторном вызове/переопределении
 
 ---
 

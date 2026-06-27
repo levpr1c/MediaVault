@@ -323,6 +323,7 @@ LOCALE = {
         'contentSearchBtn': 'Search',
         'contentSearchNoResults': 'No results found',
         'contentSearchError': 'Search failed',
+        'contentSearchSource': 'Source',
         'contentSearchSelectSource': 'Select at least one source',
         'contentSearchAiFilter': 'Hide AI',
         'contentSearchStorageEmpty': 'Storage appears empty — your drive may not be mounted',
@@ -604,6 +605,7 @@ LOCALE = {
         'contentSearchBtn': 'Найти',
         'contentSearchNoResults': 'Ничего не найдено',
         'contentSearchError': 'Ошибка поиска',
+        'contentSearchSource': 'Источник',
         'contentSearchSelectSource': 'Выберите хотя бы один источник',
         'contentSearchAiFilter': 'Без AI',
         'contentSearchStorageEmpty': 'Хранилище пустое — возможно, накопитель не подключён',
@@ -3120,6 +3122,7 @@ def _relocate_or_clean(old_rel_path):
     if os.path.exists(_DB_PATH):
         try:
             db = _db_conn()
+            db.execute('DELETE FROM file_tags WHERE path = ?', [old_rel_path])
             db.execute('DELETE FROM files WHERE path = ?', [old_rel_path])
             db.commit()
             db.close()
@@ -3548,6 +3551,7 @@ def _full_scan():
 
     added = 0
     updated = 0
+    moved = 0
     deleted = 0
     errors = 0
     try:
@@ -3595,11 +3599,41 @@ def _full_scan():
             log_info('full_scan: %d to delete, %d to update, %d to insert',
                      len(paths_to_delete), len(paths_to_update), len(paths_to_insert))
 
+            # Move detection: match deleted files to inserted files by phash
+            if paths_to_delete and paths_to_insert:
+                phash_to_old = {}
+                for row in db.execute(
+                    'SELECT path, phash FROM files WHERE path IN ({})'.format(
+                        ','.join('?' * len(paths_to_delete))),
+                    list(paths_to_delete)):
+                    if row[1]:
+                        phash_to_old[row[1]] = row[0]
+
+                for rel in list(paths_to_insert):
+                    full = os.path.join(media_dir, rel)
+                    ext = os.path.splitext(rel)[1].lower()
+                    ftype = _get_file_type(ext)
+                    if ftype != 'image':
+                        continue
+                    phash = _compute_dhash(full)
+                    if phash and phash in phash_to_old:
+                        old_path = phash_to_old[phash]
+                        try:
+                            db.execute('UPDATE files SET path=? WHERE path=?', [rel, old_path])
+                            db.execute('UPDATE file_tags SET path=? WHERE path=?', [rel, old_path])
+                            paths_to_delete.discard(old_path)
+                            paths_to_insert.discard(rel)
+                            moved += 1
+                        except Exception as e:
+                            log_error('full_scan move error %s -> %s: %s', old_path, rel, e)
+                            errors += 1
+
             if paths_to_delete:
                 with _scan_progress_lock:
                     _scan_progress['current_folder'] = 'Removing deleted files...'
                 for path in paths_to_delete:
                     try:
+                        db.execute('DELETE FROM file_tags WHERE path = ?', [path])
                         db.execute('DELETE FROM files WHERE path = ?', [path])
                         deleted += 1
                     except Exception as e:
@@ -3617,7 +3651,14 @@ def _full_scan():
                         ext = os.path.splitext(rel)[1].lower()
                         auto_tags = _get_auto_tags(full)
                         auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
-                        merged = ','.join(sorted(auto_set)) if auto_set else ''
+                        existing_row = db.execute('SELECT tags FROM files WHERE path = ?', [rel]).fetchone()
+                        if existing_row and existing_row[0]:
+                            existing_tags = existing_row[0]
+                            existing_set = set(t.strip() for t in existing_tags.split(',') if t.strip())
+                            existing_set.update(auto_set)
+                            merged = ','.join(sorted(existing_set)) if existing_set else ''
+                        else:
+                            merged = ','.join(sorted(auto_set)) if auto_set else ''
                         ftype = _get_file_type(ext)
                         size = os.path.getsize(full)
                         mtime = int(os.path.getmtime(full))
@@ -3669,8 +3710,8 @@ def _full_scan():
             db.commit()
             db.close()
 
-        log_info_green('full_scan done: +%d added, %d updated, %d deleted, %d errors (total %d on disk)',
-                       added, updated, deleted, errors, total_files)
+        log_info_green('full_scan done: +%d added, %d updated, %d moved, %d deleted, %d errors (total %d on disk)',
+                       added, updated, moved, deleted, errors, total_files)
         with _scan_progress_lock:
             _scan_progress['status'] = 'done'
     except Exception as e:
@@ -5213,6 +5254,7 @@ def api_deduplicate():
             else:
                 seen[key] = (path, tags)
         for p in remove:
+            db.execute('DELETE FROM file_tags WHERE path = ?', [p])
             db.execute('DELETE FROM files WHERE path = ?', [p])
         db.commit()
         db.close()
@@ -5358,6 +5400,7 @@ def api_remove_duplicates():
                     os.remove(full)
             except OSError as e:
                 log_warning('remove-duplicates: could not delete file %s: %s', p, e)
+            db.execute('DELETE FROM file_tags WHERE path = ?', [p])
             db.execute('DELETE FROM files WHERE path = ?', [p])
             deleted += 1
         db.commit()

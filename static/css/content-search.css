@@ -297,11 +297,69 @@
   text-align: center;
 }
 
+/* ─── Drawer AI filter toggle (keep toggle visual, not checkbox) ─── */
+.mv-drawer-toggle.cs-ai-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  transition: background .15s;
+}
+.mv-drawer-toggle.cs-ai-toggle:hover {
+  background: var(--surface2);
+}
+.mv-drawer-toggle.cs-ai-toggle input { display: none; }
+.mv-drawer-toggle.cs-ai-toggle .cs-ai-toggle-track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--muted);
+  transition: background .15s, border-color .15s;
+  flex-shrink: 0;
+}
+.mv-drawer-toggle.cs-ai-toggle input:checked ~ .cs-ai-toggle-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.mv-drawer-toggle.cs-ai-toggle .cs-ai-toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .15s;
+}
+.mv-drawer-toggle.cs-ai-toggle input:checked ~ .cs-ai-toggle-track::after {
+  transform: translateX(16px);
+}
+.mv-drawer-toggle.cs-ai-toggle .cs-ai-toggle-lbl {
+  font-size: 12px;
+  color: var(--text2);
+  font-weight: 500;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .cs-sources { display: none; }
   .cs-grid.shared-grid { --shared-grid-col-width: calc(50% - 6px); }
-  .cs-grid.shared-grid .file-card-thumb img { height: auto; }
+  .cs-grid.shared-grid .file-card-thumb {
+    height: 160px;
+  }
+  .cs-grid.shared-grid .file-card-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .cs-search-box .mobile-search-hide { display: block !important; }
   .cs-bottom-bar { gap: 6px; }
   .cs-pagination-bar .page-prev-next span { display: none; }
   .cs-pagination-bar .page-prev-next { padding: 4px 8px; min-height: 28px; }

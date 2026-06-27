@@ -171,8 +171,6 @@ var AdminDashboard = (function() {
         '<div style="display:flex;gap:8px;margin-top:8px;margin-bottom:16px">' +
         '<button class="action-btn" onclick="AdminDashboard._pickFolder()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span data-i18n="settingsSystemDialog">' + _t('settingsSystemDialog') + '</span></button>' +
         '<button class="action-btn action-btn-primary" onclick="AdminDashboard._scanFolder()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span data-i18n="settingsScan">' + _t('settingsScan') + '</span></button>' +
-        '<button class="action-btn" onclick="AdminDashboard._rescanFolder()" id="admRescanBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg><span>&#x21bb; Rescan</span></button>' +
-        '<button class="action-btn" onclick="AdminDashboard._fullRescan()" id="admFullRescanBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.45-4.42L21.5 8"/><path d="M20.49 15a9 9 0 0 1-13.86 4.42L2.5 16"/></svg><span>Full Rescan</span></button>' +
         '<span id="admScanStatus" style="font-size:12px;color:var(--text2);margin-left:4px"></span>' +
         '</div>' +
         '<div id="admScanProgress" class="scan-progress" style="display:none">' +
@@ -860,32 +858,6 @@ var AdminDashboard = (function() {
     });
   }
 
-  function _rescanFolder() {
-    _api('/api/scan_folder', {method:'POST'}).then(function(d) {
-      if (d.skipped === 'scan_in_progress') {
-        _toast('Scan already in progress', 'error');
-        return;
-      }
-      _toast('Rescan started', 'success');
-      _startScanProgressPoll();
-    }).catch(function(e) {
-      _toast(e.message, 'error');
-    });
-  }
-
-  function _fullRescan() {
-    _api('/api/rescan/full', {method:'POST'}).then(function(d) {
-      if (d.skipped === 'scan_in_progress') {
-        _toast('Scan already in progress', 'error');
-        return;
-      }
-      _toast('Full rescan started', 'success');
-      _startScanProgressPoll();
-    }).catch(function(e) {
-      _toast(e.message, 'error');
-    });
-  }
-
   /* ─── SCAN PROGRESS POLLING ─── */
 
   var _scanPollTimer = null;
@@ -1064,8 +1036,6 @@ var AdminDashboard = (function() {
     _saveCredBackend: _saveCredBackend,
     _pickFolder: _pickFolder,
     _scanFolder: _scanFolder,
-    _rescanFolder: _rescanFolder,
-    _fullRescan: _fullRescan,
     _checkMount: _checkMount,
     _createFolders: _createFolders,
     _saveFolderSettings: _saveFolderSettings,

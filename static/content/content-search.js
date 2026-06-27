@@ -733,35 +733,41 @@ if (qParam) {
   doSearch(qParam)
 }
 
-// Register with MobileSearch
-MobileSearch.register('content-search', {
-  onSearch: function(val) {
-    searchInput.value = val
-    if (val.trim()) doSearch(val.trim())
-  },
-  onClear: function() {
-    if (_ac) _ac.abort()
-    searchInput.value = ''
-    _allResults = []
-    _csGrid.clear()
-    grid.innerHTML = ''
-    loading.style.display = 'none'
-    bottomBar.style.display = 'none'
-    if (topBar) topBar.style.display = 'none'
-  },
-  getInitialValue: function() {
-    return searchInput.value
-  }
-})
+// Register with MobileSearch — guarded, errors here shouldn't block drawer IIFE
+try {
+  MobileSearch.register('content-search', {
+    onSearch: function(val) {
+      searchInput.value = val
+      if (val.trim()) doSearch(val.trim())
+    },
+    onClear: function() {
+      if (_ac) _ac.abort()
+      searchInput.value = ''
+      _allResults = []
+      _csGrid.clear()
+      grid.innerHTML = ''
+      loading.style.display = 'none'
+      bottomBar.style.display = 'none'
+      if (topBar) topBar.style.display = 'none'
+    },
+    getInitialValue: function() {
+      return searchInput.value
+    }
+  })
+} catch(e) {
+  console.warn('[content-search] MobileSearch.register failed:', e)
+}
 
-// Mobile drawer: populate source checkboxes
+// Mobile drawer: populate source checkboxes + AI filter toggle
 (function() {
   var drawerSources = document.getElementById('drawerSources')
   if (!drawerSources) return
+  // Label + source checkboxes
   drawerSources.innerHTML = '<span class="mv-drawer-label" data-i18n="contentSearchSource">Source</span>'
+  var sourceLabels = document.querySelectorAll('.cs-source')
   sourceCbs.forEach(function(cb, i) {
-    var label = document.querySelectorAll('.cs-source')[i]
-    if (!label) return
+    if (i >= sourceLabels.length) return
+    var label = sourceLabels[i]
     var text = label.querySelector('.cs-source-lbl')
     var clone = document.createElement('label')
     clone.className = 'mv-drawer-cb'
@@ -773,6 +779,34 @@ MobileSearch.register('content-search', {
       var q = searchInput.value.trim()
       if (q) doSearch(q)
     })
+    // Sync desktop → drawer
+    cb.addEventListener('change', function() {
+      var di = clone.querySelector('input')
+      if (di) di.checked = this.checked
+    })
     drawerSources.appendChild(clone)
   })
+  // AI filter toggle — keep toggle visual in drawer
+  var aiToggle = document.querySelector('.cs-ai-toggle')
+  if (aiToggle) {
+    var aiClone = aiToggle.cloneNode(true)
+    aiClone.className = 'cs-ai-toggle mv-drawer-toggle'
+    var drawerInput = aiClone.querySelector('input')
+    drawerInput.removeAttribute('id')
+    var origAi = document.getElementById('csAiFilter')
+    if (origAi) drawerInput.checked = origAi.checked
+    drawerInput.addEventListener('change', function() {
+      if (origAi) origAi.checked = this.checked
+      var q = searchInput.value.trim()
+      if (q) {
+        if (typeof doSearch === 'function') doSearch(q)
+      }
+    })
+    if (origAi) {
+      origAi.addEventListener('change', function() {
+        drawerInput.checked = this.checked
+      })
+    }
+    drawerSources.appendChild(aiClone)
+  }
 })()

@@ -623,7 +623,11 @@ var Lightbox = (function() {
     var LB_PANEL_W = this._tagPanel ? 300 : 0;
     if (ih > iw * 1.2) {
       boxH = maxH;
-      boxW = Math.min(boxH * 4 / 3, maxW);
+      if (ih > iw * 2) {
+        boxW = Math.min(boxH * 4 / 3, maxW);
+      } else {
+        boxW = Math.min(boxH * (iw / ih), maxW);
+      }
     } else {
       boxH = maxH;
       var mediaW = boxH * (iw / ih);

@@ -353,6 +353,7 @@ var _i18nData = {
     contentSearchNoResults: "No results found",
     contentSearchError: "Search failed",
 
+    contentSearchSource: "Source",
     contentSearchSelectSource: "Select at least one source",
     contentSearchAiFilter: "Hide AI",
     contentSearchStorageEmpty: "Storage appears empty — your drive may not be mounted",
@@ -665,6 +666,7 @@ var _i18nData = {
     contentSearchBtn: "Найти",
     contentSearchNoResults: "Ничего не найдено",
     contentSearchError: "Ошибка поиска",
+    contentSearchSource: "Источник",
     contentSearchSelectSource: "Выберите хотя бы один источник",
     contentSearchAiFilter: "Без AI",
     contentSearchStorageEmpty: "Хранилище пустое — возможно, накопитель не подключён",

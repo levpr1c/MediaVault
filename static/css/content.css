@@ -696,6 +696,7 @@ body { overflow: hidden; }
   flex: 1; min-height: 0; overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, 200px);
+  grid-auto-rows: minmax(267px, auto);
   gap: 8px;
   align-content: start;
   justify-content: center;

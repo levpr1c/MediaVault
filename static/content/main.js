@@ -48,7 +48,6 @@ function registerMobileSection(name) {
       onClear: function() { onFileSearch('') },
       getInitialValue: function() { return '' }
     })
-    document.getElementById('cmFilesSearch')?.classList.add('mobile-search-hide')
   } else if (name === 'comicsTags') {
     MobileSearch.register('cm-comics-tags', {
       onSearch: function(val) {

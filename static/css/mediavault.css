@@ -326,6 +326,7 @@ aside{width:260px;flex-shrink:0;min-width:0;background:var(--surface);border-rig
 .mv-tab{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text2);transition:all var(--transition);user-select:none;border:1px solid transparent;background:transparent;font-family:var(--font-btn);border-radius:8px;line-height:1;letter-spacing:.3px;text-transform:uppercase;text-decoration:none}
 .mv-tab:hover{color:var(--text);background:var(--surface2)}
 .mv-tab.active{color:var(--accent);background:var(--surface2);border-color:var(--accent)}
+.hdr-tabs .action-btn { border: none; }
 
 /* ─── СТРАНИЦЫ MEDIAVAULT ─── */
 .mv-page{display:none}

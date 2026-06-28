@@ -31,13 +31,13 @@ A Flask SPA (`src/web_app.py`, 5921 строк, 108+ роутов, 59 `@admin_re
 
 **Quick scan**: `_quick_scan(force=False)` uses threading.Lock with blocking=False, ensures lock release in finally. Background scans: `threading.Thread(target=_quick_scan, daemon=True).start()`.
 
-**Background downloads**: `_download_tasks` dict + Lock. `_start_background_task(type, fn, *args)` → daemon thread. `GET /api/content-search/task/<task_id>` polling. `POST .../download-async` single-download, `.../download-manga-async` NHentai (ThreadPoolExecutor 4 workers). `overwrite=True` deletes files before re-download.
+**Background downloads**: `_download_tasks` dict + Lock. `_start_background_task(type, fn, *args)` → daemon thread. `GET /api/content-mgmt/search/task/<task_id>` polling. `POST .../download-async` single-download, `.../download-manga-async` NHentai (ThreadPoolExecutor 4 workers). `overwrite=True` deletes files before re-download.
 
 **Tags**: NHentai v1.2.0 tags map v2 API types: tag→general, artist→artist, character→character, parody→copyright, group→general, language→meta, category→general. Stored in `tag_category_members` (global) and `comics.tags` (CSV per comic). `file_tags` for MV gallery per-page. `comic_tags` table unused (removed as redundant).
 
 **Function `_has_users_cached`**: In-memory flag reset on add/remove user.
 
-## v1.3 Features (current)
+## v1.3 Features
 
 ### Design System
 - Standardized `.action-btn` CSS (rounded 8px, inline-flex, SVG+text, hover/active/danger states) applied to admin, settings, headers
@@ -120,11 +120,52 @@ A Flask SPA (`src/web_app.py`, 5921 строк, 108+ роутов, 59 `@admin_re
 - Synced with JS `_i18nData` in `static/shared/utils.js`
 
 ### Known Issues
-- `AdminDashboard.load()` update needed at `admin.js:1013` — selector must include `.admin-header a[data-section]`
 - Settings page: `SettingsApp.switchTab()` in `settings.html` — JS works with `.settings-tab-btn` class
 - Key `popularTags` used in HTML but not in LOCALE dict (DB-generated)
 - Duplicate values: `navAdmin`/`userRoleAdmin` → "Admin", `cmSectionTags`/`tags` → "TAGS", `contentSearchBtn`/`navSearch` → "Search" — pre-existing
 - `MobileSearch.register()` throws "is not a function" on content-search page (root cause unknown, mitigated by try-catch + CSS `!important` override)
+
+## v1.4 Features (current)
+
+### Route Migration
+- `/content-search` → `/content-mgmt/search` (old `/nhentai-search` and `/franchise-search` redirect to new route)
+- `/api/content-search/*` → `/api/content-mgmt/search/*` (download, download-manga, download-async, download-manga-async, task, mount-check, create-folders, nhentai-gallery)
+- Template `content-search.html` still used, served from new route
+
+### Content-Search Mobile
+- Source selection checkboxes (R34/Dan/NH/EH) render in mobile drawer, bidirectional sync with desktop sources
+- 2-per-row grid layout on mobile (`content-search.css`)
+- AI filter fallback toggle in HTML, dispatches `change` event when JS module fails
+
+### Popular Tags
+- Relocated from inside gallery template to header group after Comics
+- Mobile icon added for drawer access
+
+### ComicsPicker Redesign
+- Modal layout changed to rectangular sidebar layout (replaced wide square modal)
+- Source filter tabs: All / Gallery / Downloads / Comics
+- Taller default height with internal scroll
+- Preview panel hidden by default, toggle to show
+- `removeAllFiles` segment removed from UI
+- Manage buttons section in explicit vertical column
+
+### Full Scan Route
+- New `POST /api/rescan/full` route with `_full_scan()` server function
+- Complete re-scan of media directory with phash-based tag preservation
+
+### Header & i18n Cleanup
+- CM header locale keys added for all 4 dropdown toggles and 8 sub-links
+- Admin nav: `focus-visible` uses `box-shadow` instead of `outline`
+- Settings page: tab buttons converted from `<button>` to `<a>` with `.admin-header` wrapper
+- Tags-manage: search field moved from inline to CM header
+- Sidebar: Manage buttons section in explicit column
+
+### Lightbox Null Guard
+- `Lightbox.close()` checks `this._el('Media')` before `querySelector('video')` (prevents TypeError when closing before open)
+- `csLightbox.close()` wrapped in try-catch in content-search module
+
+### Known Issues (updated)
+- `AdminDashboard.load()` selector issue fixed (selector already includes `.admin-header a[data-section]`) — removed from known issues
 
 ## Development commands
 

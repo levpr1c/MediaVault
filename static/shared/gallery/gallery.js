@@ -304,6 +304,7 @@ var MediaVaultGallery = (function() {
   // Полная отрисовка содержимого галереи: элементы, пагинация, теги
   function renderGalleryContent() {
     var gallery = document.getElementById('gallery');
+    if (!gallery) return;
     if (_observer) { _observer.disconnect(); _observer = null; }
     stopPreview();
     _hoverEl = null;

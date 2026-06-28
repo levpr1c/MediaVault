@@ -190,27 +190,6 @@
 .cs-top-page-size .cs-page-size-btn:hover { background: var(--surface2); color: var(--text); }
 .cs-top-page-size .cs-page-size-btn.active { background: var(--accent); color: #fff; }
 
-/* ─── Bottom bar (pagination + page size) ─── */
-.cs-bottom-bar {
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 8px 0;
-}
-.cs-page-size-selector {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.cs-page-size-label {
-  font-size: 12px;
-  color: var(--text2);
-  font-weight: 600;
-  margin-right: 2px;
-  font-family: var(--font-btn);
-}
 .cs-page-size-btn {
   display: inline-flex;
   align-items: center;
@@ -247,6 +226,9 @@
 }
 #csPaginationTop {
   margin-bottom: 8px;
+}
+.cs-pagination-bar-bottom {
+  margin-top: 12px;
 }
 
 /* Skeleton loading */
@@ -360,7 +342,6 @@
     object-fit: cover;
   }
   .cs-search-box .mobile-search-hide { display: block !important; }
-  .cs-bottom-bar { gap: 6px; }
   .cs-pagination-bar .page-prev-next span { display: none; }
   .cs-pagination-bar .page-prev-next { padding: 4px 8px; min-height: 28px; }
 }

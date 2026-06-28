@@ -486,6 +486,8 @@ LOCALE = {
         'autoScrollOn': 'Auto-scroll enabled',
         'autoScrollOff': 'Auto-scroll disabled',
         'findOriginalsError': 'Failed to find originals',
+        'fullRescan': 'Full Rescan',
+        'fullRescanDesc': 'Rescan entire media directory preserving existing tags',
     },
     'ru': {
         'adminSettings': 'Администрирование и настройки',
@@ -767,6 +769,8 @@ LOCALE = {
         'autoScrollOn': 'Автоскролл включён',
         'autoScrollOff': 'Автоскролл выключен',
         'findOriginalsError': 'Ошибка поиска оригиналов',
+        'fullRescan': 'Полное сканирование',
+        'fullRescanDesc': 'Пересканировать всю медиа-папку с сохранением существующих тегов',
     },
 }
 
@@ -1903,7 +1907,7 @@ def content_mgmt_comics_edit():
 @admin_required
 def nhentai_search_page():
     """Redirect to new content search with NHentai tab."""
-    return redirect('/content-search?site=nhentai')
+    return redirect('/content-mgmt/search?site=nhentai')
 
 @app.route('/content-mgmt/comics-tags')
 @admin_required
@@ -1912,14 +1916,14 @@ def comics_tags_page():
     s = load_settings()
     return render_template('content-mgmt/tags.html', page='content-mgmt/comics-tags', s=s)
 
-@app.route('/content-search')
+@app.route('/content-mgmt/search')
 @admin_required
 def content_search_page():
     """New unified search page (R34, Danbooru, NHentai)."""
     s = load_settings()
     return render_template('content-search.html', page='content-search', s=s)
 
-@app.route('/api/content-search')
+@app.route('/api/content-mgmt/search')
 @admin_required
 @api_error_handler
 def api_content_search():
@@ -2032,7 +2036,7 @@ def api_content_search():
         resp['nhentai_warning'] = True
     return jsonify(resp)
 
-@app.route('/api/content-search/nhentai-gallery')
+@app.route('/api/content-mgmt/search/nhentai-gallery')
 @admin_required
 @api_error_handler
 def api_content_search_nhentai_gallery():
@@ -2054,7 +2058,7 @@ def api_content_search_nhentai_gallery():
         return jsonify({'error': 'gallery not found'}), 404
     return jsonify(meta)
 
-@app.route('/api/content-search/download', methods=['GET', 'POST'])
+@app.route('/api/content-mgmt/search/download', methods=['GET', 'POST'])
 @auth_required
 @api_error_handler
 def api_content_search_download():
@@ -2176,7 +2180,7 @@ def api_content_search_download():
 
     return jsonify({'path': target_path, 'exists': not was_downloaded, 'tags_saved': bool(tags_str)})
 
-@app.route('/api/content-search/check-manga-dir')
+@app.route('/api/content-mgmt/search/check-manga-dir')
 @auth_required
 @api_error_handler
 def api_content_search_check_manga_dir():
@@ -2215,7 +2219,7 @@ def api_content_search_check_manga_dir():
         'comics': existing_comics
     })
 
-@app.route('/api/content-search/download-manga', methods=['POST'])
+@app.route('/api/content-mgmt/search/download-manga', methods=['POST'])
 @auth_required
 @api_error_handler
 def api_content_search_download_manga():
@@ -2732,7 +2736,7 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
 
     return {'ok': True, 'count': count, 'errors': errors, 'dir': target_dir, 'comics_id': comics_id}
 
-@app.route('/api/content-search/download-async', methods=['POST'])
+@app.route('/api/content-mgmt/search/download-async', methods=['POST'])
 @auth_required
 @api_error_handler
 def api_content_search_download_async():
@@ -2750,7 +2754,7 @@ def api_content_search_download_async():
     task_id = _start_background_task('single', _bg_download_file, url, source, tags_str, tags_by_category)
     return jsonify({'task_id': task_id})
 
-@app.route('/api/content-search/download-manga-async', methods=['POST'])
+@app.route('/api/content-mgmt/search/download-manga-async', methods=['POST'])
 @auth_required
 @api_error_handler
 def api_content_search_download_manga_async():
@@ -2770,7 +2774,7 @@ def api_content_search_download_manga_async():
     task_id = _start_background_task('manga', _bg_download_manga, gid, media_id, num_pages, title, tags_str, overwrite)
     return jsonify({'task_id': task_id})
 
-@app.route('/api/content-search/task/<task_id>')
+@app.route('/api/content-mgmt/search/task/<task_id>')
 @auth_required
 @api_error_handler
 def api_content_search_task_status(task_id):
@@ -2786,7 +2790,7 @@ def api_content_search_task_status(task_id):
             'result': t.get('result_data')
         })
 
-@app.route('/api/content-search/mount-check')
+@app.route('/api/content-mgmt/search/mount-check')
 @auth_required
 @api_error_handler
 def api_content_search_mount_check():
@@ -2805,7 +2809,7 @@ def api_content_search_mount_check():
     except Exception as e:
         return jsonify({'mounted': False, 'empty': True, 'message': str(e)})
 
-@app.route('/api/content-search/create-folders', methods=['POST'])
+@app.route('/api/content-mgmt/search/create-folders', methods=['POST'])
 @admin_required
 @api_error_handler
 def api_content_search_create_folders():

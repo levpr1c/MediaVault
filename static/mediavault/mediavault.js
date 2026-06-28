@@ -27,16 +27,19 @@ var MediaVault = (function() {
 
     // Desktop search input
     var searchDebounce = null;
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-      MediaVaultGallery.onSearchInput(e.target.value);
-      MobileSearch.setValue(e.target.value);
-      clearTimeout(searchDebounce);
-      searchDebounce = setTimeout(function() {
-        if (e.target.value === document.getElementById('searchInput').value) {
-          MediaVaultGallery.applyFilter();
-        }
-      }, 150);
-    });
+    var searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', function(e) {
+        MediaVaultGallery.onSearchInput(e.target.value);
+        MobileSearch.setValue(e.target.value);
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(function() {
+          if (e.target.value === document.getElementById('searchInput').value) {
+            MediaVaultGallery.applyFilter();
+          }
+        }, 150);
+      });
+    }
 
     // Mobile search: register with shared module
     MobileSearch.register('gallery', {

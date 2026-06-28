@@ -6,6 +6,10 @@
   display: block;
   animation: fadeUp .3s ease;
 }
+.settings-tab-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
 
 /* Card title with icon */
 .settings-content .admin-card-title {

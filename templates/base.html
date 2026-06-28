@@ -6,15 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}MEDIAVAULT{% endblock %}</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.ico">
-<link rel="preload" as="font" type="font/woff2" href="/static/fonts/Unbounded-latin.woff2" crossorigin>
-<link rel="preload" as="font" type="font/woff2" href="/static/fonts/Unbounded-cyrillic.woff2" crossorigin>
-<link rel="preload" as="font" type="font/woff2" href="/static/fonts/Unbounded-cyrillic-ext.woff2" crossorigin>
-<link rel="preload" as="font" type="font/woff2" href="/static/fonts/ibmplexsans-latin.woff2" crossorigin>
-<link rel="preload" as="font" type="font/woff2" href="/static/fonts/ibmplexsans-cyrillic.woff2" crossorigin>
-<link rel="preload" as="font" type="font/woff2" href="/static/fonts/ibmplexsans-cyrillic-ext.woff2" crossorigin>
 <link rel="stylesheet" href="/static/css/shared.css?v=10">
 <link rel="stylesheet" href="/static/css/shared-grid.css?v=10">
-{% if request.path.startswith('/content-mgmt/') or request.path == '/content-search' %}
+{% if request.path.startswith('/content-mgmt/') or request.path == '/content-mgmt/search' %}
 <link rel="stylesheet" href="/static/css/content.css?v=10">
 {% endif %}
 {% block head_extra %}{% endblock %}
@@ -43,9 +37,9 @@ var CONFIG = {
 {% if page and page != 'home' %}
 <div id="appHeader">
   <div class="hdr-desktop">
-    <h1 class="mv-mh-brand">{% block hdr_brand %}{% if request.path.startswith('/content-mgmt/') or request.path == '/content-search' %}<span class="hdr-brand-long">CONTENT-MGMT</span><span class="hdr-brand-short">C-MGMT</span>{% else %}MEDIAVAULT{% endif %}{% endblock %}</h1>
+    <h1 class="mv-mh-brand">{% block hdr_brand %}{% if request.path.startswith('/content-mgmt/') or request.path == '/content-mgmt/search' %}<span class="hdr-brand-long">CONTENT-MGMT</span><span class="hdr-brand-short">C-MGMT</span>{% else %}MEDIAVAULT{% endif %}{% endblock %}</h1>
     <nav class="hdr-tabs">{% block hdr_tabs %}
-{% if request.path.startswith('/content-mgmt/') or request.path == '/content-search' %}
+{% if request.path.startswith('/content-mgmt/') or request.path == '/content-mgmt/search' %}
       <div class="cm-hdr-left">
         <div class="cm-hdr-tf" id="cmHdrTf">
           <button class="cm-hdr-tf-btn{% if 'manual' in request.path or 'auto' in request.path %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrTf')" data-i18n="cmSectionTagfetch">
@@ -99,16 +93,16 @@ var CONFIG = {
         </div>
         <span class="cm-hdr-sep"></span>
         <div class="cm-hdr-tf" id="cmHdrSearch">
-          <button class="cm-hdr-tf-btn{% if request.path == '/content-search' %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrSearch')" data-i18n="cmSectionSearch">
+          <button class="cm-hdr-tf-btn{% if request.path == '/content-mgmt/search' %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrSearch')" data-i18n="cmSectionSearch">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <span data-i18n="cmSectionSearch">SEARCH</span>
           </button>
           <div class="cm-hdr-tf-items">
-            <a href="/content-search" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
+            <a href="/content-mgmt/search" class="cm-hdr-tf-item{% if request.path == '/content-mgmt/search' %} active{% endif %}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
               <span data-i18n="navImages">Images</span>
             </a>
-            <a href="/content-search?site=nhentai" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
+            <a href="/content-mgmt/search?site=nhentai" class="cm-hdr-tf-item{% if request.path == '/content-mgmt/search' %} active{% endif %}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
               <span data-i18n="cmSectionComics">COMICS</span>
             </a>
@@ -126,7 +120,7 @@ var CONFIG = {
 <div class="hdr-group-sep"></div>
 <div class="hdr-group">
   <span class="hdr-group-label" data-i18n="navSearch">Search</span>
-  <a href="/content-search" class="hdr-link{% if request.path == '/content-search' %} active{% endif %}" data-i18n="contentSearch">Search</a>
+  <a href="/content-mgmt/search" class="hdr-link{% if request.path == '/content-mgmt/search' %} active{% endif %}" data-i18n="contentSearch">Search</a>
 </div>
 <div class="hdr-group-sep"></div>
 <div class="hdr-group">
@@ -149,8 +143,8 @@ var CONFIG = {
 <div class="hdr-group-sep"></div>
 <div class="hdr-group">
   <span class="hdr-group-label">SEARCH</span>
-  <a href="/content-search" class="hdr-link{% if request.path == '/content-search' %} active{% endif %}" data-i18n="searchFiles">File Search</a>
-  <a href="/content-search?site=nhentai" class="hdr-link{% if request.path == '/content-search' %} active{% endif %}" data-i18n="searchComics">Comics Search</a>
+  <a href="/content-mgmt/search" class="hdr-link{% if request.path == '/content-mgmt/search' %} active{% endif %}" data-i18n="searchFiles">File Search</a>
+  <a href="/content-mgmt/search?site=nhentai" class="hdr-link{% if request.path == '/content-mgmt/search' %} active{% endif %}" data-i18n="searchComics">Comics Search</a>
 </div>
 <div class="hdr-group-sep"></div>
 <div class="hdr-group">
@@ -173,7 +167,7 @@ var CONFIG = {
     <div class="mv-mh-row1">
       <span class="mv-mh-brand">{{ self.hdr_brand() }}</span>
       <nav class="hdr-nav">{% block hdr_nav %}
-{% if not request.path.startswith('/content-mgmt/') and request.path != '/content-search' %}
+{% if not request.path.startswith('/content-mgmt/') and request.path != '/content-mgmt/search' %}
         <a href="/mediavault/gallery" class="mv-mh-icon" title="Gallery">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
         </a>
@@ -230,15 +224,15 @@ var CONFIG = {
           </div>
         </div>
         <div class="cm-hdr-tf" id="cmHdrSearchMob">
-          <button class="cm-hdr-tf-btn{% if request.path == '/content-search' %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrSearchMob')" title="Search">
+          <button class="cm-hdr-tf-btn{% if request.path == '/content-mgmt/search' %} active{% endif %}" onclick="CMHeader.toggle(event, 'cmHdrSearchMob')" title="Search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </button>
           <div class="cm-hdr-tf-items">
-            <a href="/content-search" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
+            <a href="/content-mgmt/search" class="cm-hdr-tf-item{% if request.path == '/content-mgmt/search' %} active{% endif %}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
               <span>Images</span>
             </a>
-            <a href="/content-search?site=nhentai" class="cm-hdr-tf-item{% if request.path == '/content-search' %} active{% endif %}">
+            <a href="/content-mgmt/search?site=nhentai" class="cm-hdr-tf-item{% if request.path == '/content-mgmt/search' %} active{% endif %}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
               <span>Comics</span>
             </a>
@@ -322,7 +316,7 @@ var CONFIG = {
 <script src="/static/mediavault/db.js"></script>
 <script src="/static/mediavault/mediavault.js"></script>
 <script src="/static/shared/init.js"></script>
-{% if request.path.startswith('/content-mgmt/') or request.path == '/content-search' %}
+{% if request.path.startswith('/content-mgmt/') or request.path == '/content-mgmt/search' %}
 <script>
 var CMHeader = (function() {
   function toggle(e, id) {

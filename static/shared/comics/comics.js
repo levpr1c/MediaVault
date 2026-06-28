@@ -174,18 +174,7 @@ var ComicsPicker = (function() {
     var container = document.getElementById('cpageGrid');
     var scrollTop = container.scrollTop;
     var items = _filteredList.slice(0, _loadedCount);
-    var q = document.getElementById('cpageSearch').value.trim();
-    var html = '';
-    if (!q) {
-      var parts = _currentDir ? _currentDir.split('/') : [];
-      _dirEntryCache.forEach(function(d) {
-        var fullPath = parts.length > 0 ? parts.join('/') + '/' + d : d;
-        html += '<div class="cpage-dir-item" onclick="ComicsPicker.navigateToDir(\'' + _escHtml(fullPath) + '\')">' +
-          '<svg class="cpage-dir-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>' +
-          '<span class="cpage-dir-name">' + _escHtml(d) + '</span></div>';
-      });
-    }
-    html += items.map(function(f) { return _itemHtml(f); }).join('');
+    var html = items.map(function(f) { return _itemHtml(f); }).join('');
     container.innerHTML = html;
     container.scrollTop = scrollTop;
     var openViewerBtn = document.getElementById('openViewerBtn');
@@ -276,18 +265,6 @@ var ComicsPicker = (function() {
     return { dirs: Object.keys(dirMap).sort(), files: fileList };
   }
 
-  function _collectAllDirs() {
-    var data = _getFilteredGalleryData();
-    var allDirs = {};
-    data.forEach(function(f) {
-      var parts = f.path.split('/');
-      for (var i = 0; i < parts.length - 1; i++) {
-        allDirs[parts.slice(0, i + 1).join('/')] = true;
-      }
-    });
-    return Object.keys(allDirs).sort();
-  }
-
   function _renderFolderBar() {
     var bar = document.getElementById('cpageFolderBar');
     if (!bar) return;
@@ -304,10 +281,6 @@ var ComicsPicker = (function() {
       html += '<span class="cpage-folder-sep">/</span>';
       html += '<span class="cpage-folder-seg" onclick="ComicsPicker.navigateToDir(\'' + _escHtml(cum) + '\')">' + _escHtml(p) + '</span>';
     });
-    html += '<span style="flex:1;min-width:4px"></span>';
-    html += '<button class="cpage-folder-dropdown-btn" id="cpageFolderDropdownBtn" onclick="ComicsPicker.openFolderPicker()" title="' + Shared.t('allFiles') + '">' +
-      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>' +
-      '</button>';
     bar.innerHTML = html;
   }
 
@@ -328,45 +301,6 @@ var ComicsPicker = (function() {
     var parts = _currentDir.split('/');
     parts.pop();
     navigateToDir(parts.join('/'));
-  }
-
-  function openFolderPicker() {
-    var existing = document.getElementById('cpageFolderDropdown');
-    if (existing) {
-      existing.classList.toggle('open');
-      return;
-    }
-    var btn = document.getElementById('cpageFolderDropdownBtn');
-    if (!btn) return;
-    var allDirs = _collectAllDirs();
-    var dropdown = document.createElement('div');
-    dropdown.id = 'cpageFolderDropdown';
-    dropdown.className = 'cpage-folder-dropdown';
-    dropdown.style.position = 'absolute';
-    var rect = btn.getBoundingClientRect();
-    dropdown.style.top = rect.bottom + 4 + 'px';
-    dropdown.style.right = (window.innerWidth - rect.right) + 'px';
-    dropdown.style.left = 'auto';
-    allDirs.forEach(function(d) {
-      var item = document.createElement('div');
-      item.className = 'cpage-folder-dropdown-item';
-      item.textContent = d;
-      item.addEventListener('click', function() {
-        navigateToDir(d);
-        dropdown.classList.remove('open');
-      });
-      dropdown.appendChild(item);
-    });
-    dropdown.classList.add('open');
-    document.body.appendChild(dropdown);
-    var closeHandler = function(e) {
-      if (!dropdown.contains(e.target) && e.target !== btn) {
-        dropdown.classList.remove('open');
-        setTimeout(function() { document.body.removeChild(dropdown); }, 200);
-        document.removeEventListener('click', closeHandler);
-      }
-    };
-    setTimeout(function() { document.addEventListener('click', closeHandler); }, 0);
   }
 
   function toggleDateSort() {
@@ -612,7 +546,6 @@ var ComicsPicker = (function() {
     setCoverFromPreview: setCoverFromPreview,
     navigateToDir: navigateToDir,
     navigateUp: navigateUp,
-    openFolderPicker: openFolderPicker,
     setSource: setSource
   };
 })();

@@ -1,4 +1,4 @@
-import { _t, api, esc, isImageExt, isVideoExt, toast, hexToRgba, debounce } from '../utils.js'
+import { _t, api, esc, isImageExt, isVideoExt, toast, hexToRgba } from '../utils.js'
 import { buildLeftPanelHtml, renderLeftTags, setupDragEvents } from '../../shared/grid-renderer.js'
 
 function _modal(html) {
@@ -34,8 +34,6 @@ function _showFilesWithoutTags() {
     _untaggedFiles = [];
     _filterFiles();
     _currentPage = 1;
-    var searchInput = document.getElementById('cmFilesSearch');
-    if (searchInput) searchInput.value = _searchQ;
     _renderGallery();
     var count = document.getElementById('cmFilesCount');
     if (count) count.textContent = '' + _filteredFiles.length;
@@ -60,8 +58,6 @@ function _showFilesWithoutTags() {
     _untaggedMode = true;
     _currentPage = 1;
     _searchQ = '';
-    var searchInput = document.getElementById('cmFilesSearch');
-    if (searchInput) searchInput.value = '';
     _filterFiles();
     var count = document.getElementById('cmFilesCount');
     if (count) count.textContent = '' + _filteredFiles.length;
@@ -193,9 +189,9 @@ function _buildToolbar() {
   const pages = [0, 30, 60, 90]
   const pageLabels = { 0: _t('tfFilterAll'), 30: '30', 60: '60', 90: '90' }
 
-  return `<div class="cm-files-toolbar shared-toolbar">` +
+  // Desktop: full inline toolbar (also shown on mobile — no separate mobile dropdown)
+  return `<div class="cm-files-toolbar-desktop cm-files-toolbar shared-toolbar">` +
     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text2)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>` +
-    `<input id="cmFilesSearch" class="cm-files-toolbar-search" placeholder="${_t('searchFiles')}...">` +
     `<span class="cm-files-count" id="cmFilesCount">${_filteredFiles.length}</span>` +
     `<span class="cm-files-tb-sep"></span>` +
     `<button class="cm-files-tb-action" id="cmSortBtn" data-action="toggle-sort" title="${sortLabels[_sortMode]}">` +
@@ -204,9 +200,9 @@ function _buildToolbar() {
     `<span class="cm-files-tb-label" id="cmSortLabel">${sortLabels[_sortMode]}</span>` +
     pages.map(s => `<button class="cm-files-tb-action${_pageSize === s ? ' active' : ''}" data-action="pagesize" data-size="${s}">${pageLabels[s]}</button>`).join('') +
     `<span class="cm-files-tb-sep"></span>` +
-    `<button class="cm-files-tb-action thumb-size ${_thumbSize === 140 ? 'active' : ''}" data-action="thumbsize" data-size="140" title="S">S</button>` +
-    `<button class="cm-files-tb-action thumb-size ${_thumbSize === 180 ? 'active' : ''}" data-action="thumbsize" data-size="180" title="M">M</button>` +
-    `<button class="cm-files-tb-action thumb-size ${_thumbSize === 220 ? 'active' : ''}" data-action="thumbsize" data-size="220" title="L">L</button>` +
+    `<button class="cm-files-tb-action thumb-size${_thumbSize === 140 ? ' active' : ''}" data-action="thumbsize" data-size="140" title="S">S</button>` +
+    `<button class="cm-files-tb-action thumb-size${_thumbSize === 180 ? ' active' : ''}" data-action="thumbsize" data-size="180" title="M">M</button>` +
+    `<button class="cm-files-tb-action thumb-size${_thumbSize === 220 ? ' active' : ''}" data-action="thumbsize" data-size="220" title="L">L</button>` +
     `<span class="cm-files-tb-sep"></span>` +
     `<button class="action-btn" data-action="files-without-tags" title="${_t('filesWithoutTags')}">` +
       `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 14l2 2 4-4"/><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>` +
@@ -359,17 +355,6 @@ function _renderPagination() {
 }
 
 function _attachEvents(body, signal) {
-  // File search (debounced)
-  const doSearch = debounce(e => {
-    _searchQ = e.target.value
-    _filterFiles()
-    _currentPage = 1
-    _renderGallery()
-    const count = document.getElementById('cmFilesCount')
-    if (count) count.textContent = '' + _filteredFiles.length
-  }, 150)
-  body.querySelector('#cmFilesSearch')?.addEventListener('input', doSearch, { signal })
-
   // Tag search
   body.querySelector('#cmFilesTagSearchQ')?.addEventListener('input', e => {
     _renderLeftTags(e.target.value)
@@ -390,7 +375,7 @@ function _attachEvents(body, signal) {
       'files-without-tags': _showFilesWithoutTags,
       'find-originals': function() {
         if (window.FindOriginals) window.FindOriginals.open();
-      }
+      },
     }
     actions[el.dataset.action]?.()
   }, { signal })
@@ -460,8 +445,6 @@ export function onFileSearch(q) {
   _renderGallery()
   const count = document.getElementById('cmFilesCount')
   if (count) count.textContent = '' + _filteredFiles.length
-  const searchInput = document.getElementById('cmFilesSearch')
-  if (searchInput) searchInput.value = _searchQ
 }
 
 function assignTag(path, tag) {

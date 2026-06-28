@@ -14,16 +14,17 @@ const topBar = document.getElementById('csPaginationTop')
 const prevBtnTop = document.getElementById('csPrevPageTop')
 const nextBtnTop = document.getElementById('csNextPageTop')
 const pageNumbersTopEl = document.getElementById('csPageNumbersTop')
+const prevBtnBottom = document.getElementById('csPrevPageBottom')
+const nextBtnBottom = document.getElementById('csNextPageBottom')
+const pageNumbersBottomEl = document.getElementById('csPageNumbersBottom')
 
 const searchInput = document.getElementById('csInput')
 const searchBtn = document.getElementById('csSearchBtn')
 const grid = document.getElementById('csGrid')
 const loading = document.getElementById('csLoading')
 const autocomplete = document.getElementById('csAutocomplete')
-const bottomBar = document.getElementById('csBottomBar')
-const prevBtn = document.getElementById('csPrevPage')
-const nextBtn = document.getElementById('csNextPage')
-const pageNumbersEl = document.getElementById('csPageNumbers')
+const prevBtn = document.getElementById('csPrevPageTop')
+const nextBtn = document.getElementById('csNextPageTop')
 const sizeBtns = document.querySelectorAll('.cs-page-size-btn')
 const sourceCbs = document.querySelectorAll('.cs-source input')
 
@@ -118,8 +119,9 @@ async function doSearch(query) {
   _currentPage = 1
   _hasMore = true
   _csGrid.setLoading(true)
-  bottomBar.style.display = 'none'
   if (topBar) topBar.style.display = 'none'
+  var bottomBar = document.getElementById('csPaginationBottom')
+  if (bottomBar) bottomBar.style.display = 'none'
   var sites = getActiveSites()
   if (!sites) {
     _csGrid.clear()
@@ -149,7 +151,7 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading, showLoading) {
   if (showLoading !== false) loading.style.display = 'block'
   try {
     var filterAi = document.getElementById('csAiFilter') && document.getElementById('csAiFilter').checked
-    var url = '/api/content-search?q=' + encodeURIComponent(rawQuery) + '&sites=' + encodeURIComponent(sites) + '&page=' + pageNum + (filterAi ? '&filter_ai=1' : '')
+    var url = '/api/content-mgmt/search?q=' + encodeURIComponent(rawQuery) + '&sites=' + encodeURIComponent(sites) + '&page=' + pageNum + (filterAi ? '&filter_ai=1' : '')
     var res = await fetch(url, { signal: _ac.signal })
     if (_ac.signal.aborted) return
     if (!res.ok) {
@@ -170,9 +172,7 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading, showLoading) {
         warnEl = document.createElement('div')
         warnEl.id = 'csNhWarning'
         warnEl.style.cssText = 'background:var(--warning,#f59e0b);color:#fff;padding:8px 14px;border-radius:8px;margin-bottom:12px;font-size:13px'
-        if (bottomBar && bottomBar.parentNode) {
-          grid.parentNode.insertBefore(warnEl, bottomBar)
-        }
+        grid.parentNode.appendChild(warnEl)
       }
       warnEl.textContent = _t('contentSearchNhWarning')
       warnEl.style.display = 'block'
@@ -222,9 +222,7 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading, showLoading) {
     if (!csTotal) {
       csTotal = document.createElement('div')
       csTotal.id = 'csTotal'
-      if (bottomBar && bottomBar.parentNode) {
-        bottomBar.parentNode.insertBefore(csTotal, bottomBar.nextSibling)
-      }
+      grid.parentNode.appendChild(csTotal)
     }
     csTotal.textContent = totalCounts.length ? 'Total: ' + totalCounts.join(' | ') : ''
   } catch(e) {
@@ -244,10 +242,11 @@ function renderPage() {
   var totalPages = Math.max(1, Math.ceil(_allResults.length / _pageSize))
   prevBtn.disabled = _currentPage <= 1
   nextBtn.disabled = _currentPage >= totalPages
-  if (prevBtnTop) prevBtnTop.disabled = prevBtn.disabled
-  if (nextBtnTop) nextBtnTop.disabled = nextBtn.disabled
-  bottomBar.style.display = 'flex'
+  if (prevBtnBottom) prevBtnBottom.disabled = prevBtn.disabled
+  if (nextBtnBottom) nextBtnBottom.disabled = nextBtn.disabled
   if (topBar) topBar.style.display = 'flex'
+  var bottomBar = document.getElementById('csPaginationBottom')
+  if (bottomBar) bottomBar.style.display = 'flex'
   renderPageNumbers(totalPages)
 }
 
@@ -272,16 +271,17 @@ function renderPageNumbers(totalPages) {
     if (end < totalPages - 1) html += '<span class="page-num-ellipsis">...</span>'
     html += '<button class="page-num" data-page="' + totalPages + '">' + totalPages + '</button>'
   }
-  pageNumbersEl.innerHTML = html
   if (pageNumbersTopEl) pageNumbersTopEl.innerHTML = html
-  // Attach click handlers
-  pageNumbersEl.querySelectorAll('.page-num').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      goToPage(parseInt(btn.dataset.page))
-    })
-  })
   if (pageNumbersTopEl) {
     pageNumbersTopEl.querySelectorAll('.page-num').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        goToPage(parseInt(btn.dataset.page))
+      })
+    })
+  }
+  if (pageNumbersBottomEl) pageNumbersBottomEl.innerHTML = html
+  if (pageNumbersBottomEl) {
+    pageNumbersBottomEl.querySelectorAll('.page-num').forEach(function(btn) {
       btn.addEventListener('click', function() {
         goToPage(parseInt(btn.dataset.page))
       })
@@ -317,12 +317,7 @@ async function goToPage(page) {
 }
 
 // Pagination
-prevBtn.addEventListener('click', function() {
-  goToPage(_currentPage - 1)
-})
-nextBtn.addEventListener('click', function() {
-  goToPage(_currentPage + 1)
-})
+
 if (prevBtnTop) {
   prevBtnTop.addEventListener('click', function() {
     goToPage(_currentPage - 1)
@@ -330,6 +325,16 @@ if (prevBtnTop) {
 }
 if (nextBtnTop) {
   nextBtnTop.addEventListener('click', function() {
+    goToPage(_currentPage + 1)
+  })
+}
+if (prevBtnBottom) {
+  prevBtnBottom.addEventListener('click', function() {
+    goToPage(_currentPage - 1)
+  })
+}
+if (nextBtnBottom) {
+  nextBtnBottom.addEventListener('click', function() {
     goToPage(_currentPage + 1)
   })
 }
@@ -389,7 +394,7 @@ try {
 
       function pollTask(taskId, onDone) {
         var iv = setInterval(function() {
-          fetch('/api/content-search/task/' + taskId)
+          fetch('/api/content-mgmt/search/task/' + taskId)
             .then(function(r) { return r.json(); })
             .then(function(status) {
               if (status.status === 'completed') {
@@ -417,7 +422,7 @@ try {
           tags: file.tags || '',
         };
 
-        var checkUrl = '/api/content-search/check-manga-dir?gid=' + encodeURIComponent(gid) +
+        var checkUrl = '/api/content-mgmt/search/check-manga-dir?gid=' + encodeURIComponent(gid) +
           '&media_id=' + encodeURIComponent(file._mid) +
           '&title=' + encodeURIComponent(file._galleryTitle || '');
         fetch(checkUrl).then(function(r) { return r.json(); }).then(function(check) {
@@ -430,7 +435,7 @@ try {
 
           payload.overwrite = check.exists;
 
-          fetch('/api/content-search/download-manga-async', {
+          fetch('/api/content-mgmt/search/download-manga-async', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
@@ -456,7 +461,7 @@ try {
         tags: file.tags || '',
         tags_by_category: file._tagsByCategory || {}
       };
-      fetch('/api/content-search/download-async', {
+      fetch('/api/content-mgmt/search/download-async', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
@@ -475,7 +480,7 @@ try {
       // NHentai multi-page manga viewer
       if (file._gid && file._mid) {
         var doFetchGallery = function(cb) {
-          fetch('/api/content-search/nhentai-gallery?gid=' + file._gid)
+          fetch('/api/content-mgmt/search/nhentai-gallery?gid=' + file._gid)
             .then(function(r) { return r.json(); })
             .then(function(meta) {
               if (!meta || meta.error) { cb && cb(); return; }
@@ -747,8 +752,9 @@ try {
       _csGrid.clear()
       grid.innerHTML = ''
       loading.style.display = 'none'
-      bottomBar.style.display = 'none'
       if (topBar) topBar.style.display = 'none'
+      var bottomBar = document.getElementById('csPaginationBottom')
+      if (bottomBar) bottomBar.style.display = 'none'
     },
     getInitialValue: function() {
       return searchInput.value

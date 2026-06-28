@@ -408,7 +408,7 @@ var SettingsApp = (function() {
   function checkMount() {
     var el = document.getElementById('mountStatus');
     if (!el) return;
-    _api('/api/content-search/mount-check', {method:'GET'}).then(function(d) {
+    _api('/api/content-mgmt/search/mount-check', {method:'GET'}).then(function(d) {
       el.innerHTML = d.mounted && !d.empty
         ? '<span class="mount-dot mount-dot-green"></span><span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>'
         : '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + _t('settingsMountFail') + '</span>';
@@ -427,7 +427,7 @@ var SettingsApp = (function() {
       downloads_dir: document.getElementById('downloadsDir').value.trim(),
     };
     _api('/api/settings', {method:'POST', body:data}).then(function() {
-      return _api('/api/content-search/create-folders', {method:'POST'});
+      return _api('/api/content-mgmt/search/create-folders', {method:'POST'});
     }).then(function(d) {
       var parts = [];
       if (d.created && d.created.length) parts.push(_t('settingsCreateFoldersDone') + ': ' + d.created.join(', '));

@@ -400,12 +400,17 @@ var AdminDashboard = (function() {
           '<td>' + _esc(p.version || '-') + '</td>' +
           '<td>' + _esc(p.author || '-') + '</td>' +
           '<td style="text-align:center">' +
-          '<label class="toggle-switch"><input type="checkbox" ' + (p.enabled ? 'checked' : '') + ' onchange="AdminDashboard._togglePlugin(\'' + _esc(p.name) + '\', this)"><span class="toggle-slider"></span></label>' +
+          '<label class="toggle-switch"><input type="checkbox" ' + (p.enabled ? 'checked' : '') + ' data-plugin-name="' + _esc(p.name) + '"><span class="toggle-slider"></span></label>' +
           '</td></tr>';
       });
       html += '</tbody></table></div></div>' +
         '<div style="padding:8px 0;font-size:12px;color:var(--text2)"><span data-i18n="pluginsRestartNote">' + _t('pluginsRestartNote') + '</span></div>';
       body.innerHTML = html;
+      body.querySelectorAll('.toggle-switch input[data-plugin-name]').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+          _togglePlugin(this.dataset.pluginName, this);
+        });
+      });
     }
   };
 

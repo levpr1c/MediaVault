@@ -2033,44 +2033,89 @@ def api_content_search():
         return jsonify({'error': 'no query'}), 400
     from backends import search_tags
     import concurrent.futures
-    site_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'eh': 'ehentai', 'hentailive': 'hentailive'}
-    sites = [site_map[s] for s in sites_param.split(',') if s in site_map]
+    site_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'eh': 'ehentai'}
+
+    # Discover plugin search sources dynamically
+    plugin_site_map = {}  # short_id -> (instance)
+    pm = app.extensions.get('plugin_manager')
+    loaded_plugins = app.extensions.get('plugins_loaded', {})
+    if pm:
+        _loaded = pm.list_loaded()
+        for info in _loaded:
+            if 'search' not in info.get('methods', []):
+                continue
+            # Merge runtime metadata from instance.get_metadata() over plugin.json
+            instance = loaded_plugins.get(info['name'])
+            instance_meta = {}
+            if instance and hasattr(instance, 'get_metadata'):
+                try:
+                    instance_meta = instance.get_metadata()
+                except Exception:
+                    pass
+            meta = {**info['metadata'], **instance_meta}
+            search_sites = meta.get('search_sites', []) or [info['name']]
+            if instance and hasattr(instance, 'search'):
+                for sid in search_sites:
+                    plugin_site_map[sid] = instance
+
+    all_site_keys = set(site_map.keys()) | set(plugin_site_map.keys())
+    requested_sites = sites_param.split(',') if sites_param else []
+    standard_sites = [site_map[s] for s in requested_sites if s in site_map]
+    plugin_sites = [s for s in requested_sites if s in plugin_site_map]
+
     results = {}
     total = 0
-    log_debug('[ContentSearch API] query="%s" sites=%s page=%d filter_ai=%d', q, sites, page, filter_ai)
+    log_debug('[ContentSearch API] query="%s" standard=%s plugins=%s page=%d filter_ai=%d', q, standard_sites, plugin_sites, page, filter_ai)
     settings = load_settings()
     # NHentai API v2 is public — no key needed
     nh_has_key = bool(settings.get('credentials', {}).get('nhentai', {}).get('key', ''))
     nh_key_warning = False
-    if 'nhentai' in sites:
+    if 'nhentai' in standard_sites:
         fb = settings.get('fetch_backend', {})
         nh_backend = fb.get('nhentai') or 'gallerydl'
         if nh_backend == 'api_raw':
             log_debug('[NHentai] using api_raw backend (public API v2)')
         log_debug('[NHentai] key_exists=%s backend=%s', nh_has_key, nh_backend)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(sites)) as exc:
-        fut = {}
-        for s in sites:
-            site_q = q
-            if filter_ai and s == 'rule34':
-                site_q = q + ' -ai_generated -ai -ai_assisted'
-            if s == 'nhentai':
-                log_debug('[NHentai] searching: query="%s" page=%d key_exists=%s', site_q, page, nh_has_key)
-            fut[s] = exc.submit(search_tags, s, site_q, page, settings)
-        for s in sites:
-            try:
-                results[s] = fut[s].result(timeout=30)
-                n = len(results[s].get('results', []))
-                total += results[s].get('total', n)
+    # Standard backend search (parallel)
+    if standard_sites:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(standard_sites)) as exc:
+            fut = {}
+            for s in standard_sites:
+                site_q = q
+                if filter_ai and s == 'rule34':
+                    site_q = q + ' -ai_generated -ai -ai_assisted'
                 if s == 'nhentai':
-                    log_debug('[NHentai] response: %d results total=%d', n, results[s].get('total', n))
-                log_debug('[ContentSearch API] %s: %d results', s, n)
-            except Exception as e:
-                results[s] = {'results': [], 'total': 0}
-                if s == 'nhentai':
-                    log_debug_red('[NHentai] search ERROR: %s', e)
-                log_debug_red('[ContentSearch API] %s ERROR: %s', s, e)
+                    log_debug('[NHentai] searching: query="%s" page=%d key_exists=%s', site_q, page, nh_has_key)
+                fut[s] = exc.submit(search_tags, s, site_q, page, settings)
+            for s in standard_sites:
+                try:
+                    results[s] = fut[s].result(timeout=30)
+                    n = len(results[s].get('results', []))
+                    total += results[s].get('total', n)
+                    if s == 'nhentai':
+                        log_debug('[NHentai] response: %d results total=%d', n, results[s].get('total', n))
+                    log_debug('[ContentSearch API] %s: %d results', s, n)
+                except Exception as e:
+                    results[s] = {'results': [], 'total': 0}
+                    if s == 'nhentai':
+                        log_debug_red('[NHentai] search ERROR: %s', e)
+                    log_debug_red('[ContentSearch API] %s ERROR: %s', s, e)
+
+    # Plugin search sources (sequential — plugins may not be thread-safe)
+    for s in plugin_sites:
+        instance = plugin_site_map[s]
+        try:
+            plugin_results = instance.search(q, page=page)
+            results[s] = {
+                'results': plugin_results.get('results', []),
+                'total': plugin_results.get('total', 0),
+            }
+            total += results[s]['total']
+            log_debug('[ContentSearch API] plugin %s: %d results', s, results[s]['total'])
+        except Exception as e:
+            results[s] = {'results': [], 'total': 0}
+            log_debug_red('[ContentSearch API] plugin %s ERROR: %s', s, e)
     # Compute tags_by_category for each result
     cat_fields = {
         'tag_artist': 'artist',
@@ -2132,6 +2177,36 @@ def api_content_search():
     if nh_key_warning:
         resp['nhentai_warning'] = True
     return jsonify(resp)
+
+@app.route('/api/content-mgmt/plugin-sources')
+@admin_required
+@api_error_handler
+def api_content_mgmt_plugin_sources():
+    """Return search sources from loaded plugins that have search() capability."""
+    sources = []
+    pm = app.extensions.get('plugin_manager')
+    loaded_plugins = app.extensions.get('plugins_loaded', {})
+    if pm:
+        for info in pm.list_loaded():
+            if 'search' not in info.get('methods', []):
+                continue
+            name = info['name']
+            # Try instance get_metadata() first (richer), fall back to plugin.json
+            instance = loaded_plugins.get(name)
+            instance_meta = {}
+            if instance:
+                try:
+                    instance_meta = instance.get_metadata()
+                except Exception:
+                    pass
+            meta = {**info['metadata'], **instance_meta}
+            search_sites = meta.get('search_sites', []) or [name]
+            for site_id in search_sites:
+                sources.append({
+                    'id': site_id,
+                    'label': meta.get('description', site_id),
+                })
+    return jsonify({'sources': sources})
 
 @app.route('/api/content-mgmt/search/nhentai-gallery')
 @admin_required
@@ -7045,6 +7120,8 @@ def main():
 
     # ── Загрузка внешних плагинов ──
     plugins_dir = os.path.join(_DB_DIR, 'plugins')
+    loaded = {}
+    pm = None
     if os.path.isdir(plugins_dir):
         try:
             from plugins import PluginManager
@@ -7052,7 +7129,6 @@ def main():
             settings = load_settings()
             enabled_map = settings.get('plugins_enabled', {})
             discovered = pm.discover()
-            loaded = {}
             for meta in discovered:
                 name = meta.get('name') or os.path.basename(meta['_path'])
                 if enabled_map.get(name, True):
@@ -7069,6 +7145,8 @@ def main():
                 log_info('Плагины не найдены в %s', plugins_dir)
         except Exception as e:
             log_error('Ошибка загрузки плагинов: %s', e)
+    app.extensions['plugins_loaded'] = loaded
+    app.extensions['plugin_manager'] = pm
 
     # Миграция старого JPEG-кэша превью в AVIF (однократно)
     if not settings.get('thumb_migrated'):

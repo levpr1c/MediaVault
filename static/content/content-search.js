@@ -26,10 +26,14 @@ const autocomplete = document.getElementById('csAutocomplete')
 const prevBtn = document.getElementById('csPrevPageTop')
 const nextBtn = document.getElementById('csNextPageTop')
 const sizeBtns = document.querySelectorAll('.cs-page-size-btn')
-const sourceCbs = document.querySelectorAll('.cs-source input')
+let sourceCbs = document.querySelectorAll('.cs-source input')
 
 let _csGrid = null
 let _csPageStart = 0
+
+// Source display maps — dynamically extended with plugin sources
+var _sourceLabels = { r34: 'R34', dan: 'Dan', nhentai: 'NH', eh: 'EH' }
+var _sourceSiteLabels = { r34: 'Rule34', dan: 'Danbooru', nhentai: 'NHentai', eh: 'E-Hentai' }
 
 function getActiveSites() {
   return Array.from(sourceCbs).filter(cb => cb.checked).map(cb => cb.value).join(',')
@@ -230,7 +234,7 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading, showLoading) {
       loading.style.display = 'none'
       return
     }
-    var siteMap = { rule34: 'r34', danbooru: 'dan', nhentai: 'nhentai', ehentai: 'eh', hentailive: 'hentailive' }
+    var siteMap = { rule34: 'r34', danbooru: 'dan', nhentai: 'nhentai', ehentai: 'eh' }
     var newItems = []
     for (var siteKey in (data.results || {})) {
       var siteData = data.results[siteKey]
@@ -258,7 +262,7 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading, showLoading) {
       var sd = data.results[sk]
       var st = sd.total || 0
       if (st > 0) {
-        var siteLabel = {rule34: 'R34', danbooru: 'Dan', nhentai: 'NH', ehentai: 'EH', hentailive: 'HL'}[sk] || sk
+        var siteLabel = _sourceLabels[sk] || sk
         totalCounts.push(siteLabel + ': ' + st)
       }
     }
@@ -387,7 +391,7 @@ if (nextBtnBottom) {
 function cardHTML(r) {
   var imgSrc = r.preview_url || r.large_file_url || r.sample_url || r.thumbnail || r.file_url || ''
   var tagsStr = Array.isArray(r.tags) ? r.tags.join(', ') : (r.tags || '')
-  var sourceLabel = { r34: 'R34', dan: 'Dan', nhentai: 'NH', eh: 'EH', hentailive: 'HL' }[r._source] || r._source
+  var sourceLabel = _sourceLabels[r._source] || r._source
   var truncatedTags = tagsStr.length > 80 ? tagsStr.slice(0, 80) + '...' : tagsStr
   var imgTag = imgSrc ? '<img src="' + esc(imgSrc) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : ''
   return '<div class="file-card"' + (r._source === 'nhentai' ? ' data-gid="' + esc(r.id) + '"' : '') + '>' +
@@ -723,20 +727,20 @@ function showLightbox(index) {
     } else if (r._source === 'eh') {
       path = r.thumbnail || r.preview_url || ''
     } else {
-      path = r.file_url || r.sample_url || r.preview_url
+      path = r.file_url || r.sample_url || r.preview_url || r.thumbnail || ''
     }
-    var srcSite = r._source === 'nhentai' ? 'NHentai' : (r._source === 'eh' ? 'E-Hentai' : (r._source === 'r34' ? 'Rule34' : (r._source === 'dan' ? 'Danbooru' : (r._source === 'hentailive' ? 'Hentailive' : r._source))))
-    var srcUrl = ''
+    var srcSite = _sourceSiteLabels[r._source] || r._source
+    var srcUrl = r._sourceUrl || r.url || ''
     if (r._source === 'nhentai') srcUrl = 'https://nhentai.net/g/' + r.id + '/'
     else if (r._source === 'dan') srcUrl = 'https://danbooru.donmai.us/posts/' + r.id
     else if (r._source === 'r34') srcUrl = 'https://rule34.xxx/index.php?page=post&s=view&id=' + r.id
     else if (r._source === 'eh') srcUrl = 'https://e-hentai.org/g/' + r.id + '/' + (r.token || '') + '/'
-    else if (r._source === 'hentailive') srcUrl = ''
+    else if (r.url) srcUrl = r.url
     var item = {
       path: path,
       _source: r._source,
-      name: r._source === 'nhentai' ? (r.title || 'NHentai #' + r.id) : '',
-      _displayName: r._source === 'nhentai' ? (r.title || 'NHentai #' + r.id) : (r._source === 'eh' ? (r.title || 'E-Hentai #' + r.id) : (r._source.toUpperCase() + ' #' + r.id)),
+      name: r.title || (r._source.toUpperCase() + ' #' + r.id),
+      _displayName: r.title || (r._source.toUpperCase() + ' #' + r.id),
       _sourceSite: srcSite,
       _sourceUrl: srcUrl,
       _tagsByCategory: r.tags_by_category || {},
@@ -760,6 +764,29 @@ function showLightbox(index) {
   })
   csLightbox.open(index, items)
 }
+
+// Fetch plugin search sources and add checkboxes dynamically
+fetch('/api/content-mgmt/plugin-sources').then(function(r) { return r.json() }).then(function(data) {
+  var container = document.getElementById('csPluginSources');
+  if (!container || !data.sources || !data.sources.length) return;
+  data.sources.forEach(function(ps) {
+    var label = document.createElement('label');
+    label.className = 'cs-source';
+    label.dataset.site = ps.id;
+    label.innerHTML = '<input type="checkbox" value="' + esc(ps.id) + '">' +
+      '<span class="cs-source-mrk"></span>' +
+      '<span class="cs-source-lbl">' + esc(ps.label || ps.id) + '</span>';
+    container.appendChild(label);
+    var cb = label.querySelector('input');
+    cb.addEventListener('change', function() {
+      var q = searchInput.value.trim();
+      if (q) doSearch(q);
+    });
+    _sourceLabels[ps.id] = (ps.label || ps.id).slice(0, 10);
+    _sourceSiteLabels[ps.id] = ps.label || ps.id;
+  });
+  sourceCbs = document.querySelectorAll('.cs-source input');
+}).catch(function(e) { console.warn('[content-search] plugin sources fetch failed:', e); });
 
 // Init: read URL params
 var params = new URLSearchParams(window.location.search)

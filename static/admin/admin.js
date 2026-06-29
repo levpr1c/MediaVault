@@ -371,6 +371,53 @@ var AdminDashboard = (function() {
     }
   };
 
+  // ─── PLUGINS ───
+  _sections.plugins = {
+    render: function(body) {
+      _loading(body);
+      var self = this;
+      _api('/api/admin/plugins').then(function(data) {
+        self._renderPlugins(body, data.plugins || []);
+      }).catch(function(e) { _errorFallback(body, e); });
+    },
+
+    _renderPlugins: function(body, plugins) {
+      if (plugins.length === 0) {
+        body.innerHTML = '<div class="admin-card"><div class="admin-card-header"><span class="admin-card-title"><span data-i18n="navPlugins">' + _t('navPlugins') + '</span></span></div>' +
+          '<div style="padding:20px;text-align:center;color:var(--text2)"><span data-i18n="pluginsNone">' + _t('pluginsNone') + '</span></div></div>';
+        return;
+      }
+      var html = '<div class="admin-card"><div class="admin-card-header"><span class="admin-card-title"><span data-i18n="navPlugins">' + _t('navPlugins') + '</span></span></div><div class="admin-table-wrap">' +
+        '<table class="admin-table"><thead><tr>' +
+        '<th>Name</th>' +
+        '<th>Version</th>' +
+        '<th>Author</th>' +
+        '<th style="text-align:center"><span data-i18n="pluginsEnabled">' + _t('pluginsEnabled') + '</span></th>' +
+        '</tr></thead><tbody>';
+      plugins.forEach(function(p) {
+        html += '<tr>' +
+          '<td><strong>' + _esc(p.name) + '</strong>' + (p.description ? '<br><span style="font-size:11px;color:var(--text2)">' + _esc(p.description) + '</span>' : '') + '</td>' +
+          '<td>' + _esc(p.version || '-') + '</td>' +
+          '<td>' + _esc(p.author || '-') + '</td>' +
+          '<td style="text-align:center">' +
+          '<label class="toggle-switch"><input type="checkbox" ' + (p.enabled ? 'checked' : '') + ' onchange="AdminDashboard._togglePlugin(\'' + _esc(p.name) + '\', this)"><span class="toggle-slider"></span></label>' +
+          '</td></tr>';
+      });
+      html += '</tbody></table></div></div>' +
+        '<div style="padding:8px 0;font-size:12px;color:var(--text2)"><span data-i18n="pluginsRestartNote">' + _t('pluginsRestartNote') + '</span></div>';
+      body.innerHTML = html;
+    }
+  };
+
+  function _togglePlugin(name, el) {
+    _api('/api/admin/plugins/' + encodeURIComponent(name) + '/toggle', {method: 'POST'}).then(function(data) {
+      _toast("Plugin '" + name + "' " + (data.enabled ? _t('pluginsEnabled') : _t('pluginsDisabled')), 'success');
+    }).catch(function(e) {
+      el.checked = !el.checked;
+      _toast(e.message, 'error');
+    });
+  }
+
   // ─── FOLDERS (redirect to Database — folded into Database section) ───
   _sections.folders = {
     render: function(body) {
@@ -379,6 +426,204 @@ var AdminDashboard = (function() {
   };
 
 
+
+  // ─── DASHBOARD ───
+  _sections.dashboard = {
+    _charts: [],
+
+    render: function(body) {
+      _loading(body);
+      this._destroyCharts();
+      var self = this;
+      _api('/api/admin/dashboard').then(function(data) {
+        self._renderDashboard(body, data);
+      }).catch(function(e) { _errorFallback(body, e); });
+    },
+
+    _renderDashboard: function(body, d) {
+      var localeNum = function(n) { return (n || 0).toLocaleString(); };
+
+      var html =
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">' +
+        '<div class="admin-card" style="text-align:center;padding:20px 12px"><div style="font-size:28px;font-weight:700;color:var(--accent)">' + localeNum(d.files_total) + '</div><div style="font-size:12px;color:var(--text2);margin-top:4px"><span data-i18n="dashboardFilesTotal">' + _t('dashboardFilesTotal') + '</span></div></div>' +
+        '<div class="admin-card" style="text-align:center;padding:20px 12px"><div style="font-size:28px;font-weight:700;color:var(--accent)">' + localeNum(d.comics_total) + '</div><div style="font-size:12px;color:var(--text2);margin-top:4px"><span data-i18n="dashboardComicsTotal">' + _t('dashboardComicsTotal') + '</span></div></div>' +
+        '<div class="admin-card" style="text-align:center;padding:20px 12px"><div style="font-size:28px;font-weight:700;color:var(--accent)">' + (d.db_size || '0 MB') + '</div><div style="font-size:12px;color:var(--text2);margin-top:4px"><span data-i18n="dashboardDbSize">' + _t('dashboardDbSize') + '</span></div></div>' +
+        '<div class="admin-card" style="text-align:center;padding:20px 12px">' +
+        '<div style="display:flex;justify-content:center;gap:16px">' +
+        '<div><div style="font-size:20px;font-weight:700;color:var(--accent)">' + localeNum(d.tagged) + '</div><div style="font-size:10px;color:var(--text2);margin-top:2px"><span data-i18n="dashboardTagged">' + _t('dashboardTagged') + '</span></div></div>' +
+        '<div style="width:1px;background:var(--border)"></div>' +
+        '<div><div style="font-size:20px;font-weight:700;color:#f59e0b">' + localeNum(d.auto_tagged) + '</div><div style="font-size:10px;color:var(--text2);margin-top:2px"><span data-i18n="dashboardAutoTagged">' + _t('dashboardAutoTagged') + '</span></div></div>' +
+        '<div style="width:1px;background:var(--border)"></div>' +
+        '<div><div style="font-size:20px;font-weight:700;color:var(--text2)">' + localeNum(d.untagged) + '</div><div style="font-size:10px;color:var(--text2);margin-top:2px"><span data-i18n="dashboardUntagged">' + _t('dashboardUntagged') + '</span></div></div>' +
+        '</div></div>' +
+        '</div>';
+
+      html +=
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">' +
+        '<div class="admin-card"><div class="admin-card-header"><span class="admin-card-title"><span data-i18n="dashboardByType">' + _t('dashboardByType') + '</span></span></div><div style="padding:8px"><canvas id="admChartByType" height="180"></canvas></div></div>' +
+        '<div class="admin-card"><div class="admin-card-header"><span class="admin-card-title"><span data-i18n="dashboardTaggedTitle">' + _t('dashboardTaggedTitle') + '</span></span></div><div style="padding:8px;max-width:240px;margin:0 auto"><canvas id="admChartTags" height="180"></canvas></div></div>' +
+        '<div class="admin-card"><div class="admin-card-header"><span class="admin-card-title"><span data-i18n="dashboardSources">' + _t('dashboardSources') + '</span></span></div><div style="padding:8px;max-width:240px;margin:0 auto"><canvas id="admChartSources" height="180"></canvas></div></div>' +
+        '</div>';
+
+      html +=
+        '<div class="admin-card" style="margin-bottom:20px"><div class="admin-card-header"><span class="admin-card-title"><span data-i18n="dashboardByDate">' + _t('dashboardByDate') + '</span></span></div><div style="padding:8px"><canvas id="admChartByDate" height="180"></canvas></div></div>';
+
+      html +=
+        '<div class="admin-card"><div class="admin-card-header"><span class="admin-card-title"><span data-i18n="dashboardRecent">' + _t('dashboardRecent') + '</span></span></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;padding:8px" id="admRecentList">';
+      var recent = d.recent_activity || [];
+      if (recent.length === 0) {
+        html += '<div style="padding:24px;text-align:center;color:var(--text2);grid-column:1/-1"><span data-i18n="noData">' + _t('noData') + '</span></div>';
+      } else {
+        recent.forEach(function(r) {
+          var thumb = '/api/thumbnail?path=' + encodeURIComponent(r.path || r.id || '');
+          html += '<div class="recent-item" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;background:var(--surface2);overflow:hidden">' +
+            '<a href="/mediavault/view?path=' + encodeURIComponent(r.path || '') + '" style="flex-shrink:0;display:flex;border-radius:8px;overflow:hidden">' +
+            '<img src="' + thumb + '" style="width:56px;height:56px;object-fit:cover;border-radius:8px;background:var(--surface1);display:block" loading="lazy" onerror="this.style.display=\'none\'">' +
+            '</a>' +
+            '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(r.filename || '') + '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">' +
+            '<span style="font-size:11px;color:var(--text2)">' + _esc(r.created_at || '') + '</span>' +
+            '<span class="tag-chip" style="font-size:10px">' + _esc(r.filetype || '') + '</span>' +
+            '</div></div></div>';
+        });
+      }
+      html += '</div></div>';
+
+      body.innerHTML = html;
+
+      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      var textColor = isDark ? '#aaa' : '#666';
+      var gridColor = isDark ? '#333' : '#e0e0e0';
+
+      var typeCtx = document.getElementById('admChartByType');
+      if (typeCtx && Chart) {
+        var byType = d.files_by_type || {};
+        var typeLabels = [_t('dashboardImage'), _t('dashboardVideo'), _t('dashboardOther')];
+        var typeValues = [byType.image || 0, byType.video || 0, byType.other || 0];
+        this._charts.push(new Chart(typeCtx, {
+          type: 'bar',
+          data: {
+            labels: typeLabels,
+            datasets: [{
+              label: _t('dashboardFiles'),
+              data: typeValues,
+              backgroundColor: ['#4a9eff', '#f59e0b', '#888'],
+              borderRadius: 4,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } },
+              x: { ticks: { color: textColor }, grid: { display: false } }
+            }
+          }
+        }));
+      }
+
+      var tagsCtx = document.getElementById('admChartTags');
+      if (tagsCtx && Chart) {
+        var tagged = d.tagged || 0;
+        var autoTagged = d.auto_tagged || 0;
+        var untagged = d.untagged || 0;
+        var hasAny = tagged + autoTagged + untagged > 0;
+        this._charts.push(new Chart(tagsCtx, {
+          type: 'doughnut',
+          data: {
+            labels: [_t('dashboardTagged'), _t('dashboardAutoTagged'), _t('dashboardUntagged')],
+            datasets: [{
+              data: hasAny ? [tagged, autoTagged, untagged] : [1],
+              backgroundColor: hasAny ? ['#10b981', '#f59e0b', '#6b7280'] : ['#333'],
+              borderWidth: 0,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: textColor, padding: 10, boxWidth: 12 }
+              }
+            }
+          }
+        }));
+      }
+
+      var srcCtx = document.getElementById('admChartSources');
+      if (srcCtx && Chart) {
+        var src = d.sources || {};
+        var srcLabels = [_t('sourceRule34'), _t('sourceDanbooru'), _t('sourceNHentai'), _t('sourceLocal')];
+        var srcValues = [src.rule34 || 0, src.danbooru || 0, src.nhentai || 0, src.local || 0];
+        var colorPalette = ['#f97316', '#8b5cf6', '#06b6d4', '#6b7280'];
+        var filtered = srcLabels.map(function(l, i) { return { label: l, value: srcValues[i], color: colorPalette[i] }; })
+          .filter(function(s) { return s.value > 0; });
+        this._charts.push(new Chart(srcCtx, {
+          type: 'doughnut',
+          data: {
+            labels: filtered.map(function(s) { return s.label; }),
+            datasets: [{
+              data: filtered.map(function(s) { return s.value; }),
+              backgroundColor: filtered.map(function(s) { return s.color; }),
+              borderWidth: 0,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: textColor, padding: 12, boxWidth: 12 }
+              }
+            }
+          }
+        }));
+      }
+
+      var dateCtx = document.getElementById('admChartByDate');
+      if (dateCtx && Chart) {
+        var byDate = d.by_date || [];
+        var dateLabels = byDate.map(function(r) { return r.date; });
+        var dateValues = byDate.map(function(r) { return r.count; });
+        this._charts.push(new Chart(dateCtx, {
+          type: 'line',
+          data: {
+            labels: dateLabels,
+            datasets: [{
+              label: _t('dashboardFiles'),
+              data: dateValues,
+              borderColor: '#4a9eff',
+              backgroundColor: 'rgba(74,158,255,0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 3,
+              pointBackgroundColor: '#4a9eff',
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } },
+              x: { ticks: { color: textColor, maxRotation: 45, maxTicksLimit: 14 }, grid: { display: false } }
+            }
+          }
+        }));
+      }
+    },
+
+    _destroyCharts: function() {
+      this._charts.forEach(function(c) { c.destroy(); });
+      this._charts = [];
+    }
+  };
 
   /* ─── USER ACTIONS ─── */
 
@@ -921,7 +1166,7 @@ var AdminDashboard = (function() {
   var _mountTimer = null;
 
   function _checkMount() {
-    _api('/api/content-mgmt/search/mount-check', {method:'GET'}).then(function(d) {
+    _api('/api/mount-check', {method:'GET'}).then(function(d) {
       var ok = d.mounted && !d.empty;
       var html = ok
         ? '<span class="mount-dot mount-dot-green"></span><span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>'
@@ -1007,7 +1252,7 @@ var AdminDashboard = (function() {
     });
     var titleEl = document.getElementById('adminPageTitle');
     if (titleEl) {
-      var names = {users: 'navUsers', database: 'navDatabase', 'api-keys': 'navApiKeys'};
+      var names = {users: 'navUsers', database: 'navDatabase', 'api-keys': 'navApiKeys', dashboard: 'navDashboard', plugins: 'navPlugins'};
       var key = names[name] || name;
       titleEl.innerHTML = '<span data-i18n="' + key + '">' + _t(key) + '</span>';
     }
@@ -1050,6 +1295,7 @@ var AdminDashboard = (function() {
     _startScanProgressPoll: _startScanProgressPoll,
     _stopScanProgressPoll: _stopScanProgressPoll,
     _updateScanProgress: _updateScanProgress,
-    _hideScanProgress: _hideScanProgress
+    _hideScanProgress: _hideScanProgress,
+    _togglePlugin: _togglePlugin
   };
 })();

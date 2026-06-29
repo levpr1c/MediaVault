@@ -60,17 +60,52 @@ searchBtn.addEventListener('click', function() {
   var q = searchInput.value.trim()
   if (q) doSearch(q)
 })
+
+// Autocomplete keyboard navigation state
+var _acIndex = -1
+
 searchInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
+    if (_acIndex >= 0) {
+      // Enter on highlighted autocomplete item → click it
+      var items = autocomplete.querySelectorAll('.cs-autocomplete-item')
+      if (items[_acIndex]) {
+        items[_acIndex].click()
+        return
+      }
+    }
     hideAutocomplete()
     var q = searchInput.value.trim()
     if (q) doSearch(q)
+    return
+  }
+  if (e.key === 'Escape') {
+    searchInput.blur()
+    hideAutocomplete()
+    return
+  }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    var items = autocomplete.querySelectorAll('.cs-autocomplete-item')
+    if (!items.length) return
+    if (e.key === 'ArrowDown') {
+      _acIndex = (_acIndex + 1) % items.length
+    } else {
+      _acIndex = _acIndex <= 0 ? items.length - 1 : _acIndex - 1
+    }
+    items.forEach(function(el, i) {
+      el.classList.toggle('cs-autocomplete-highlight', i === _acIndex)
+    })
+    if (items[_acIndex]) {
+      items[_acIndex].scrollIntoView({ block: 'nearest' })
+    }
   }
 })
 
 // Autocomplete
 searchInput.addEventListener('input', function() {
   clearTimeout(_autocompleteTimer)
+  _acIndex = -1
   var q = searchInput.value.trim()
   if (q.length < 2) { hideAutocomplete(); return }
   _autocompleteTimer = setTimeout(function() { fetchAutocomplete(q) }, 150)
@@ -81,7 +116,16 @@ searchInput.addEventListener('focus', function() {
   if (q.length >= 2) fetchAutocomplete(q)
 })
 
+// Click outside → close autocomplete
+document.addEventListener('mousedown', function(e) {
+  var wrap = document.querySelector('.cs-input-wrap')
+  if (wrap && !wrap.contains(e.target)) {
+    hideAutocomplete()
+  }
+})
+
 function hideAutocomplete() {
+  _acIndex = -1
   autocomplete.style.display = 'none'
   autocomplete.innerHTML = ''
 }
@@ -186,7 +230,7 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading, showLoading) {
       loading.style.display = 'none'
       return
     }
-    var siteMap = { rule34: 'r34', danbooru: 'dan', nhentai: 'nhentai', ehentai: 'eh' }
+    var siteMap = { rule34: 'r34', danbooru: 'dan', nhentai: 'nhentai', ehentai: 'eh', hentailive: 'hentailive' }
     var newItems = []
     for (var siteKey in (data.results || {})) {
       var siteData = data.results[siteKey]
@@ -214,7 +258,7 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading, showLoading) {
       var sd = data.results[sk]
       var st = sd.total || 0
       if (st > 0) {
-        var siteLabel = {rule34: 'R34', danbooru: 'Dan', nhentai: 'NH', ehentai: 'EH'}[sk] || sk
+        var siteLabel = {rule34: 'R34', danbooru: 'Dan', nhentai: 'NH', ehentai: 'EH', hentailive: 'HL'}[sk] || sk
         totalCounts.push(siteLabel + ': ' + st)
       }
     }
@@ -343,7 +387,7 @@ if (nextBtnBottom) {
 function cardHTML(r) {
   var imgSrc = r.preview_url || r.large_file_url || r.sample_url || r.thumbnail || r.file_url || ''
   var tagsStr = Array.isArray(r.tags) ? r.tags.join(', ') : (r.tags || '')
-  var sourceLabel = { r34: 'R34', dan: 'Dan', nhentai: 'NH', eh: 'EH' }[r._source] || r._source
+  var sourceLabel = { r34: 'R34', dan: 'Dan', nhentai: 'NH', eh: 'EH', hentailive: 'HL' }[r._source] || r._source
   var truncatedTags = tagsStr.length > 80 ? tagsStr.slice(0, 80) + '...' : tagsStr
   var imgTag = imgSrc ? '<img src="' + esc(imgSrc) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : ''
   return '<div class="file-card"' + (r._source === 'nhentai' ? ' data-gid="' + esc(r.id) + '"' : '') + '>' +
@@ -681,14 +725,16 @@ function showLightbox(index) {
     } else {
       path = r.file_url || r.sample_url || r.preview_url
     }
-    var srcSite = r._source === 'nhentai' ? 'NHentai' : (r._source === 'eh' ? 'E-Hentai' : (r._source === 'r34' ? 'Rule34' : (r._source === 'dan' ? 'Danbooru' : r._source)))
+    var srcSite = r._source === 'nhentai' ? 'NHentai' : (r._source === 'eh' ? 'E-Hentai' : (r._source === 'r34' ? 'Rule34' : (r._source === 'dan' ? 'Danbooru' : (r._source === 'hentailive' ? 'Hentailive' : r._source))))
     var srcUrl = ''
     if (r._source === 'nhentai') srcUrl = 'https://nhentai.net/g/' + r.id + '/'
     else if (r._source === 'dan') srcUrl = 'https://danbooru.donmai.us/posts/' + r.id
     else if (r._source === 'r34') srcUrl = 'https://rule34.xxx/index.php?page=post&s=view&id=' + r.id
     else if (r._source === 'eh') srcUrl = 'https://e-hentai.org/g/' + r.id + '/' + (r.token || '') + '/'
+    else if (r._source === 'hentailive') srcUrl = ''
     var item = {
       path: path,
+      _source: r._source,
       name: r._source === 'nhentai' ? (r.title || 'NHentai #' + r.id) : '',
       _displayName: r._source === 'nhentai' ? (r.title || 'NHentai #' + r.id) : (r._source === 'eh' ? (r.title || 'E-Hentai #' + r.id) : (r._source.toUpperCase() + ' #' + r.id)),
       _sourceSite: srcSite,

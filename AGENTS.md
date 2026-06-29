@@ -1,245 +1,372 @@
-# MediaVault
+# MediaVault — База знаний
 
-A Flask SPA (`src/web_app.py`, 5921 строк, 108+ роутов, 59 `@admin_required`, 13 `@auth_required`, 87 `@api_error_handler`) + `src/credential_store.py` (124). Three sub-applications: **MV** (`/mediavault/`, read-only), **CM** (`/content-mgmt/`, admin-only), **Admin** (`/admin`). 17 Jinja2 templates, 32 JS modules (10051 строк без lib/), 8 CSS files (2932 строк). Flask single-file (no blueprints), SQLite with WAL.
+**Сгенерировано:** 2026-06-28
+**Ветка:** v1.2.1-testing
+**Стек:** Flask SPA + Vanilla JS + SQLite
 
-## Core Conventions
+## ОБЗОР
 
-**Decorator order matters**: `@app.route` → `@admin_required` → `@api_error_handler` (wrong order breaks auth). **API error responses**: `@admin_required → 403 JSON, `@auth_required → 401 JSON, `@api_error_handler → 500 JSON`. **API data pattern**: `if data is None:` — empty `{}` is falsy.
+Локальный веб-инструмент для сбора, тегирования и просмотра медиа с
+поддержкой Rule34/Danbooru тегов, читалкой комиксов, галереей и лайтбоксом.
+Три саб-приложения: MV (/mediavault/, read-only), CM (/content-mgmt/, admin),
+Admin (/admin).
 
-**ES modules**: `{% block content %}` renders before `{% block scripts %}`. Module scripts use load/defer. Top-level errors in ES modules block all remaining scripts.
+## СТРУКТУРА
 
-**Critical bugs to avoid**:
-- Wrap `new Lightbox(...)` in try-catch
-- `Lightbox.close()` needs guard for `_el('Media')` null before `querySelector('video')` (`shared/lightbox.js:279`)
-- CSS loading order: `shared.css` → (content.css, content-search.css, admin.css, tagfetch.css, settings.css) → `mediavault.css` (last, no `!important`)
-
-**Frontend patterns**: Headers inline in `base.html`, Desktop/mobile via `.hdr-desktop`/`.hdr-mobile` (768px). **No `window.innerWidth` in JS**. Mobile `.desktop-only` hidden via CSS media query. Mobile gets no sidebar/search panel/toolbar HTML.
-
-**Application structure**:
-- CM SPA lifecycle (`static/content/main.js`): tags/files/comics/nhentai/contentSearch/comicsTags sections, each with `render(destroy?)`/`destroy()`. Routing by `location.pathname`
-- `content-mgmt/*`, `settings`, `admin` extend `base.html`, content via JS. `login.html` standalone, `popular_tags`/`view` suppress header blocks
-
-**Persistence**: LocalStorage keys `mediavault_page_size`, `mediavault_layout`, `mediavault_thumb_size`, `mediavault_lang`, `mediavault_folder_filter`.
-
-**Icons**: Inline SVG only (no emoji). `SiteIcons.getIcon` in `static/shared/icons.js`. Theme uses SVG sun/moon.
-
-**Caching**: `BrowserCache` (default/reduced/nocache) → `Cache-Control` on `/api/media` and `/api/thumbnail`. `clear_thumb_cache` removes SQLite BLOBs. `load_settings()` uses `setdefault()` for new keys.
-
-**Search functions**: `_has_non_meta_tags(tag_str)` → false if only META_TAGS or aspect-ratio.
-
-**Database**: SQLite (`~/.local/share/MediaVault/MediaVaultDataBase.db`). WAL + busy_timeout=5000 per connection. **No `DROP TABLE`** (exclusive lock even in WAL). Use `DELETE FROM` or `VACUUM` → `PRAGMA wal_checkpoint(TRUNCATE)`.
-
-**Quick scan**: `_quick_scan(force=False)` uses threading.Lock with blocking=False, ensures lock release in finally. Background scans: `threading.Thread(target=_quick_scan, daemon=True).start()`.
-
-**Background downloads**: `_download_tasks` dict + Lock. `_start_background_task(type, fn, *args)` → daemon thread. `GET /api/content-mgmt/search/task/<task_id>` polling. `POST .../download-async` single-download, `.../download-manga-async` NHentai (ThreadPoolExecutor 4 workers). `overwrite=True` deletes files before re-download.
-
-**Tags**: NHentai v1.2.0 tags map v2 API types: tag→general, artist→artist, character→character, parody→copyright, group→general, language→meta, category→general. Stored in `tag_category_members` (global) and `comics.tags` (CSV per comic). `file_tags` for MV gallery per-page. `comic_tags` table unused (removed as redundant).
-
-**Function `_has_users_cached`**: In-memory flag reset on add/remove user.
-
-## v1.3 Features
-
-### Design System
-- Standardized `.action-btn` CSS (rounded 8px, inline-flex, SVG+text, hover/active/danger states) applied to admin, settings, headers
-- Removed 3-dots kebab mobile toolbar and dropdown
-- Removed tag-button SVG from comics-edit (-300 lines)
-- Popular tags as `.action-btn` in MV header
-
-### MV Gallery Pagination
-- Top pagination bar with Prev/Next + page numbers, 12px gap to thumbnails
-- Responsive (text hidden on mobile)
-
-### Content-Search
-- Grid uses MV `.file-card` style (consistent thumb size/gap)
-- Bottom pagination: Prev | 1 | 2 | 3 | 4 | Next, page size 20/30/50
-- Fetch formula: page_size × 3 (accumulates from API)
-- Removed old Load More + `<`/`>` pagination
-
-### Tags-Manage
-- "Files Without Tags" → files with empty/meta-only tags (max 500)
-- "Find Originals" → sample_XXX → md5 → Rule34/Danbooru API → download + tag
-- Background thread with progress polling for find-originals
-- Sample files deleted from disk on download-original (no re-add on rescan)
-- Shared module `static/shared/find-originals.js` (IIFE, used by tags-manage + settings)
-
-### Find-Originals Modal
-- 90vw/90vh, two-column: left=large sample previews, right=found originals with tags
-- Progress bar, Replace All button (disabled during search, enabled on done)
-- Sample images clickable → opens shared Lightbox
-- Cancel calls cancel API; auto-scroll to new results
-- i18n: `replaceAll`, `replaceAllDone`
-
-### Admin Page Layout
-- `.admin-header` with `<a>` links (Users/Database/API Keys) — icon + text on desktop, icon-only on mobile
-- `.hdr-nav-label { display: none }` globally, `{ display: inline }` at ≥768px
-- `loadSection()` in `admin/admin.js:1009` updates `.active` via selector: `.admin-nav-item, .mv-mh-icon[data-section], .admin-header a[data-section]`
-- `AdminDashboard.load(name)` aliases `loadSection()` for onclick handlers
-- `.admin-header a:focus-visible` uses `box-shadow` instead of `outline` (follows border-radius)
-- `.hdr-mobile .admin-header` no longer hidden (REMOVED `display: none` — icons show on mobile too)
-
-### Settings Page
-- Tab buttons (Appearance/Database/Account) converted from `<button>` in `hdr_tabs` → `<a>` in `hdr_nav` with `.admin-header` wrapper
-- Same styling as admin page via `admin.css`
-- `SettingsApp.switchTab()` queries `.settings-tab-btn[data-tab="..."]` — class preserved on `<a>` elements
-- Old `.settings-tabs-row` and `.settings-tab-btn` CSS removed from `settings.css`
-
-### CM Header i18n
-- All 4 dropdown toggle buttons (TAGFETCH/TAGS/COMICS/SEARCH) have `data-i18n` + `<span>` wrappers with `cmSection*` keys
-- All 8 CM dropdown sub-links have `data-i18n` (`manualFetch`, `autoFetch`, `mvManageTags`, `navGroups`, `navEditor`, `comicsTags`, `navImages`, `cmSectionComics`)
-- Keys added: `navImages` (en:"Images", ru:"Изображения")
-- `navComics` removed (duplicated `mvComics`)
-
-### Mobile Header
-- Hamburger button moved from `mv-mh-row1` to `mv-mh-row2` (same row as search), hidden on `/admin` and `/settings`
-- `.mv-mh-icon:focus-visible` uses `box-shadow` instead of `outline`
-- `.admin-header` visible on mobile (no longer hidden)
-
-### Mobile Content-Search Sources
-- Mobile drawer (`#drawerSources`) populated with 4 source checkboxes (R34, Dan, NHentai, EH) + AI filter toggle clone
-- Bidirectional sync between desktop sources and drawer checkboxes
-- `contentSearchSource` locale key added (EN: "Source", RU: "Источник")
-
-### Mobile Search
-- `#csInput` visible on mobile via `.mobile-search-hide` override with `!important` in `content-search.css`
-- `MobileSearch.register(...)` call wrapped in try-catch — module crash doesn't block the rest of the page
-- Fallback AI toggle in `content-search.html` dispatches `change` on `origAi` to trigger search when JS module fails
-- `.cs-ai-toggle.mv-drawer-toggle` classes kept (not `.mv-drawer-cb`) for mobile drawer AI toggle
-
-### Full Scan Tag Preservation
-- `_full_scan()` UPDATE reads existing `files.tags`, merges with `auto_tags` instead of overwriting (web_app.py:3652-3661)
-- `DELETE FROM file_tags WHERE path=?` executed before all 4 `DELETE FROM files` sites (full_scan, relocate_file, dedup, remove-duplicates)
-- Phash-based move detection: matches deleted paths to inserted paths by phash, UPDATEs path instead of DELETE+INSERT, preserving all tags. Counter `moved` added to log.
-
-### Comics-Tags Preview + Scan
-- Click on `.cm-comic-card` fetches `/api/comics/get` → opens Lightbox (`prefix:cmct`, `tagPanel:false`, `arrowNav:true`) with all comic pages
-- Toolbar with Scan (`action-btn-primary`) and Full Rescan buttons + `#cmScanProgress` bar with spinner/text/progress-bar
-- Polling: `_startCmScan()` / `_startCmFullRescan()` → POST API → `_startCmScanProgressPoll()` polls `/api/admin/scan-progress` every 2s
-
-### Locale
-- 274 keys en/ru (274 each)
-- Synced with JS `_i18nData` in `static/shared/utils.js`
-
-### Known Issues
-- Settings page: `SettingsApp.switchTab()` in `settings.html` — JS works with `.settings-tab-btn` class
-- Key `popularTags` used in HTML but not in LOCALE dict (DB-generated)
-- Duplicate values: `navAdmin`/`userRoleAdmin` → "Admin", `cmSectionTags`/`tags` → "TAGS", `contentSearchBtn`/`navSearch` → "Search" — pre-existing
-- `MobileSearch.register()` throws "is not a function" on content-search page (root cause unknown, mitigated by try-catch + CSS `!important` override)
-
-## v1.4 Features (current)
-
-### Route Migration
-- `/content-search` → `/content-mgmt/search` (old `/nhentai-search` and `/franchise-search` redirect to new route)
-- `/api/content-search/*` → `/api/content-mgmt/search/*` (download, download-manga, download-async, download-manga-async, task, mount-check, create-folders, nhentai-gallery)
-- Template `content-search.html` still used, served from new route
-
-### Content-Search Mobile
-- Source selection checkboxes (R34/Dan/NH/EH) render in mobile drawer, bidirectional sync with desktop sources
-- 2-per-row grid layout on mobile (`content-search.css`)
-- AI filter fallback toggle in HTML, dispatches `change` event when JS module fails
-
-### Popular Tags
-- Relocated from inside gallery template to header group after Comics
-- Mobile icon added for drawer access
-
-### ComicsPicker Redesign
-- Modal layout changed to rectangular sidebar layout (replaced wide square modal)
-- Source filter tabs: All / Gallery / Downloads / Comics
-- Taller default height with internal scroll
-- Preview panel hidden by default, toggle to show
-- `removeAllFiles` segment removed from UI
-- Manage buttons section in explicit vertical column
-
-### Full Scan Route
-- New `POST /api/rescan/full` route with `_full_scan()` server function
-- Complete re-scan of media directory with phash-based tag preservation
-
-### Header & i18n Cleanup
-- CM header locale keys added for all 4 dropdown toggles and 8 sub-links
-- Admin nav: `focus-visible` uses `box-shadow` instead of `outline`
-- Settings page: tab buttons converted from `<button>` to `<a>` with `.admin-header` wrapper
-- Tags-manage: search field moved from inline to CM header
-- Sidebar: Manage buttons section in explicit column
-
-### Lightbox Null Guard
-- `Lightbox.close()` checks `this._el('Media')` before `querySelector('video')` (prevents TypeError when closing before open)
-- `csLightbox.close()` wrapped in try-catch in content-search module
-
-### Known Issues (updated)
-- `AdminDashboard.load()` selector issue fixed (selector already includes `.admin-header a[data-section]`) — removed from known issues
-
-## Development commands
-
-```bash
-# Start Flask on port 5050
-venv/bin/python src/web_app.py
-
-# Start Flask with auto-reload + verbose
-venv/bin/python src/web_app.py --debug
-
-# Start Flask on localhost only
-venv/bin/python src/web_app.py --bind 127.0.0.1
-
-# Run all checks (except smoke)
-venv/bin/python test.py
-
-# Run specific checks (py=js=css=...=smoke)
-venv/bin/python test.py --check py/js/css/locale/func/dead/smoke
-
-# Fix unused LOCALE keys
-venv/bin/python test.py --fix
-
-# Create binary distribution
-venv/bin/pyinstaller mediavault.spec --clean --noconfirm
+```
+MediaVault/
+├── src/                          # Бэкенд: Flask (web_app.py ~6к строк)
+│   ├── web_app.py                # 108+ роутов, SQLite, 6000+ строк
+│   ├── credential_store.py       # Хранилище ключей API (keyring / файл)
+│   └── backends/api_raw.py       # Прямые API запросы (NHentai)
+├── static/
+│   ├── shared/                   # Общие JS модули (13 файлов)
+│   │   ├── utils.js              # Shared.* хелперы, _i18nData, debounce
+│   │   ├── lightbox.js           # Lightbox класс (просмотрщик)
+│   │   ├── grid-renderer.js      # HTML генераторы сеток
+│   │   ├── icons.js              # SiteIcons.getIcon — inline SVG
+│   │   ├── api.js                # API хелперы
+│   │   ├── notifications.js      # Уведомления
+│   │   ├── mobile-search.js      # Мобильный поиск
+│   │   ├── home-bg.js            # Three.js фон на главной
+│   │   ├── find-originals.js     # Поиск оригиналов
+│   │   ├── init.js               # Инициализация общих компонентов
+│   │   ├── comics/comics.js      # CRUD + рендер комиксов
+│   │   ├── gallery/gallery.js    # Галерея MV
+│   │   └── grid/                 # Вспомогательные модули сеток
+│   ├── content/                   # CM SPA (8 файлов)
+│   │   ├── main.js               # SPA роутер + init
+│   │   ├── content-search.js     # Поиск по R34/Dan/NH/EH
+│   │   ├── comics-tags.js        # Drag-n-drop теги комиксов
+│   │   ├── comics.js             # CRUD комиксов в CM
+│   │   ├── tags.js               # Массовое тегирование
+│   │   ├── tags-manage/          # Тегирование файлов
+│   │   ├── nhentai_search.js     # Поиск по NHentai
+│   │   └── utils.js              # Утилиты CM
+│   ├── admin/admin.js            # Админка: users, DB, API keys, сканирование
+│   ├── css/                      # 8 CSS файлов
+│   │   ├── shared.css            # Базовые стили (1-й порядок)
+│   │   ├── content.css           # CM стили
+│   │   ├── content-search.css    # Поиск контента
+│   │   ├── admin.css             # Админка
+│   │   ├── settings.css          # Настройки
+│   │   ├── shared-grid.css       # Сетки
+│   │   ├── tagfetch.css          # Tagfetch
+│   │   └── mediavault.css        # MV стили (последний, !important разрешён)
+│   ├── mediavault/               # MV галерея
+│   │   ├── mediavault.js         # Основной модуль галереи
+│   │   ├── api.js                # API для MV
+│   │   └── db.js                 # LocalStorage/IndexedDB
+│   ├── fonts/                    # Шрифты
+│   └── lib/three.module.js       # Three.js (фон)
+├── templates/                    # 15+ Jinja2 шаблонов
+│   ├── base.html                 # Базовый шаблон
+│   ├── home.html                 # Главная страница
+│   ├── login.html                # Логин
+│   ├── settings.html             # Настройки
+│   ├── content-mgmt/
+│   │   └── tags.html             # Теги (CM)
+│   ├── shared/
+│   │   ├── gallery.html          # Галерея (shared)
+│   │   ├── comics-list.html      # Список комиксов
+│   │   ├── macros.html           # Jinja2 макросы
+│   │   ├── popular_tags.html     # Популярные теги
+│   │   └── view.html             # Просмотр
+│   ├── admin/admin.html          # Админка
+│   ├── content-search.html       # Поиск контента
+│   ├── kemono_import.html        # Импорт Kemono
+│   ├── nhentai_search.html       # Поиск NHentai
+│   ├── similar.html              # Похожие файлы
+│   └── tagfetch/                 # Tagfetch страницы
+├── docs/                         # Документация
+├── test.py                       # CLI тестер (975 строк)
+├── check.py                      # Проверки синтаксиса + smoke тесты
+├── requirements.txt              # Python зависимости
+└── packaging/aur/                # AUR PKGBUILD
 ```
 
-**No smoke test by default**: Smoke test (`--check smoke`) starts Flask on port 15050 and checks `/login` (200) + `/api/gallery` (401). All other checks run faster by default.
+## ГДЕ ИСКАТЬ
 
-## Key JavaScript files
+| Задача | Файл(ы) | Ключевые символы |
+|--------|---------|-------------------|
+| Роуты, API, БД | `src/web_app.py` | 108+ роутов, SQLite WAL |
+| Хранилище ключей | `src/credential_store.py` | `CredentialStore`, keyring/plain |
+| Прямые API (NHentai) | `src/backends/api_raw.py` | `api_raw_nhentai` |
+| Галерея MV | `static/mediavault/mediavault.js` | `init()`, `onSidebarTagClick` |
+| Лайтбокс | `static/shared/lightbox.js` | `Lightbox` класс |
+| CM: поиск контента | `static/content/content-search.js` | `doSearch()`, `showLightbox()`, R34/Dan/NH/EH |
+| CM: теги комиксов | `static/content/comics-tags.js` | `comicsTagsRender()`, drag-n-drop |
+| CM: CRUD комиксов | `static/content/comics.js` | `comicsRender()`, `addComic()` |
+| CM: роутинг SPA | `static/content/main.js` | `init()`, `loadSection()`, роуты |
+| CM: массовое тегирование | `static/content/tags.js` | Тегирование файлов |
+| CM: NHentai поиск | `static/content/nhentai_search.js` | Поиск манги |
+| Админка | `static/admin/admin.js` | `init()`, 5 секций (Users, DB, API, Scan, Mount) |
+| Общие утилиты | `static/shared/utils.js` | `Shared.*`, `_i18nData` |
+| Сетка карточек | `static/shared/grid-renderer.js` | `comicCardHTML()`, `buildComicsGridHTML()` |
+| Иконки | `static/shared/icons.js` | `SiteIcons.getIcon` |
+| Базовый шаблон | `templates/base.html` | {% block content %}, {% block scripts %} |
+| Популярные теги | `templates/shared/popular_tags.html` | Кнопки популярных тегов |
+| Тесты | `test.py` | CLI тестер (975 строк) |
 
-- `static/shared/utils.js`: Shared.* utility functions (hexToRgba(), parseTags(), getColumnCount(), reorderGalleryDOM(), getVisualOrder()), `_i18nData` locale dict
-- `static/shared/lightbox.js`: Lightbox class with arrowNav option
-- `static/shared/icons.js`: SiteIcons.getIcon
-- `static/admin/admin.js`: 5 sections + scan progress polling; `loadSection()` updates `.active` on nav links
-- `static/content/content-search.js`: Content-search SPA module (812 строк) — drawer sources sync, MobileSearch.register try-catch guard, AI filter toggle
-- `static/content/comics-picker.js`: Preview animation
-- `static/shared/find-originals.js`: Background thread for finding originals
-- `static/shared/grid-renderer.js`: ES-module for comics-tags.js, tags-manage.js (buildLeftPanelHtml, renderLeftTags, setupDragEvents, comicCardHTML, buildComicsGridHTML)
+## КАРТА API (бэкенд)
 
-## Frameworks
+### Страницы (GET)
+| Маршрут | Функция | Описание |
+|---------|---------|----------|
+| `/` | `home` | Главная |
+| `/mediavault/gallery` | `gallery` | Галерея MV |
+| `/mediavault/comics` | `comics` | Комиксы MV |
+| `/mediavault/view` | `view` | Просмотр MV |
+| `/mediavault/comics/view` | `comics_view` | Просмотр комикса MV |
+| `/content-mgmt/search` | `content_mgmt_search` | CM поиск |
+| `/content-mgmt/comics-tags` | `content_mgmt_comics_tags` | CM теги комиксов |
+| `/content-mgmt/comics-edit` | `content_mgmt_comics_edit` | CM редактор комиксов |
+| `/content-mgmt/tags-auto` | `tags_auto` | CM авто-теги |
+| `/content-mgmt/tags-manual` | `tags_manual` | CM ручные теги |
+| `/content-mgmt/tags-manage` | `tags_manage` | CM управление тегами |
+| `/admin` | `admin` | Панель администратора |
+| `/settings` | `settings` | Настройки |
+| `/popular-tags` | `popular_tags_page` | Популярные теги |
+| `/nhentai-search` | `nhentai_search_page` | Поиск NHentai |
+| `/kemono-import` | `kemono_import_page` | Импорт Kemono |
+| `/similar` | `similar` | Похожие |
+| `/login` | `login` | Логин |
 
-**Testing**: Custom CLI `test.py` (975 строк) — not pytest. Includes:
-- `--check py`: `python -m py_compile src/*.py`
-- `--check js`: `node --check static/**/*.js`
-- `--check css`: CSS files exist and non-empty
-- `--check locale`: AST-parse LOCALE parity (en↔ru), JS sync, duplicate values
-- `--check dead`: AST (Python) + regex (JS) — unused public functions
-- `--check func`: Inject Python in subprocess
-- `--check smoke`: Flask on :15050, GET /login (200) + /api/gallery (401)
+### API (JSON)
+| Маршрут | Описание |
+|---------|----------|
+| `GET /api/gallery` | Данные галереи |
+| `GET /api/media` | Медиа-файлы |
+| `GET /api/thumbnail` | Миниатюры |
+| `GET /api/fileinfo` | Информация о файле |
+| `GET /api/browse` | Навигация по папкам |
+| `GET /api/popular_tags` | Популярные теги |
+| `GET/POST /api/categories` | Категории тегов |
+| `GET/POST /api/settings` | Настройки |
+| `POST /api/login` | Логин |
+| `POST /api/logout` | Logout |
+| `POST /api/scan_folder` | Сканирование папки |
+| `GET /api/scan_status` | Статус сканирования |
+| `POST /api/rescan/full` | Полное пересканирование |
+| `GET /api/auth_status` | Статус авторизации |
+| `POST /api/theme` | Смена темы |
+| `POST /api/effects` | Эффекты |
+| `POST /api/save_file` | Сохранение файла |
+| `POST /api/save_all_fetched` | Сохранение всех найденных |
+| `POST /api/auto_scan` | Авто-сканирование |
+| `POST /api/auto_status` | Статус авто-сканирования |
+| `POST /api/tags` | Добавление тегов |
+| `POST /api/tags/bulk` | Массовое тегирование |
+| `POST /api/clear_*` | Очистка кэша/БД/тегов |
+| `POST /api/delete_all` | Удаление всех файлов |
+| `POST /api/deduplicate` | Дедупликация |
+| `POST /api/rehash` | Перехеширование |
+| `GET /api/rehash-progress` | Прогресс перехеширования |
+| `POST /api/find-duplicates` | Поиск дубликатов |
+| `POST /api/remove-duplicates` | Удаление дубликатов |
+| `POST /api/find-originals` | Поиск оригиналов |
+| `GET /api/export_db` | Экспорт БД |
+| `POST /api/import_db` | Импорт БД |
+| `POST /api/regenerate_thumbnails` | Регенерация миниатюр |
+| `POST /api/cancel_regen` | Отмена регенерации |
+| `POST /api/comics/search` | Поиск комиксов |
+| `POST /api/comics/add` | Создание комикса |
+| `POST /api/comics/delete` | Удаление комикса |
+| `POST /api/comics/update` | Обновление комикса |
+| `POST /api/comics/pages/tag` | Тегирование страниц комикса |
+| `GET /api/admin/users` | Список пользователей |
+| `POST /api/admin/users` | Создание пользователя |
+| `DELETE /api/admin/users/<id>` | Удаление пользователя |
+| `POST /api/admin/users/<id>/role` | Смена роли |
+| `POST /api/admin/users/<id>/password` | Смена пароля |
+| `GET /api/content-mgmt/search` | Поиск контента (R34/Dan/NH/EH) |
+| `POST /api/content-mgmt/search/download` | Скачивание |
+| `POST /api/content-mgmt/search/download-async` | Асинхронное скачивание |
+| `POST /api/content-mgmt/search/download-manga` | Скачивание манги NHentai |
+| `GET /api/content-mgmt/search/task/<id>` | Статус задачи |
+| `GET /api/content-mgmt/search/nhentai-gallery` | Галерея NHentai |
+| `GET /api/content-mgmt/files-without-tags` | Файлы без тегов |
+| `GET /api/tags/autocomplete` | Автодополнение тегов |
+| `GET /api/nhentai/search` | Поиск по NHentai API |
+| `GET /api/ehentai/gallery` | Галерея E-Hentai |
+| `GET /api/credential_status` | Статус ключей API |
+| `POST /api/pick_folder` | Выбор папки |
+| `GET /api/similar` | Похожие файлы |
 
-**No pytest, conftest, CI/CD, Docker, Makefile, ruff, flake8, pyproject.toml**. No `test/` directory. Dead code detection custom (regex), possible false positives.
+## КАРТА СИМВОЛОВ (ключевые функции)
 
-**Package configuration**: package.json has placeholder test script only. No additional npm scripts defined.
+| Символ | Тип | Файл | Роль |
+|--------|-----|------|------|
+| `web_app.py` | модуль | `src/` | 6к строк, весь бэкенд |
+| `Lightbox` | класс | `static/shared/lightbox.js` | Просмотрщик с зумом, навигацией, тегами |
+| `Shared.*` | модуль | `static/shared/utils.js` | Хелперы (hexToRgba, parseTags, getColumnCount) |
+| `SiteIcons.getIcon` | модуль | `static/shared/icons.js` | Все SVG иконки проекта |
+| `ContentSearch.*` | модуль | `static/content/content-search.js` | Поиск по R34/Dan/NH/EH |
+| `ComicsTags.*` | модуль | `static/content/comics-tags.js` | Drag-n-drop теги комиксов |
+| `AdminDashboard` | модуль | `static/admin/admin.js` | Админка (5 секций) |
+| `main.js` | SPA | `static/content/main.js` | Роутинг CM |
+| `grid-renderer.js` | модуль | `static/shared/` | `comicCardHTML()`, `buildComicsGridHTML()` |
+| `comics.js` (CM) | модуль | `static/content/comics.js` | CRUD комиксов в CM |
+| `comics.js` (shared) | модуль | `static/shared/comics/` | CRUD комиксов в shared |
+| `mediavault.js` | модуль | `static/mediavault/` | Галерея MV |
+| `api_raw.py` | модуль | `src/backends/` | Прямые NHentai API запросы |
+| `credential_store.py` | модуль | `src/` | Хранилище ключей (keyring) |
 
-**Backend integration**:
-- gallery-dl: Python CLI subprocess, not Python API. Use `is_available → gallery-dl --version`, `get_info(url) → --list-urls`, `download(url, dest) → --directory`. NHentai search: ThreadPoolExecutor 8 workers, sequential 25 requests > 30s timeout.
-- Raw API: `src/backends/api_raw.py` (351 строка) second backend (NHentai raw API)
+## КОНВЕНЦИИ
 
-## CSS Architecture
+### Бэкенд
+- **Порядок декораторов:** `@app.route` → `@admin_required` → `@api_error_handler`
+- **Ошибки API:** 403 JSON (`@admin_required`), 401 JSON (`@auth_required`),
+  500 JSON (`@api_error_handler`)
+- **Логирование:** `log_debug()`/`log_info()`/`log_error()` с ANSI цветами
+- **БД:** SQLite WAL + `busy_timeout=5000`. **Нет `DROP TABLE`** (эксклюзивная
+  блокировка даже в WAL). Вместо этого `DELETE FROM` или `VACUUM` → checkpoint
+- **Пароли:** Werkzeug `generate_password_hash`/`check_password_hash`
 
-### Loading Order
-`shared.css` → (content.css, content-search.css, admin.css, tagfetch.css, settings.css) → `mediavault.css` (last)
+### Фронтенд
+- **ES модули:** `{% block content %}` рендерится до `{% block scripts %}`.
+  Ошибки верхнего уровня в ES модулях блокируют все остальные скрипты
+- **Mobile:** Нет `window.innerWidth` в JS. `.desktop-only` скрыт через CSS
+  media query. Mobile не получает HTML сайдбара/панели поиска/тулбара
+- **Иконки:** Только inline SVG (никаких emoji). `SiteIcons.getIcon`
+- **LocalStorage:** `mediavault_page_size`, `mediavault_layout`,
+  `mediavault_thumb_size`, `mediavault_lang`, `mediavault_folder_filter`
+- **i18n:** `_i18nData` глобальная переменная, ключи в `src/web_app.py`
 
-### Key Selectors
-- `.hdr-desktop` / `.hdr-mobile` — breakpoint at 768px
-- `.admin-header a` — desktop: `width:auto; padding:7px 14px; gap:6px;`, mobile: `width:32px; height:32px;`
-- `.admin-header a.active` — `color:var(--accent); background:var(--accent-glow); font-weight:700;`
-- `.admin-header a:focus-visible` — `outline:none; box-shadow:0 0 0 2px var(--accent);`
-- `.mv-mh-icon:focus-visible` — same box-shadow pattern
-- `.action-btn` — standardized: `border-radius:8px; inline-flex; SVG+text`
-- `.settings-tab-btn` — used on `<a>` elements in settings `.admin-header` for JS selection
+### CSS
+- `.action-btn` — стандартизирован: `border-radius:8px; inline-flex; SVG+text`,
+  hover/active/danger состояния
+- `.admin-header a.active` — `color:var(--accent); background:var(--accent-glow)`
+- `focus-visible` везде через `box-shadow`, не `outline`
+- Порядок CSS: `shared.css` → (content, content-search, admin, tagfetch,
+  settings) → `mediavault.css` (последний)
+- `!important` — только в `mediavault.css`
 
-## Documentation
-- `docs/code-guide.md`: Architecture, route information
-- `docs/user-guide.md` (Russian): How to use everything
-- `DESING.md` (design system): Colors, typography, spacing, animations
-- `roadmap/roadmap.md`: Project roadmap
+## АНТИПАТТЕРНЫ
+
+- **`as any`, `@ts-ignore`, `@ts-expect-error`** — никогда
+- **Lightbox без try-catch** — всегда оборачивай `new Lightbox()` и
+  `csLightbox.close()` (глючит если закрыть до открытия)
+- **Пустые catch блоки** — `catch(e) {}` запрещены
+- **Удаление тестов** чтобы "починить" сборку
+- **gallery-dl как Python API** — только CLI субпроцесс
+- **CSS `!important`** — только в `mediavault.css`
+
+## КОМАНДЫ
+
+```bash
+venv/bin/python src/web_app.py                   # Запуск на :5050
+venv/bin/python src/web_app.py --debug            # С авто-перезагрузкой
+venv/bin/python test.py                           # Все проверки (без smoke)
+venv/bin/python test.py --check py/js/css         # Выборочные проверки
+venv/bin/python test.py --fix                     # Починить неиспользуемые LOCALE ключи
+venv/bin/python check.py                          # 68 синтакс. проверок + 3 smoke
+venv/bin/pyinstaller mediavault.spec --clean --noconfirm  # Бинарник
+```
+
+## ЗАМЕТКИ
+
+- `MobileSearch.register()` кидает "is not a function" — обёрнуто в try-catch
+- Дубликаты LOCALE значений: `navAdmin`/`userRoleAdmin` → "Admin" и др. (pre-existing)
+- `grid-auto-rows: minmax(267px, auto)` нужно на `.cm-comics-tags-grid-inner`
+  (фикс бага перекрытия рядов в CSS Grid)
+- Нет pytest, ruff, flake8, CI/CD, Docker. Весь тест — `test.py`
+- Админка: 5 секций (Users, Database, API Keys, Scan, Mount)
+- Content Search: unified API с `tags_by_category` для цветных категорий тегов
+- NHentai manga download: скачивает все страницы в `Downloads/nhentai/{gid}/`
+- Lightbox `downloadLabelFn` опция: динамическая подпись кнопки скачивания
+- Три саб-приложения: MV (read-only), CM (admin), Admin
+
+## ЗАВИСИМОСТИ
+
+### Python (из requirements.txt)
+- Flask, flask-compress
+- Pillow (миниатюры AVIF)
+- requests (HTTP к внешним API)
+- pyjwt (JWT для аутентификации)
+- python-dotenv
+
+### Системные
+- FFmpeg (миниатюры видео)
+- python3-keyring (опционально, для шифрования ключей API)
+- GNOME Keyring / KDE KWallet (опционально)
+
+### от user
+- если просят сделать что то связаное с тегам, изменнея фоток, видео, комиксов - то это компонент contetn-mgmt. либо к этому доступ будет в admin panel. спроси у user об этом.
+- если страницы относиться к MV; CM; ADMIN and etc, то дизайн страницы должен быть такой, как у других страниц из MV, CM, и так далее
+
+## ТЕХДОЛГ И УЗКИЕ МЕСТА (для AI-ревью)
+
+### Критические (блокируют развитие)
+
+1. **Монолит `web_app.py` ~6000 строк**
+   - Все роуты, БД, бизнес-логика, аутентификация — в одном файле
+   - Рефакторинг: разбить на `routes/`, `models/`, `services/`
+   - Приоритет: высокий — любое изменение рискует сломать всё
+
+2. **Нет тестов**
+   - Нет pytest, unittest, jest. Весь тест — кастомный `test.py` (CLI скрипт)
+   - Нет CI/CD — каждое изменение тестируется вручную
+   - Приоритет: высокий — без тестов рефакторинг опасен
+
+3. **Vanilla JS без сборки**
+   - ES модули грузятся напрямую браузером — нет бандлера
+   - Нет TypeScript — вся типизация теряется на границе Python ↔ JS API
+   - Нет линтера/форматтера для JS
+   - Приоритет: высокий — растёт количество багов на стыке фронта/бэка
+
+### Существенные (тормозят разработку)
+
+4. **Дублирование JS модулей**
+   - `comics.js` существует в двух местах: `static/shared/comics/` и `static/content/comics.js` — разная реализация одного и того же
+   - Часть логики галереи дублируется между `mediavault/mediavault.js`, `shared/gallery/gallery.js` и `content/content-search.js`
+
+5. **SQLite как основная БД**
+   - Нет миграций (Alembic) — схема меняется вручную через ALTER TABLE
+   - WAL режим частично решает, но конкурентные записи всё ещё блокируются
+   - Нет индексов на часть частых запросов (поиск по тегам)
+
+6. **Нет WebSocket**
+   - Прогресс сканирования/регенерации через SSE (Server-Sent Events)
+   - Долгие операции не имеют реального push-уведомления
+
+7. **Перемешанные слои в шаблонах**
+   - Jinja2 шаблоны содержат inline JS (в блоках `scripts`) и CSS
+   - Логика рендеринга размазана между Python, Jinja2 и JS
+
+### Малые (но накапливаются)
+
+8. **`MobileSearch.register()` падает с "is not a function"** — залечено try-catch, но не исправлено
+9. **Дубликаты LOCALE ключей** — `navAdmin`/`userRoleAdmin` → "Admin" и др.
+10. **CSS `!important` в `mediavault.css`** — разрешён только там, но это костыль
+11. **Нет Docker-образа** — хотя AUR пакет есть
+
+## НАПРАВЛЕНИЯ ДЛЯ УЛУЧШЕНИЙ (для AI-планирования)
+
+### Архитектура
+- Разделить `web_app.py` на модули (Flask Blueprints)
+- Ввести сервисный слой между роутами и БД
+- Добавить Alembic для миграций SQLite
+- Вынести внешние API (R34, Danbooru, NH, EH) в отдельные адаптеры
+
+### Фронтенд
+- Добавить Vite/esbuild для сборки JS
+- Постепенно мигрировать критические модули (Lightbox, Content Search) на TypeScript
+- Ввести единую стейт-менеджмент систему (не DOM-состояние)
+- Объединить дублирующиеся модули (comics.js, gallery)
+
+### Инфраструктура
+- Добавить pytest + ruff/flake8 для Python
+- Добавить ESLint/Prettier для JS
+- Настроить GitHub Actions (CI: тесты + линтеры, CD: сборка AUR)
+- Docker Compose для разработки (app + SQLite)
+
+### Безопасность
+- JWT токены хранятся в cookies — проверить httpOnly флаги
+- CSRF защита на API эндпоинтах
+- Rate limiting на внешние API прокси
+
+### UX
+- Infinite scroll в галерее вместо пагинации (опционально)
+- Drag-n-drop загрузка файлов
+- Предпросмотр видео в лайтбоксе

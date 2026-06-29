@@ -2911,7 +2911,7 @@ downloadLabelFn: function(file) {
 **3. Mount indicator moved to card header (settings.html:48):**
 В Settings → Appearance индикатор `#mountStatus` перенесён из футера карточки в `admin-card-header`, рядом с заголовком «Media Path».
 
-**API:** `GET /api/content-mgmt/search/mount-check` (web_app.py, строка 2026) — проверяет, смонтирована ли media_dir и есть ли в ней файлы. Возвращает `{mounted: bool, empty: bool, message: string}`.
+**API:** `GET /api/mount-check` (web_app.py) — проверяет, смонтирована ли media_dir и есть ли в ней файлы. Возвращает `{mounted: bool, empty: bool, message: string}`.
 
 #### 24.17.5 NHentai Manga Download (Full Gallery)
 
@@ -2983,7 +2983,7 @@ if (file._gid && file._mid) {
 | `GET /api/content-mgmt/search` | `api_content_search()` | `@auth_required`, `@api_error_handler` | Unified search (R34, Danbooru, NHentai, E-Hentai) |
 | `GET/POST /api/content-mgmt/search/download` | `api_content_search_download()` | `@auth_required`, `@api_error_handler` | Download file + save tags to DB |
 | `POST /api/content-mgmt/search/download-manga` | `api_content_search_download_manga()` | `@auth_required`, `@api_error_handler` | Download full NHentai gallery |
-| `GET /api/content-mgmt/search/mount-check` | `api_content_search_mount_check()` | `@auth_required`, `@api_error_handler` | Check storage mount status |
+| `GET /api/mount-check` | `api_mount_check()` | `@auth_required`, `@api_error_handler` | Check storage mount status |
 | `POST /api/content-mgmt/search/create-folders` | `api_content_search_create_folders()` | `@admin_required`, `@api_error_handler` | Create Gallery/Comics/Downloads subdirs |
 
 #### 24.17.8 Новые i18n ключи
@@ -3099,7 +3099,7 @@ if (file._gid && file._mid) {
 
 ### 24.18 Mount Indicator Improvements (19.06.2026)
 
-**Три изменения, связанные с индикатором монтирования (`GET /api/content-search/mount-check`):**
+**Три изменения, связанные с индикатором монтирования (`GET /api/mount-check`):**
 
 #### 24.18.1 CSS fix: mount styles в `admin.css`
 
@@ -3124,7 +3124,7 @@ if (file._gid && file._mid) {
 - `static/css/settings.css:126` — удалён `margin-top: 8px` у `.mount-badge`
 
 **Admin JS mount monitoring:**
-- `_checkMount()` — запрос к `/api/content-search/mount-check`, рендер в `#admMountIndicator`
+- `_checkMount()` — запрос к `/api/mount-check`, рендер в `#admMountIndicator`
 - `_startMountWatch()` / `_stopMountWatch()` — авто-перепроверка каждые 5 минут
 - `_mountTimer` — таймер для интервала (сбрасывается при скрытии секции)
 

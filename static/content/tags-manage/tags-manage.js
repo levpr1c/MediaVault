@@ -191,7 +191,10 @@ function _buildToolbar() {
 
   // Desktop: full inline toolbar (also shown on mobile — no separate mobile dropdown)
   return `<div class="cm-files-toolbar-desktop cm-files-toolbar shared-toolbar">` +
-    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text2)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>` +
+    `<div id="cmFilesSearchDesktop" style="display:flex;align-items:center;gap:4px;flex:1;max-width:260px">` +
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text2)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>` +
+      `<input type="text" id="cmFilesSearchInput" placeholder="${_t('searchFiles')}" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font-size:13px">` +
+    `</div>` +
     `<span class="cm-files-count" id="cmFilesCount">${_filteredFiles.length}</span>` +
     `<span class="cm-files-tb-sep"></span>` +
     `<button class="cm-files-tb-action" id="cmSortBtn" data-action="toggle-sort" title="${sortLabels[_sortMode]}">` +
@@ -358,6 +361,15 @@ function _attachEvents(body, signal) {
   // Tag search
   body.querySelector('#cmFilesTagSearchQ')?.addEventListener('input', e => {
     _renderLeftTags(e.target.value)
+  }, { signal })
+
+  body.querySelector('#cmFilesSearchInput')?.addEventListener('input', e => {
+    _searchQ = e.target.value
+    _currentPage = 1
+    _filterFiles()
+    _renderGallery()
+    var count = document.getElementById('cmFilesCount')
+    if (count) count.textContent = '' + _filteredFiles.length
   }, { signal })
 
   // Delegated clicks

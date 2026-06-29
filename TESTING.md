@@ -254,7 +254,7 @@
 - [x] `reduced` → Cache-Control: public, max-age=3600
 - [ ] POST /api/clear_browser_cache → cache_buster инкрементируется
 - [ ] Файлы перезагружаются с &cb=N после очистки кэша
-- [ ] GET /api/content-search/mount-check возвращает корректный статус
+- [ ] GET /api/mount-check возвращает корректный статус
 - выбор папки сделать только на Account табе (P2.14)
 
 ## 11. i18n / L10n

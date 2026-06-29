@@ -26,15 +26,15 @@
 {% if mode == 'edit' %}
 <div class="mv-drawer-body">
   <div class="mv-drawer-row" style="flex-wrap:wrap">
-    <span style="font-size:11px;font-weight:700;color:var(--text2);padding:4px 8px;width:100%;text-transform:uppercase;letter-spacing:.6px">TAGFETCH</span>
-    <a href="/content-mgmt/tags-manual" class="tool-btn" style="font-size:12px;padding:7px 12px">Manual</a>
-    <a href="/content-mgmt/tags-auto" class="tool-btn" style="font-size:12px;padding:7px 12px">Auto</a>
-    <a href="/content-mgmt/tags-manage" class="tool-btn" style="font-size:12px;padding:7px 12px">Manage</a>
-    <a href="/content-mgmt/tags-group" class="tool-btn" style="font-size:12px;padding:7px 12px">Groups</a>
+    <span style="font-size:11px;font-weight:700;color:var(--text2);padding:4px 8px;width:100%;text-transform:uppercase;letter-spacing:.6px" data-i18n="cmSectionTagfetch">{{ _('cmSectionTagfetch') }}</span>
+    <a href="/content-mgmt/tags-manual" class="tool-btn" style="font-size:12px;padding:7px 12px" data-i18n="manualFetch">{{ _('manualFetch') }}</a>
+    <a href="/content-mgmt/tags-auto" class="tool-btn" style="font-size:12px;padding:7px 12px" data-i18n="autoFetch">{{ _('autoFetch') }}</a>
+    <a href="/content-mgmt/tags-manage" class="tool-btn" style="font-size:12px;padding:7px 12px" data-i18n="manage">{{ _('manage') }}</a>
+    <a href="/content-mgmt/tags-group" class="tool-btn" style="font-size:12px;padding:7px 12px" data-i18n="groups">{{ _('groups') }}</a>
   </div>
   <div class="mv-drawer-row" style="flex-wrap:wrap">
-    <a href="/content-mgmt/comics-edit" class="tool-btn active" style="font-size:12px;padding:7px 12px">COMICS-EDITOR</a>
-    <a href="/content-mgmt/comics-edit" class="tool-btn" style="font-size:12px;padding:7px 12px">COMICS-TAGS</a>
+    <a href="/content-mgmt/comics-edit" class="tool-btn active" style="font-size:12px;padding:7px 12px" data-i18n="comicsEditor">{{ _('comicsEditor') }}</a>
+    <a href="/content-mgmt/comics-tags" class="tool-btn" style="font-size:12px;padding:7px 12px" data-i18n="comicsTags">{{ _('comicsTags') }}</a>
   </div>
 </div>
 {% endif %}
@@ -105,6 +105,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script>{% if LOCALE_JSON is defined %}var _i18nData = {{ LOCALE_JSON|safe }};{% endif %}</script>
 {{ super() }}
 {% if mode == 'edit' %}
 <script src="/static/shared/comics/comics.js?v=2"></script>

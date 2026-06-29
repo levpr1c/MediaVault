@@ -24,6 +24,17 @@ export function comicsDestroy() {
 
 function _buildHTML() {
   let html = `<div id="cmComics" class="cm-comics">` +
+    `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">` +
+      `<span style="font-size:14px;font-weight:600;color:var(--text);flex:1">${_t('comics')}</span>` +
+      `<button class="action-btn" id="cmAutoFetchComicsBtn" title="${_t('autoFetchComics')}">` +
+        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>` +
+        `<span>${_t('autoFetchComics')}</span>` +
+      `</button>` +
+      `<button class="action-btn" id="cmEnrichMetaBtn" title="${_t('enrichMetadata')}">` +
+        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>` +
+        `<span>${_t('enrichMetadata')}</span>` +
+      `</button>` +
+    `</div>` +
     `<div class="cm-comics-grid" id="cmComicsGrid">`
   _comics.forEach(c => {
     html +=
@@ -40,6 +51,10 @@ function _buildHTML() {
       `<div class="cm-comic-info">` +
         `<span class="cm-comic-title">${esc(c.title)}</span>` +
         `<div style="display:flex;gap:2px">` +
+        `<button class="action-btn" data-action="export-metadata" data-id="${c.id}" title="${_t('exportMetadata')}">` +
+        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` +
+        `<button class="action-btn" data-action="import-metadata" data-id="${c.id}" title="${_t('importMetadata')}">` +
+        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>` +
         `<button class="action-btn" data-action="delete-comic" data-id="${c.id}" title="${_t('delete')}">` +
         `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>` +
         `</div>` +
@@ -61,12 +76,95 @@ function _attachEvents(body, signal) {
     const actions = {
       'edit-comic': () => editComic(parseInt(el.dataset.id, 10)),
       'delete-comic': () => deleteComic(parseInt(el.dataset.id, 10)),
-      'add-comic': addComic
+      'add-comic': addComic,
+      'export-metadata': function() {
+        var cid = parseInt(el.dataset.id, 10)
+        fetch('/api/comics/metadata-export?comic_id=' + cid).then(function(r) { return r.json() }).then(function(d) {
+          if (d.ok) { toast(_t('metadataExported'), 'success') }
+          else { toast(d.error || _t('exportFailed'), 'error') }
+        }).catch(function(e) { toast(e.message, 'error') })
+        e.stopPropagation()
+      },
+      'import-metadata': function() {
+        var cid = parseInt(el.dataset.id, 10)
+        fetch('/api/comics/metadata-import?comic_id=' + cid, { method: 'POST' }).then(function(r) { return r.json() }).then(function(d) {
+          if (d.ok) { toast(_t('metadataImported'), 'success'); reloadComics() }
+          else { toast(d.error || _t('importFailed'), 'error') }
+        }).catch(function(e) { toast(e.message, 'error') })
+        e.stopPropagation()
+      }
     }
     actions[el.dataset.action]?.()
     if (el.dataset.action === 'delete-comic') e.stopPropagation()
   }, { signal })
 
+  body.querySelector('#cmAutoFetchComicsBtn')?.addEventListener('click', function() {
+    if (this.disabled) return
+    this.disabled = true
+    this.innerHTML = '<span class="fetch-spinner"></span>'
+    fetch('/api/comics/auto-fetch', { method: 'POST' }).then(function(r) { return r.json() }).then(function(d) {
+      if (d.skipped === 'scan_in_progress') {
+        toast('Scan already in progress', 'warning')
+        return
+      }
+      var pollTimer = setInterval(function() {
+        fetch('/api/admin/scan-progress').then(function(r2) { return r2.json() }).then(function(pd) {
+          if (pd.status === 'done' || pd.status === 'idle') {
+            clearInterval(pollTimer)
+            reloadComics()
+            toast('Done!', 'success')
+            return
+          }
+          if (pd.status === 'error') {
+            clearInterval(pollTimer)
+            toast(pd.error || 'Error', 'error')
+            return
+          }
+        }).catch(function() { clearInterval(pollTimer) })
+      }, 2000)
+    }).catch(function(e) {
+      toast(e.message, 'error')
+    }).finally(function() {
+      setTimeout(function() {
+        var btn = document.getElementById('cmAutoFetchComicsBtn')
+        if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg><span>' + _t('autoFetchComics') + '</span>' }
+      }, 5000)
+    })
+  }, { signal })
+
+  body.querySelector('#cmEnrichMetaBtn')?.addEventListener('click', function() {
+    if (this.disabled) return
+    this.disabled = true
+    this.innerHTML = '<span class="fetch-spinner"></span>'
+    fetch('/api/comics/enrich-metadata', { method: 'POST' }).then(function(r) { return r.json() }).then(function(d) {
+      if (d.skipped === 'scan_in_progress') {
+        toast('Scan already in progress', 'warning')
+        return
+      }
+      var pollTimer = setInterval(function() {
+        fetch('/api/admin/scan-progress').then(function(r2) { return r2.json() }).then(function(pd) {
+          if (pd.status === 'done' || pd.status === 'idle') {
+            clearInterval(pollTimer)
+            reloadComics()
+            toast('Done!', 'success')
+            return
+          }
+          if (pd.status === 'error') {
+            clearInterval(pollTimer)
+            toast(pd.error || 'Error', 'error')
+            return
+          }
+        }).catch(function() { clearInterval(pollTimer) })
+      }, 2000)
+    }).catch(function(e) {
+      toast(e.message, 'error')
+    }).finally(function() {
+      setTimeout(function() {
+        var btn = document.getElementById('cmEnrichMetaBtn')
+        if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><span>' + _t('enrichMetadata') + '</span>' }
+      }, 5000)
+    })
+  }, { signal })
 }
 
 /* ─── COMIC CRUD ─── */

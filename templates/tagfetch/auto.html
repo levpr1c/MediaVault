@@ -18,6 +18,18 @@
         <button class="btn btn-sm" onclick="TagfetchAuto.toggleAutoScroll()" id="autoScrollBtn" data-i18n="tfScrollOn">{{ _('tfScrollOn') }}</button>
       </div>
       {% if session.get('role') == 'admin' %}
+      <div class="auto-header" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="_startAutoFetchAll()" id="afAllBtn">Auto Fetch</button>
+        <button class="btn" onclick="_startAutoFetchGallery()" id="afGalleryBtn">Auto Fetch Gallery</button>
+        <button class="btn" onclick="_startAutoFetchComics()" id="afComicsBtn">Auto Fetch Comics</button>
+        <button class="btn" onclick="_startEnrichMetadata()" id="enrichMetaBtn" data-i18n="enrichMetadata">Enrich Metadata</button>
+        <div id="afProgress" class="tf-stats" style="display:none;flex:1;text-align:right;font-size:12px"></div>
+      </div>
+      <div id="afProgressBarWrap" style="display:none;height:4px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:8px">
+        <div id="afProgressBar" style="height:100%;width:0%;background:var(--accent);transition:width .3s"></div>
+      </div>
+      {% endif %}
+      {% if session.get('role') == 'admin' %}
       <div id="autoActionsTop" class="auto-actions-top hidden">
         <button class="btn btn-success" onclick="saveAllAutoResults()" id="autoSaveAllBtnTop" data-i18n="tfSaveAll">{{ _('tfSaveAll') }}</button>
         <span id="autoSaveStatsTop" class="tf-save-stats"></span>
@@ -33,4 +45,78 @@
     </div>
   </div>
 </div>
+{% block scripts %}
+{{ super() }}
+<script>
+// Auto Fetch buttons (comics create + gallery tagfetch)
+var _afPollTimer = null;
+function _afShowProgress() {
+  var el = document.getElementById('afProgress');
+  if (el) el.style.display = '';
+  var wrap = document.getElementById('afProgressBarWrap');
+  if (wrap) wrap.style.display = '';
+}
+function _afHideProgress() {
+  var el = document.getElementById('afProgress');
+  if (el) el.style.display = 'none';
+  var wrap = document.getElementById('afProgressBarWrap');
+  if (wrap) wrap.style.display = 'none';
+}
+function _afStopPoll() {
+  if (_afPollTimer) { clearInterval(_afPollTimer); _afPollTimer = null; }
+}
+function _afPoll() {
+  _afStopPoll();
+  _afShowProgress();
+  _afPollTimer = setInterval(function() {
+    fetch('/api/admin/scan-progress').then(function(r) { return r.json() }).then(function(d) {
+      var bar = document.getElementById('afProgressBar');
+      var txt = document.getElementById('afProgress');
+      if (!bar || !txt) return;
+      if (d.status === 'scanning') {
+        var pct = d.total_folders > 0 ? Math.round(d.folders_done / d.total_folders * 100) : 50;
+        bar.style.width = Math.min(pct, 100) + '%';
+        txt.textContent = (d.current_folder || 'Running\u2026') + ' (' + Math.min(pct, 100) + '%)';
+      } else if (d.status === 'done') {
+        bar.style.width = '100%';
+        txt.textContent = 'Done!';
+        _afStopPoll();
+        setTimeout(_afHideProgress, 3000);
+      } else if (d.status === 'error') {
+        txt.textContent = 'Error: ' + (d.error || '');
+        _afStopPoll();
+        setTimeout(_afHideProgress, 5000);
+      } else if (d.status === 'idle') {
+        _afHideProgress();
+        _afStopPoll();
+      }
+    }).catch(function() { _afStopPoll(); _afHideProgress(); });
+  }, 2000);
+}
+function _startAutoFetchAll() {
+  fetch('/api/auto-fetch-all', { method: 'POST' }).then(function(r) { return r.json() }).then(function(d) {
+    if (d.skipped === 'scan_in_progress') { return alert('Scan already in progress'); }
+    _afPoll();
+  }).catch(function(e) { alert(e.message) });
+}
+function _startAutoFetchGallery() {
+  fetch('/api/auto-fetch-gallery', { method: 'POST' }).then(function(r) { return r.json() }).then(function(d) {
+    if (d.skipped === 'scan_in_progress') { return alert('Scan already in progress'); }
+    _afPoll();
+  }).catch(function(e) { alert(e.message) });
+}
+function _startAutoFetchComics() {
+  fetch('/api/comics/auto-fetch', { method: 'POST' }).then(function(r) { return r.json() }).then(function(d) {
+    if (d.skipped === 'scan_in_progress') { return alert('Scan already in progress'); }
+    _afPoll();
+  }).catch(function(e) { alert(e.message) });
+}
+function _startEnrichMetadata() {
+  fetch('/api/comics/enrich-metadata', { method: 'POST' }).then(function(r) { return r.json() }).then(function(d) {
+    if (d.skipped === 'scan_in_progress') { return alert('Scan already in progress'); }
+    _afPoll();
+  }).catch(function(e) { alert(e.message) });
+}
+</script>
+{% endblock %}
 {% endblock %}

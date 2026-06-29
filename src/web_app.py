@@ -127,6 +127,17 @@ def _has_non_meta_tags(tag_str):
     )
 
 API_DELAY = 1.0
+
+def _check_internet():
+    """Quick internet connectivity check — tries Rule34 and Danbooru APIs with short timeout."""
+    for url in ('https://rule34.xxx/', 'https://danbooru.donmai.us/'):
+        try:
+            r = requests.get(url, timeout=3)
+            if r.status_code < 500:
+                return True
+        except Exception:
+            continue
+    return False
 UA = 'curl/8.20.0'
 
 if getattr(sys, 'frozen', False):
@@ -350,6 +361,8 @@ LOCALE = {
         'cmHeader': 'CONTENT MANAGEMENT',
         'cmDesc': 'Manage tags, categories, and comics',
         'autoFetch': 'Auto',
+        'autoFetchComics': 'Auto Comics Fetch',
+        'enrichMetadata': 'Enrich Metadata',
         'manualFetch': 'Manual',
         'comicsEditor': 'Comics Editor',
         'comicsTags': 'Comics Tags',
@@ -376,6 +389,16 @@ LOCALE = {
         'comicNamePlaceholder': 'Comic title',
         'searchFiles': 'Search files…',
         'searchComics': 'Search comics…',
+        'comics': 'Comics',
+        'exportMetadata': 'Export metadata',
+        'importMetadata': 'Import metadata',
+        'metadataExported': 'Metadata exported',
+        'metadataImported': 'Metadata imported',
+        'exportFailed': 'Export failed',
+        'importFailed': 'Import failed',
+        'manage': 'Manage',
+        'groups': 'Groups',
+        'comicsTags': 'Comics Tags',
         'singlePage': 'Single page',
         'spread': 'Spread',
         'scrollMode': 'Scroll',
@@ -402,6 +425,36 @@ LOCALE = {
         'navUsers': 'Users',
         'navDatabase': 'Database',
         'navApiKeys': 'API Keys',
+        'navDashboard': 'Statistics',
+        'dashboardFilesTotal': 'Files Total',
+        'dashboardComicsTotal': 'Comics Total',
+        'dashboardDbSize': 'DB Size',
+        'dashboardTagged': 'Tagged',
+        'dashboardAutoTagged': 'Auto-tagged',
+        'dashboardUntagged': 'Untagged',
+        'dashboardTaggedTitle': 'Tags',
+        'dashboardByType': 'Files by Type',
+        'dashboardSources': 'Sources',
+        'navPlugins': 'Plugins',
+        'pluginsEnabled': 'Enabled',
+        'pluginsDisabled': 'Disabled',
+        'pluginsNone': 'No plugins found',
+        'pluginsRestartNote': 'Changes take effect after server restart.',
+        'sourceRule34': 'Rule34',
+        'sourceDanbooru': 'Danbooru',
+        'sourceNHentai': 'NHentai',
+        'sourceLocal': 'Local',
+        'dashboardByDate': 'Files by Date',
+        'dashboardRecent': 'Recent Activity',
+        'dashboardFile': 'File',
+        'dashboardDate': 'Date',
+        'dashboardType': 'Type',
+        'dashboardImage': 'Image',
+        'dashboardVideo': 'Video',
+        'dashboardAudio': 'Audio',
+        'dashboardOther': 'Other',
+        'dashboardFiles': 'Files Count',
+        'noData': 'No data',
         'navTags': 'Tags',
         'navFiles': 'Files',
         'tagsManage': 'Tags Manage',
@@ -634,6 +687,8 @@ LOCALE = {
         'cmHeader': 'УПРАВЛЕНИЕ КОНТЕНТОМ',
         'cmDesc': 'Управление тегами, категориями и комиксами',
         'autoFetch': 'Авто',
+        'autoFetchComics': 'Авто импорт комиксов',
+        'enrichMetadata': 'Обновить метаданные',
         'manualFetch': 'Ручной',
         'comicsEditor': 'Редактор Комиксов',
         'comicsTags': 'Теги комиксов',
@@ -657,6 +712,16 @@ LOCALE = {
         'comicNamePlaceholder': 'Название комикса',
         'searchFiles': 'Поиск файлов…',
         'searchComics': 'Поиск комиксов…',
+        'comics': 'Комиксы',
+        'exportMetadata': 'Экспорт metadata',
+        'importMetadata': 'Импорт metadata',
+        'metadataExported': 'Metadata экспортирован',
+        'metadataImported': 'Metadata импортирован',
+        'exportFailed': 'Ошибка экспорта',
+        'importFailed': 'Ошибка импорта',
+        'manage': 'Управление',
+        'groups': 'Группы',
+        'comicsTags': 'Теги комиксов',
         'singlePage': 'Одна страница',
         'spread': 'Разворот',
         'scrollMode': 'Лента',
@@ -685,6 +750,36 @@ LOCALE = {
         'navUsers': 'Пользователи',
         'navDatabase': 'База данных',
         'navApiKeys': 'API ключи',
+        'navDashboard': 'Статистика',
+        'dashboardFilesTotal': 'Всего файлов',
+        'dashboardComicsTotal': 'Всего комиксов',
+        'dashboardDbSize': 'Размер БД',
+        'dashboardTagged': 'С тегами',
+        'dashboardAutoTagged': 'Авто-теги',
+        'dashboardUntagged': 'Без тегов',
+        'dashboardTaggedTitle': 'Теги',
+        'dashboardByType': 'Файлы по типу',
+        'dashboardSources': 'Источники',
+        'navPlugins': 'Плагины',
+        'pluginsEnabled': 'Вкл',
+        'pluginsDisabled': 'Выкл',
+        'pluginsNone': 'Плагины не найдены',
+        'pluginsRestartNote': 'Изменения вступят в силу после перезапуска.',
+        'sourceRule34': 'Rule34',
+        'sourceDanbooru': 'Danbooru',
+        'sourceNHentai': 'NHentai',
+        'sourceLocal': 'Локальные',
+        'dashboardByDate': 'Файлы по дате',
+        'dashboardRecent': 'Недавние',
+        'dashboardFile': 'Файл',
+        'dashboardDate': 'Дата',
+        'dashboardType': 'Тип',
+        'dashboardImage': 'Изображение',
+        'dashboardVideo': 'Видео',
+        'dashboardAudio': 'Аудио',
+        'dashboardOther': 'Другое',
+        'dashboardFiles': 'Кол-во файлов',
+        'noData': 'Нет данных',
         'navTags': 'Теги',
         'navFiles': 'Файлы',
         'tagsManage': 'Управление тегами',
@@ -1729,7 +1824,8 @@ def mediavault_gallery_route():
 @app.route('/mediavault/comics')
 def mediavault_comics_route():
     s = load_settings()
-    return render_template('shared/comics-list.html', page='mediavault', subview='comics', mode='view', s=s)
+    return render_template('shared/comics-list.html', page='mediavault', subview='comics', mode='view', s=s,
+                           LOCALE_JSON=json.dumps(LOCALE, ensure_ascii=False))
 
 @app.route('/mediavault/view')
 def mediavault_view_route():
@@ -1901,7 +1997,8 @@ def content_mgmt_tags_group():
 def content_mgmt_comics_edit():
     """Редактор комиксов: создание/удаление/сортировка страниц."""
     s = load_settings()
-    return render_template('shared/comics-list.html', page='content-mgmt', mode='edit', s=s)
+    return render_template('shared/comics-list.html', page='content-mgmt', mode='edit', s=s,
+                           LOCALE_JSON=json.dumps(LOCALE, ensure_ascii=False))
 
 @app.route('/nhentai-search')
 @admin_required
@@ -1936,7 +2033,7 @@ def api_content_search():
         return jsonify({'error': 'no query'}), 400
     from backends import search_tags
     import concurrent.futures
-    site_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'eh': 'ehentai'}
+    site_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'eh': 'ehentai', 'hentailive': 'hentailive'}
     sites = [site_map[s] for s in sites_param.split(',') if s in site_map]
     results = {}
     total = 0
@@ -2093,8 +2190,8 @@ def api_content_search_download():
         return jsonify({'error': 'Invalid source name'}), 400
 
     _SOURCE_FOLDER = {
-        'r34': 'rule34', 'dan': 'danbooru',
-        'nhentai': 'nhentai', 'eh': 'ehentai',
+        'r34': 'Rule34', 'dan': 'Danbooru',
+        'nhentai': 'nHentai', 'eh': 'E-Hentai',
     }
     source = _SOURCE_FOLDER.get(source, source.lower())
     dl_dir = settings.get('downloads_dir', 'Downloads')
@@ -2199,7 +2296,7 @@ def api_content_search_check_manga_dir():
         safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')[:80]
         if safe_title:
             folder_name = safe_title + '_' + str(gid)
-    target_dir = os.path.join(media_dir, dl_dir, 'nhentai', folder_name) if media_dir else ''
+    target_dir = os.path.join(media_dir, dl_dir, 'nHentai', folder_name) if media_dir else ''
     dir_exists = bool(target_dir and os.path.isdir(target_dir) and os.listdir(target_dir))
 
     existing_comics = None
@@ -2253,7 +2350,7 @@ def api_content_search_download_manga():
         safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')[:80]
         if safe_title:
             folder_name = safe_title + '_' + str(gid)
-    target_dir = os.path.join(media_dir, dl_dir, 'nhentai', folder_name)
+    target_dir = os.path.join(media_dir, dl_dir, 'nHentai', folder_name)
     try:
         os.makedirs(target_dir, exist_ok=True)
     except Exception as e:
@@ -2454,7 +2551,7 @@ def _bg_download_file(url, source, tags_str, tags_by_category):
     if not re.match(r'^[a-zA-Z0-9]+$', source):
         raise ValueError('Invalid source name')
 
-    _SOURCE_FOLDER = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'eh': 'ehentai'}
+    _SOURCE_FOLDER = {'r34': 'Rule34', 'dan': 'Danbooru', 'nhentai': 'nHentai', 'eh': 'E-Hentai'}
     source = _SOURCE_FOLDER.get(source, source.lower())
     dl_dir = s.get('downloads_dir', 'Downloads')
     target_dir = os.path.join(media_dir, dl_dir, source)
@@ -2540,7 +2637,7 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
         safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')[:80]
         if safe_title:
             folder_name = safe_title + '_' + str(gid)
-    target_dir = os.path.join(media_dir, dl_dir, 'nhentai', folder_name)
+    target_dir = os.path.join(media_dir, dl_dir, 'nHentai', folder_name)
 
     # If overwrite requested, delete existing files
     if overwrite and os.path.isdir(target_dir):
@@ -2790,10 +2887,10 @@ def api_content_search_task_status(task_id):
             'result': t.get('result_data')
         })
 
-@app.route('/api/content-mgmt/search/mount-check')
+@app.route('/api/mount-check')
 @auth_required
 @api_error_handler
-def api_content_search_mount_check():
+def api_mount_check():
     """Check if media_dir is mounted (has files)."""
     media_dir = settings.get('media_dir', '')
     if not media_dir:
@@ -3403,6 +3500,17 @@ def login_page():
     return render_template('login.html', lang=lang, theme=theme, s=s,
                            LOCALE_JSON=json.dumps(LOCALE, ensure_ascii=False))
 
+# Удаление устаревшей записи из БД (файл не найден на диске).
+def _remove_stale_record(db, rel_path, reason=''):
+    log_warning('stale record: path=%s reason=%s — removing from DB', rel_path, reason)
+    try:
+        db.execute('DELETE FROM file_tags WHERE path = ?', [rel_path])
+        db.execute('DELETE FROM files WHERE path = ?', [rel_path])
+        return True
+    except Exception as e:
+        log_error('stale record: failed to remove path=%s: %s', rel_path, e)
+        return False
+
 # Фоновое сканирование media_dir при старте. Добавляет новые файлы в БД с авто-тегами.
 def _quick_scan(force=False):
     """Walk media_dir, auto-tag NEW files only (skip already-scanned). Returns (count, errors).
@@ -3461,9 +3569,15 @@ def _quick_scan(force=False):
         _ensure_db_schema()
         count = 0
         errors = 0
+        stale_count = 0
         db = _db_conn()
 
         try:
+            # Collect all DB paths to detect stale records
+            all_db_paths = set(row[0] for row in db.execute('SELECT path FROM files').fetchall())
+            seen_paths = set()
+            name_to_rel = {}  # basename → rel_path for relocation
+
             _last_top = None
             for root, dirs, files in os.walk(media_dir):
                 dirs[:] = [d for d in dirs if not d.startswith('.')]
@@ -3485,7 +3599,9 @@ def _quick_scan(force=False):
                         continue
                     full = os.path.join(root, f)
                     rel = os.path.relpath(full, media_dir)
-                    if db.execute('SELECT 1 FROM files WHERE path = ?', [rel]).fetchone():
+                    seen_paths.add(rel)
+                    name_to_rel[f] = rel
+                    if rel in all_db_paths:
                         continue
                     try:
                         auto_tags = _get_auto_tags(full)
@@ -3509,6 +3625,20 @@ def _quick_scan(force=False):
                     except Exception as e:
                         log_error('_quick_scan error path=%s: %s', rel, e)
                         errors += 1
+
+            # Stale records: DB entries whose files no longer exist on disk
+            stale = all_db_paths - seen_paths
+            if stale:
+                log_info_yellow('quick_scan: %d stale DB records (files not on disk); trying relocate first', len(stale))
+                for path in stale:
+                    basename = os.path.basename(path)
+                    new_rel = name_to_rel.get(basename)
+                    if new_rel:
+                        db.execute('UPDATE files SET path = ? WHERE path = ?', [new_rel, path])
+                        log_info('[Relocate quick_scan] %s → %s', path, new_rel)
+                    else:
+                        _remove_stale_record(db, path, 'quick_scan: file not found on disk')
+                    stale_count += 1
         finally:
             db.commit()
             db.close()
@@ -3586,7 +3716,6 @@ def _full_scan():
 
         total_files = len(disk_paths)
         with _scan_progress_lock:
-            _scan_progress['total_folders'] = total_files
             _scan_progress['folders_done'] = 0
             _scan_progress['current_folder'] = 'Comparing with database...'
 
@@ -3600,8 +3729,15 @@ def _full_scan():
             paths_to_update = disk_paths & db_paths
             paths_to_insert = disk_paths - db_paths
 
-            log_info('full_scan: %d to delete, %d to update, %d to insert',
-                     len(paths_to_delete), len(paths_to_update), len(paths_to_insert))
+            total_ops = len(paths_to_delete) + len(paths_to_update) + len(paths_to_insert)
+            with _scan_progress_lock:
+                _scan_progress['total_folders'] = total_ops
+
+            if paths_to_delete:
+                log_info_yellow('full_scan: %d stale DB records (files not found on disk)',
+                                 len(paths_to_delete))
+            log_info('full_scan: %d to delete (stale), %d to update, %d to insert (total ops: %d)',
+                     len(paths_to_delete), len(paths_to_update), len(paths_to_insert), total_ops)
 
             # Move detection: match deleted files to inserted files by phash
             if paths_to_delete and paths_to_insert:
@@ -3636,12 +3772,9 @@ def _full_scan():
                 with _scan_progress_lock:
                     _scan_progress['current_folder'] = 'Removing deleted files...'
                 for path in paths_to_delete:
-                    try:
-                        db.execute('DELETE FROM file_tags WHERE path = ?', [path])
-                        db.execute('DELETE FROM files WHERE path = ?', [path])
+                    if _remove_stale_record(db, path, 'full_scan: file not on disk'):
                         deleted += 1
-                    except Exception as e:
-                        log_error('full_scan delete error path=%s: %s', path, e)
+                    else:
                         errors += 1
                     with _scan_progress_lock:
                         _scan_progress['folders_done'] += 1
@@ -3775,6 +3908,146 @@ def api_scan_status():
 def api_admin_scan_progress():
     with _scan_progress_lock:
         return jsonify({k: _scan_progress[k] for k in _scan_progress})
+
+@app.route('/api/admin/dashboard', methods=['GET'])
+@admin_required
+@api_error_handler
+def api_admin_dashboard():
+    """Статистика для дашборда: файлы, теги, источники, по дням."""
+    db = _db_conn()
+    try:
+        total = db.execute('SELECT COUNT(*) FROM files').fetchone()[0]
+
+        comics_total = db.execute(
+            'SELECT COUNT(*) FROM comics'
+        ).fetchone()[0]
+
+        db_size = os.path.getsize(_DB_PATH) if os.path.exists(_DB_PATH) else 0
+        db_size_str = f'{db_size / 1024 / 1024:.1f} MB' if db_size > 0 else '0 MB'
+
+        _AUTO_TAGS = {'photo', 'video', 'gif', 'animated', 'sound'}
+        all_tags_rows = db.execute(
+            "SELECT tags FROM files WHERE tags IS NOT NULL AND tags != ''"
+        ).fetchall()
+        tagged = 0
+        auto_tagged = 0
+        for row in all_tags_rows:
+            file_tags = set(t.strip().lower() for t in row[0].split(',') if t.strip())
+            if file_tags - _AUTO_TAGS:
+                tagged += 1
+            else:
+                auto_tagged += 1
+        untagged = total - len(all_tags_rows)
+
+        rows = db.execute("SELECT type, COUNT(*) as cnt FROM files GROUP BY type").fetchall()
+        img_cnt = video_cnt = other_cnt = 0
+        for t, cnt in rows:
+            t_lower = t.lower() if t else ''
+            if t_lower == 'image':
+                img_cnt += cnt
+            elif t_lower == 'video':
+                video_cnt += cnt
+            else:
+                other_cnt += cnt
+
+        nhentai_cnt = db.execute("SELECT COUNT(*) FROM files WHERE path LIKE '%nHentai%'").fetchone()[0]
+        danbooru_cnt = db.execute("SELECT COUNT(*) FROM files WHERE path LIKE '%Danbooru%'").fetchone()[0]
+        rule34_cnt = db.execute("SELECT COUNT(*) FROM files WHERE path LIKE '%Rule34%'").fetchone()[0]
+        known = nhentai_cnt + danbooru_cnt + rule34_cnt
+        local_cnt = total - known
+
+        by_date = db.execute(
+            'SELECT DATE(created_at, \'unixepoch\') as day, COUNT(*) as cnt FROM files WHERE created_at > 0 GROUP BY day ORDER BY day'
+        ).fetchall()
+        by_date_list = [{'date': r[0], 'count': r[1]} for r in by_date]
+
+        # Recent activity
+        recent = db.execute(
+            'SELECT path, name, type, created_at FROM files WHERE name IS NOT NULL ORDER BY created_at DESC LIMIT 10'
+        ).fetchall()
+        import datetime as _dt
+        recent_list = [{
+            'id': i + 1,
+            'filename': r[1] or '',
+            'path': r[0] or '',
+            'filetype': (r[2] or '').lstrip('.'),
+            'created_at': _dt.datetime.fromtimestamp(r[3]).strftime('%Y-%m-%d %H:%M') if r[3] and r[3] > 0 else '',
+        } for i, r in enumerate(recent)]
+
+        return jsonify({
+            'files_total': total,
+            'comics_total': comics_total,
+            'db_size': db_size_str,
+            'tagged': tagged,
+            'auto_tagged': auto_tagged,
+            'untagged': untagged,
+            'files_by_type': {
+                'image': img_cnt,
+                'video': video_cnt,
+                'other': other_cnt,
+            },
+            'sources': {
+                'rule34': rule34_cnt,
+                'danbooru': danbooru_cnt,
+                'nhentai': nhentai_cnt,
+                'local': local_cnt,
+            },
+            'by_date': by_date_list,
+            'recent_activity': recent_list,
+        })
+    finally:
+        db.close()
+
+
+# ─── Плагины: список + переключение ───
+@app.route('/api/admin/plugins')
+@admin_required
+@api_error_handler
+def api_admin_plugins():
+    """List discovered plugins with enabled/disabled status."""
+    plugins_dir = os.path.join(_DB_DIR, 'plugins')
+    if not os.path.isdir(plugins_dir):
+        return jsonify({'plugins': []})
+    from plugins import PluginManager
+    pm = PluginManager(plugins_dir)
+    discovered = pm.discover()
+    settings = load_settings()
+    enabled_map = settings.get('plugins_enabled', {})
+    result = []
+    for meta in discovered:
+        name = meta.get('name') or os.path.basename(meta['_path'])
+        is_enabled = enabled_map.get(name, True)
+        result.append({
+            'name': name,
+            'version': meta.get('version', ''),
+            'author': meta.get('author', ''),
+            'description': meta.get('description', ''),
+            'enabled': is_enabled,
+        })
+    return jsonify({'plugins': result})
+
+
+@app.route('/api/admin/plugins/<name>/toggle', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_admin_plugins_toggle(name):
+    """Toggle plugin enabled/disabled state."""
+    import re
+    if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+        return jsonify({'error': 'invalid plugin name'}), 400
+    settings = load_settings()
+    enabled_map = settings.get('plugins_enabled', {})
+    current = enabled_map.get(name, True)
+    enabled_map[name] = not current
+    settings['plugins_enabled'] = enabled_map
+    save_settings(settings)
+    log_info("Plugin '%s' %s", name, 'enabled' if not current else 'disabled')
+    return jsonify({
+        'name': name,
+        'enabled': not current,
+        'note': 'Restart required to apply changes'
+    })
+
 
 # Статус бэкендов (gallery-dl, api_raw).
 @app.route('/api/admin/backends/status', methods=['GET'])
@@ -4649,13 +4922,23 @@ def api_save_all_fetched():
 @admin_required
 @api_error_handler
 def api_auto_scan():
-    """Receive a list of paths, scan each — mark seen + save all results."""
+    """Receive a list of paths, scan each — mark seen + save all results.
+
+    JSON params:
+      - paths: optional list of specific paths to scan
+      - scan_type: 'gallery' (default, skips Comics/nHentai) or 'comics' (only Comics/nHentai)
+    """
     data = request.get_json()
     if data is None:
         return jsonify({'error': 'no data'}), 400
     media_dir = settings.get('media_dir', '')
     if not media_dir:
         return jsonify({'error': 'no media dir'}), 400
+
+    if not _check_internet():
+        return jsonify({'error': 'No internet connection. Auto-tagfetch requires access to Rule34 and Danbooru APIs.'}), 503
+
+    scan_type = (data.get('scan_type') or 'gallery').strip()
     paths = data.get('paths', [])
     total_all = len(paths)
     if not paths:
@@ -4668,8 +4951,12 @@ def api_auto_scan():
                 rel = os.path.relpath(os.path.join(root, f), media_dir)
                 all_files.append(rel)
         total_all = len(all_files)
-        paths = [p for p in all_files if not p.startswith('Comics/') and not p.startswith('Downloads/nHentai/')]
-        log_info('auto_scan: found %d files (total %d with Comics/nHentai)', len(paths), total_all)
+        if scan_type == 'comics':
+            paths = [p for p in all_files if p.startswith('Comics/') or p.startswith('Downloads/nHentai/')]
+            log_info('auto_scan[comics]: found %d files out of %d total', len(paths), total_all)
+        else:
+            paths = [p for p in all_files if not p.startswith('Comics/') and not p.startswith('Downloads/nHentai/')]
+            log_info('auto_scan[gallery]: found %d files (total %d with Comics/nHentai)', len(paths), total_all)
     _ensure_db_schema()
     _ensure_auto_scan_table()
     _ensure_scan_results_table()
@@ -4684,8 +4971,8 @@ def api_auto_scan():
 
     def generate():
         try:
-            comics_count = total_all - len(paths)
-            yield f'data: {json.dumps({"type": "info", "total_filtered": len(paths), "total_all": total_all, "comics_count": comics_count})}\n\n'
+            filtered_out = total_all - len(paths)
+            yield f'data: {json.dumps({"type": "info", "total_filtered": len(paths), "total_all": total_all, "filtered_out": filtered_out, "scan_type": scan_type})}\n\n'
             saved = 0
             errors = 0
             skipped = 0
@@ -4819,6 +5106,719 @@ def api_auto_scan():
             pass
 
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
+
+# Background: comics auto-tagfetch (комиксы + nHentai).
+def _comics_auto_tagfetch_bg(media_dir):
+    """Walk Comics/ and Downloads/nHentai/, fetch tags via R34+Dan, save to DB."""
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'scanning'
+        _scan_progress['type'] = 'comics_tagfetch'
+        _scan_progress['current_folder'] = 'tagfetch'
+        _scan_progress['total_folders'] = 0
+        _scan_progress['folders_done'] = 0
+        _scan_progress['error'] = ''
+    log_info('comics_auto_tagfetch: starting background task')
+
+    all_files = []
+    for root, dirs, files in os.walk(media_dir):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for f in files:
+            if f.startswith('.'): continue
+            rel = os.path.relpath(os.path.join(root, f), media_dir)
+            if rel.startswith('Comics/') or rel.startswith('Downloads/nHentai/'):
+                all_files.append(rel)
+
+    total = len(all_files)
+    log_info('comics_auto_tagfetch: found %d files', total)
+
+    _ensure_db_schema()
+    _ensure_auto_scan_table()
+    _ensure_scan_results_table()
+
+    api_cache, md5_cache = get_caches()
+
+    saved = errors = skipped = 0
+    for idx, rel_path in enumerate(all_files, 1):
+        try:
+            filepath = _safe_media_path(rel_path)
+            if not filepath or not os.path.exists(filepath):
+                skipped += 1
+                continue
+
+            existing = find_file_in_db(rel_path)
+            if existing and _has_non_meta_tags(existing['tags']):
+                skipped += 1
+                continue
+            if _was_tags_not_found(rel_path):
+                skipped += 1
+                continue
+            if _is_auto_scanned(rel_path):
+                skipped += 1
+                continue
+
+            fname_md5 = _md5_from_filename(os.path.basename(rel_path))
+            md5 = md5_cache.get(rel_path)
+            if not md5:
+                md5 = fname_md5 or compute_md5(filepath)
+                md5_cache[rel_path] = md5
+
+            r34_result = fetch_tags('rule34', md5, settings)
+            time.sleep(API_DELAY)
+            api_cache[f'{md5}_r34'] = r34_result
+            dan_result = fetch_tags('danbooru', md5, settings)
+            time.sleep(API_DELAY)
+            api_cache[f'{md5}_dan'] = dan_result
+
+            r34_tags = r34_result.get('tags', []) if isinstance(r34_result, dict) else []
+            dan_tags = dan_result.get('tags', []) if isinstance(dan_result, dict) else []
+
+            # Content MD5 fallback if filename-MD5 only hit one site
+            if fname_md5 and md5 == fname_md5 and (bool(r34_tags) != bool(dan_tags)):
+                content_md5 = compute_md5(filepath)
+                if content_md5 != fname_md5:
+                    if not r34_tags:
+                        r34_result = fetch_tags('rule34', content_md5, settings)
+                        time.sleep(API_DELAY)
+                        api_cache[f'{content_md5}_r34'] = r34_result
+                    if not dan_tags:
+                        dan_result = fetch_tags('danbooru', content_md5, settings)
+                        time.sleep(API_DELAY)
+                        api_cache[f'{content_md5}_dan'] = dan_result
+                    r34_tags = r34_result.get('tags', []) if isinstance(r34_result, dict) else []
+                    dan_tags = dan_result.get('tags', []) if isinstance(dan_result, dict) else []
+
+            # Filename MD5 fallback if content MD5 found nothing
+            if not r34_tags and not dan_tags and fname_md5 and md5 != fname_md5:
+                r34_result = fetch_tags('rule34', fname_md5, settings)
+                time.sleep(API_DELAY)
+                api_cache[f'{fname_md5}_r34'] = r34_result
+                dan_result = fetch_tags('danbooru', fname_md5, settings)
+                time.sleep(API_DELAY)
+                api_cache[f'{fname_md5}_dan'] = dan_result
+                r34_tags = r34_result.get('tags', []) if isinstance(r34_result, dict) else []
+                dan_tags = dan_result.get('tags', []) if isinstance(dan_result, dict) else []
+
+            all_tags = list(set(r34_tags + dan_tags))
+            has_tags = bool(all_tags)
+
+            _mark_auto_scanned(rel_path)
+            if has_tags:
+                _mark_tags_found(rel_path)
+            else:
+                _mark_tags_not_found(rel_path)
+
+            if has_tags:
+                db = _db_conn()
+                try:
+                    existing_tags = existing['tags'] if existing else ''
+                    auto_tags_str = _get_auto_tags(filepath)
+                    auto_tags_list = [t for t in auto_tags_str.split(',') if t] if auto_tags_str else []
+                    merged = merge_tags(existing_tags, all_tags + auto_tags_list)
+
+                    if existing:
+                        db.execute('UPDATE files SET tags = ? WHERE path = ?', [merged, rel_path])
+                    else:
+                        fname = os.path.basename(rel_path)
+                        ext = os.path.splitext(fname)[1].lower()
+                        ftype = _get_file_type(ext)
+                        size = os.path.getsize(filepath)
+                        mtime = int(os.path.getmtime(filepath))
+                        w, h = _get_image_dimensions(filepath) if ftype == 'image' else (0, 0)
+                        db.execute(
+                            'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at) '
+                            'VALUES (?,?,?,?,?,?,?,?,?)',
+                            [rel_path, fname, ftype, size, mtime, merged, w, h, int(time.time())]
+                        )
+                    db.commit()
+                finally:
+                    db.close()
+
+                if dan_tags:
+                    _ensure_categories(dan_result)
+                if r34_tags:
+                    _ensure_r34_categories(r34_tags)
+
+            if total > 0 and idx % 10 == 0:
+                with _scan_progress_lock:
+                    _scan_progress['folders_done'] = idx
+                    _scan_progress['total_folders'] = total
+                    _scan_progress['current_folder'] = rel_path
+
+            saved += 1
+            log_info('comics_auto_tagfetch[%d/%d] %s tags=%d', idx, total, rel_path, len(all_tags))
+
+        except Exception as e:
+            log_error('comics_auto_tagfetch[%d/%d] ERROR %s: %s', idx, total, rel_path, e)
+            errors += 1
+
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'done'
+        _scan_progress['folders_done'] = total
+        _scan_progress['total_folders'] = total
+        _scan_progress['current_folder'] = ''
+    log_info('comics_auto_tagfetch done: saved=%d errors=%d skipped=%d total=%d', saved, errors, skipped, total)
+
+# Запуск comics auto-tagfetch (POST).
+@app.route('/api/comics/auto-tagfetch', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_comics_auto_tagfetch():
+    if not _check_internet():
+        return jsonify({'error': 'No internet connection. Auto-tagfetch requires access to Rule34 and Danbooru APIs.'}), 503
+
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'error': 'no media dir'}), 400
+
+    with _scan_lock:
+        if _scan_in_progress:
+            return jsonify({'ok': True, 'async': True, 'skipped': 'scan_in_progress'})
+        threading.Thread(target=_comics_auto_tagfetch_bg, args=(media_dir,), daemon=True).start()
+    return jsonify({'ok': True, 'async': True})
+
+# ── Comics auto-create from folders (Downloads/nHentai/*, Comics/*) ──
+def _comics_auto_create_bg(media_dir):
+    """Walk Comics/ and Downloads/nHentai/ subdirs, create comics from folders.
+    For each subdirectory with images: if not already in DB as comic → create one.
+    Uses folder name as title, inherits tags from individual file DB entries."""
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'scanning'
+        _scan_progress['type'] = 'comics_autocreate'
+        _scan_progress['current_folder'] = ''
+        _scan_progress['total_folders'] = 0
+        _scan_progress['folders_done'] = 0
+        _scan_progress['error'] = ''
+    log_info('comics_auto_create: starting background task')
+
+    created = skipped = errors = 0
+    folders = []
+
+    # Walk only Comics/ and Downloads/nHentai/ — collect subdirectories with images
+    for root, dirs, files in os.walk(media_dir):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        rel = os.path.relpath(root, media_dir)
+        if not rel.startswith('Comics/') and not rel.startswith('Downloads/nHentai/'):
+            continue
+        # Skip the root Comics/ and Downloads/nHentai/ dirs themselves
+        if rel == 'Comics' or rel == 'Downloads' or rel == 'Downloads/nHentai':
+            continue
+        img_files = [f for f in files if not f.startswith('.') and os.path.splitext(f)[1].lower() in _MEDIA_EXTS]
+        if img_files:
+            folders.append((rel, sorted(img_files, key=str.lower)))
+
+    with _scan_progress_lock:
+        _scan_progress['total_folders'] = len(folders)
+    log_info('comics_auto_create: found %d comic folders', len(folders))
+
+    for idx, (folder_rel, img_files) in enumerate(folders, 1):
+        with _scan_progress_lock:
+            _scan_progress['folders_done'] = idx
+            _scan_progress['current_folder'] = folder_rel
+        folder_name = os.path.basename(folder_rel)
+        try:
+            # Check if any file from this folder is already in comic_pages
+            db = _db_conn()
+            try:
+                existing = db.execute(
+                    'SELECT 1 FROM comic_pages cp JOIN comics c ON cp.comic_id = c.id WHERE cp.file_path LIKE ? LIMIT 1',
+                    [folder_rel + '/%']
+                ).fetchone()
+            finally:
+                db.close()
+            if existing:
+                log_info('comics_auto_create[%d/%d] SKIP %s — already in DB', idx, len(folders), folder_rel)
+                skipped += 1
+                continue
+
+            rel_paths = [os.path.join(folder_rel, f) for f in img_files]
+            cover = rel_paths[0]
+
+            meta_path = os.path.join(media_dir, folder_rel, 'metadata.json')
+            meta_title = folder_name
+            meta_source = 'nhentai' if folder_rel.startswith('Downloads/nHentai/') else 'comics'
+            meta_source_id = ''
+            meta_tags_list = []
+            meta_tbc = {}
+            if os.path.exists(meta_path):
+                try:
+                    with open(meta_path, 'r', encoding='utf-8') as mf:
+                        meta = json.load(mf)
+                    meta_title = (meta.get('title') or '').strip() or folder_name
+                    meta_source = meta.get('source') or meta_source
+                    meta_source_id = meta.get('source_id') or ''
+                    meta_tags_list = meta.get('tags') or []
+                    meta_tbc = meta.get('tags_by_category') or {}
+                    log_info('comics_auto_create[%d/%d] metadata.json found in %s: title=%s',
+                             idx, len(folders), folder_rel, meta_title)
+                except Exception as e:
+                    log_error('comics_auto_create[%d/%d] metadata.json parse error %s: %s',
+                              idx, len(folders), folder_rel, e)
+
+            tags_set = set()
+            db = _db_conn()
+            try:
+                for rp in rel_paths:
+                    row = db.execute('SELECT tags FROM files WHERE path = ?', [rp]).fetchone()
+                    if row and row[0]:
+                        for t in row[0].split(','):
+                            t = t.strip()
+                            if t and not t.startswith('_'):
+                                tags_set.add(t)
+                for t in meta_tags_list:
+                    t = t.strip()
+                    if t:
+                        tags_set.add(t)
+            finally:
+                db.close()
+
+            tags_str = ','.join(sorted(tags_set)) if tags_set else ''
+
+            db = _db_conn()
+            try:
+                c = db.execute(
+                    'INSERT INTO comics (title, cover_path, source, source_id, tags) VALUES (?, ?, ?, ?, ?)',
+                    [meta_title, cover, meta_source, meta_source_id, tags_str]
+                )
+                comic_id = c.lastrowid
+                for i, rp in enumerate(rel_paths, 1):
+                    db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)',
+                               [comic_id, i, rp])
+                for cat_name, tag_list in meta_tbc.items():
+                    db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
+                               [cat_name, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat_name, '#cccccc')])
+                    for tag in tag_list:
+                        db.execute("""INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                            VALUES (?, ?, ?, ?) ON CONFLICT(tag_name) DO UPDATE SET
+                                category = excluded.category, last_updated = excluded.last_updated""",
+                                   [tag, cat_name, 'auto', int(time.time())])
+                db.commit()
+                created += 1
+                log_info('comics_auto_create[%d/%d] CREATED comic=%d title=%s pages=%d tags=%d meta_json=%d',
+                         idx, len(folders), comic_id, meta_title, len(rel_paths), len(tags_set), 1 if os.path.exists(meta_path) else 0)
+            except Exception as e:
+                log_error('comics_auto_create[%d/%d] DB ERROR %s: %s', idx, len(folders), folder_rel, e)
+                errors += 1
+            finally:
+                db.close()
+        except Exception as e:
+            log_error('comics_auto_create[%d/%d] ERROR %s: %s', idx, len(folders), folder_rel, e)
+            errors += 1
+
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'done'
+        _scan_progress['folders_done'] = len(folders)
+        _scan_progress['total_folders'] = len(folders)
+        _scan_progress['current_folder'] = ''
+    log_info('comics_auto_create done: created=%d skipped=%d errors=%d total=%d',
+             created, skipped, errors, len(folders))
+
+
+def _comics_enrich_metadata_bg(media_dir):
+    """Enrich existing comics: create metadata.json if missing, fetch NHentai tags by gid."""
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'scanning'
+        _scan_progress['type'] = 'comics_enrich'
+        _scan_progress['current_folder'] = ''
+        _scan_progress['total_folders'] = 0
+        _scan_progress['folders_done'] = 0
+        _scan_progress['error'] = ''
+    log_info('comics_enrich_metadata: starting background task')
+
+    db = _db_conn()
+    try:
+        comics = db.execute('SELECT id, title, cover_path, source, source_id, tags FROM comics ORDER BY id').fetchall()
+    finally:
+        db.close()
+
+    processed = errors = 0
+    total = len(comics)
+    with _scan_progress_lock:
+        _scan_progress['total_folders'] = total
+    log_info('comics_enrich_metadata: found %d comics to process', total)
+
+    for idx, row in enumerate(comics, 1):
+        comic_id, title, cover_path, source, source_id, tags_str = row
+        with _scan_progress_lock:
+            _scan_progress['folders_done'] = idx
+            _scan_progress['current_folder'] = title or f'#{comic_id}'
+        try:
+            db2 = _db_conn()
+            try:
+                page = db2.execute(
+                    'SELECT file_path FROM comic_pages WHERE comic_id = ? ORDER BY page_number LIMIT 1',
+                    [comic_id]
+                ).fetchone()
+            finally:
+                db2.close()
+            if not page:
+                log_info('comics_enrich_metadata[%d/%d] SKIP id=%d — no pages', idx, total, comic_id)
+                continue
+
+            folder = os.path.dirname(os.path.join(media_dir, page[0]))
+            meta_path = os.path.join(folder, 'metadata.json')
+
+            tag_list = [t.strip() for t in (tags_str or '').split(',') if t.strip()] if tags_str else []
+
+            # Try to extract gid from folder name if source_id is empty
+            if not source_id:
+                folder_basename = os.path.basename(folder)
+                gid_candidate = None
+                m = re.search(r'_(\d+)$', folder_basename)
+                if m:
+                    gid_candidate = m.group(1)
+                elif folder_basename.isdigit():
+                    gid_candidate = folder_basename
+                if gid_candidate:
+                    source_id = gid_candidate
+                    source = 'nhentai'
+                    log_info('comics_enrich_metadata[%d/%d] extracted gid=%s from folder name %s',
+                             idx, total, source_id, folder_basename)
+
+            nhentai_tags = []
+            nhentai_tag_types = {}
+            if source == 'nhentai' and source_id:
+                try:
+                    r = requests.get(
+                        f'https://nhentai.net/api/v2/galleries/{source_id}',
+                        headers={'User-Agent': 'MediaVault/1.0 (mediavault project)'},
+                        timeout=15
+                    )
+                    if r.status_code == 200:
+                        d = r.json()
+                        for t in d.get('tags', []):
+                            name = t.get('name', '')
+                            ttype = t.get('type', 'tag')
+                            if name:
+                                nhentai_tags.append(name)
+                                nhentai_tag_types[name] = ttype
+                except Exception as e:
+                    log_error('comics_enrich_metadata[%d/%d] NHentai API error for gid=%s: %s',
+                              idx, total, source_id, e)
+
+            all_tags_set = set(tag_list)
+            if nhentai_tags:
+                all_tags_set.update(nhentai_tags)
+            all_tags = sorted(all_tags_set)
+
+            tbc = {}
+            if nhentai_tags and nhentai_tag_types:
+                for tag in sorted(set(nhentai_tags)):
+                    ntype = nhentai_tag_types.get(tag, 'tag')
+                    cat = _NHENTAI_TYPE_MAP.get(ntype, 'general')
+                    tbc.setdefault(cat, []).append(tag)
+
+            db3 = _db_conn()
+            try:
+                pages = db3.execute(
+                    'SELECT file_path FROM comic_pages WHERE comic_id = ? ORDER BY page_number',
+                    [comic_id]
+                ).fetchall()
+            finally:
+                db3.close()
+
+            page_basenames = [os.path.basename(p[0]) for p in pages]
+            cover_basename = os.path.basename(cover_path) if cover_path else ''
+
+            metadata = {
+                'version': 1,
+                'title': title,
+                'source': source or '',
+                'source_id': source_id or '',
+                'tags': all_tags,
+                'cover': cover_basename,
+                'pages': page_basenames
+            }
+            if source == 'nhentai' and source_id:
+                metadata['source_url'] = f'https://nhentai.net/g/{source_id}/'
+            if tbc:
+                metadata['tags_by_category'] = tbc
+
+            existing_meta = os.path.exists(meta_path)
+            try:
+                with open(meta_path, 'w', encoding='utf-8') as f:
+                    json.dump(metadata, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                log_error('comics_enrich_metadata[%d/%d] write error %s: %s', idx, total, meta_path, e)
+                errors += 1
+                continue
+
+            new_tags_str = ','.join(all_tags) if all_tags else ''
+            update_fields = []
+            update_vals = []
+            if new_tags_str != (tags_str or ''):
+                update_fields.append('tags=?')
+                update_vals.append(new_tags_str)
+            # Save source/source_id if extracted from folder name
+            orig_source, orig_source_id = row[3], row[4]
+            if not orig_source_id and source_id:
+                update_fields.append('source=?')
+                update_vals.append(source)
+                update_fields.append('source_id=?')
+                update_vals.append(source_id)
+            if update_fields:
+                db4 = _db_conn()
+                try:
+                    db4.execute(f'UPDATE comics SET {",".join(update_fields)} WHERE id=?',
+                               update_vals + [comic_id])
+                    db4.commit()
+                except Exception as e:
+                    log_error('comics_enrich_metadata[%d/%d] DB update error: %s', idx, total, e)
+                finally:
+                    db4.close()
+
+            if nhentai_tags and nhentai_tag_types:
+                try:
+                    db5 = _db_conn()
+                    for cat_name in set(_NHENTAI_TYPE_MAP.values()):
+                        db5.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
+                                    [cat_name, {'artist':'#ff4444','character':'#44cc44',
+                                                'copyright':'#4488ff','general':'#cccccc',
+                                                'meta':'#999999'}.get(cat_name, '#cccccc')])
+                    for tag_name in nhentai_tags:
+                        ntype = nhentai_tag_types.get(tag_name, 'tag')
+                        cat = _NHENTAI_TYPE_MAP.get(ntype, 'general')
+                        db5.execute("""INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                            VALUES (?, ?, ?, ?) ON CONFLICT(tag_name) DO UPDATE SET
+                                category = excluded.category,
+                                source = 'nhentai',
+                                last_updated = excluded.last_updated""",
+                                   [tag_name, cat, int(time.time())])
+                    db5.commit()
+                    db5.close()
+                except Exception as e:
+                    log_error('comics_enrich_metadata[%d/%d] tag_category_members error: %s', idx, total, e)
+
+            log_info('comics_enrich_metadata[%d/%d] OK id=%d title=%s tags=%d nhentai=%d meta=%s',
+                     idx, total, comic_id, title, len(all_tags), len(nhentai_tags),
+                     'updated' if existing_meta else 'created')
+            processed += 1
+        except Exception as e:
+            log_error('comics_enrich_metadata[%d/%d] ERROR id=%d: %s', idx, total, comic_id, e)
+            errors += 1
+
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'done'
+        _scan_progress['folders_done'] = total
+        _scan_progress['total_folders'] = total
+        _scan_progress['current_folder'] = ''
+    log_info('comics_enrich_metadata done: processed=%d errors=%d total=%d', processed, errors, total)
+
+
+@app.route('/api/comics/enrich-metadata', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_comics_enrich_metadata():
+    """Start background task to enrich existing comics: metadata.json + NHentai tag fetch."""
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'error': 'no media dir'}), 400
+    with _scan_lock:
+        if _scan_in_progress:
+            return jsonify({'ok': True, 'async': True, 'skipped': 'scan_in_progress'})
+        threading.Thread(target=_comics_enrich_metadata_bg, args=(media_dir,), daemon=True).start()
+    return jsonify({'ok': True, 'async': True})
+
+
+@app.route('/api/comics/auto-fetch', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_comics_auto_fetch():
+    """Start background task to auto-create comics from folders in Comics/ and Downloads/nHentai/."""
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'error': 'no media dir'}), 400
+    with _scan_lock:
+        if _scan_in_progress:
+            return jsonify({'ok': True, 'async': True, 'skipped': 'scan_in_progress'})
+        threading.Thread(target=_comics_auto_create_bg, args=(media_dir,), daemon=True).start()
+    return jsonify({'ok': True, 'async': True})
+
+
+def _gallery_auto_tagfetch_bg(media_dir):
+    """Walk gallery files (non-Comics/nHentai), fetch tags via R34+Dan, save to DB."""
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'scanning'
+        _scan_progress['type'] = 'gallery_tagfetch'
+        _scan_progress['current_folder'] = 'tagfetch'
+        _scan_progress['total_folders'] = 0
+        _scan_progress['folders_done'] = 0
+        _scan_progress['error'] = ''
+    log_info('gallery_auto_tagfetch: starting background task')
+
+    all_files = []
+    for root, dirs, files in os.walk(media_dir):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for f in files:
+            if f.startswith('.'): continue
+            rel = os.path.relpath(os.path.join(root, f), media_dir)
+            if rel.startswith('Comics/') or rel.startswith('Downloads/nHentai/'):
+                continue
+            all_files.append(rel)
+
+    total = len(all_files)
+    log_info('gallery_auto_tagfetch: found %d files', total)
+
+    _ensure_db_schema()
+    _ensure_auto_scan_table()
+    _ensure_scan_results_table()
+
+    api_cache, md5_cache = get_caches()
+    saved = errors = skipped = 0
+    for idx, rel_path in enumerate(all_files, 1):
+        try:
+            filepath = _safe_media_path(rel_path)
+            if not filepath or not os.path.exists(filepath):
+                skipped += 1
+                continue
+
+            existing = find_file_in_db(rel_path)
+            if existing and _has_non_meta_tags(existing['tags']):
+                skipped += 1
+                continue
+            if _was_tags_not_found(rel_path):
+                skipped += 1
+                continue
+            if _is_auto_scanned(rel_path):
+                skipped += 1
+                continue
+
+            fname_md5 = _md5_from_filename(os.path.basename(rel_path))
+            md5 = md5_cache.get(rel_path)
+            if not md5:
+                md5 = fname_md5 or compute_md5(filepath)
+                md5_cache[rel_path] = md5
+
+            r34_result = fetch_tags('rule34', md5, settings)
+            time.sleep(API_DELAY)
+            api_cache[f'{md5}_r34'] = r34_result
+            dan_result = fetch_tags('danbooru', md5, settings)
+            time.sleep(API_DELAY)
+            api_cache[f'{md5}_dan'] = dan_result
+
+            r34_tags = r34_result.get('tags', []) if isinstance(r34_result, dict) else []
+            dan_tags = dan_result.get('tags', []) if isinstance(dan_result, dict) else []
+
+            if fname_md5 and md5 == fname_md5 and (bool(r34_tags) != bool(dan_tags)):
+                content_md5 = compute_md5(filepath)
+                if content_md5 != fname_md5:
+                    if not r34_tags:
+                        r34_result = fetch_tags('rule34', content_md5, settings)
+                        time.sleep(API_DELAY)
+                        api_cache[f'{content_md5}_r34'] = r34_result
+                    if not dan_tags:
+                        dan_result = fetch_tags('danbooru', content_md5, settings)
+                        time.sleep(API_DELAY)
+                        api_cache[f'{content_md5}_dan'] = dan_result
+                    r34_tags = r34_result.get('tags', []) if isinstance(r34_result, dict) else []
+                    dan_tags = dan_result.get('tags', []) if isinstance(dan_result, dict) else []
+
+            if not r34_tags and not dan_tags and fname_md5 and md5 != fname_md5:
+                r34_result = fetch_tags('rule34', fname_md5, settings)
+                time.sleep(API_DELAY)
+                api_cache[f'{fname_md5}_r34'] = r34_result
+                dan_result = fetch_tags('danbooru', fname_md5, settings)
+                time.sleep(API_DELAY)
+                api_cache[f'{fname_md5}_dan'] = dan_result
+                r34_tags = r34_result.get('tags', []) if isinstance(r34_result, dict) else []
+                dan_tags = dan_result.get('tags', []) if isinstance(dan_result, dict) else []
+
+            all_tags = list(set(r34_tags + dan_tags))
+            has_tags = bool(all_tags)
+
+            _mark_auto_scanned(rel_path)
+            if has_tags:
+                _mark_tags_found(rel_path)
+            else:
+                _mark_tags_not_found(rel_path)
+
+            if has_tags:
+                db = _db_conn()
+                try:
+                    existing_tags = existing['tags'] if existing else ''
+                    auto_tags_str = _get_auto_tags(filepath)
+                    auto_tags_list = [t for t in auto_tags_str.split(',') if t] if auto_tags_str else []
+                    merged = merge_tags(existing_tags, all_tags + auto_tags_list)
+
+                    if existing:
+                        db.execute('UPDATE files SET tags = ? WHERE path = ?', [merged, rel_path])
+                    else:
+                        fname = os.path.basename(rel_path)
+                        ext = os.path.splitext(fname)[1].lower()
+                        ftype = _get_file_type(ext)
+                        size = os.path.getsize(filepath)
+                        mtime = int(os.path.getmtime(filepath))
+                        w, h = _get_image_dimensions(filepath) if ftype == 'image' else (0, 0)
+                        db.execute(
+                            'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at) '
+                            'VALUES (?,?,?,?,?,?,?,?,?)',
+                            [rel_path, fname, ftype, size, mtime, merged, w, h, int(time.time())]
+                        )
+                    db.commit()
+                finally:
+                    db.close()
+
+                if dan_tags:
+                    _ensure_categories(dan_result)
+                if r34_tags:
+                    _ensure_r34_categories(r34_tags)
+
+            if total > 0 and idx % 10 == 0:
+                with _scan_progress_lock:
+                    _scan_progress['folders_done'] = idx
+                    _scan_progress['total_folders'] = total
+                    _scan_progress['current_folder'] = rel_path
+
+            saved += 1
+            log_info('gallery_auto_tagfetch[%d/%d] %s tags=%d', idx, total, rel_path, len(all_tags))
+        except Exception as e:
+            log_error('gallery_auto_tagfetch[%d/%d] ERROR %s: %s', idx, total, rel_path, e)
+            errors += 1
+
+    with _scan_progress_lock:
+        _scan_progress['status'] = 'done'
+        _scan_progress['folders_done'] = total
+        _scan_progress['total_folders'] = total
+        _scan_progress['current_folder'] = ''
+    log_info('gallery_auto_tagfetch done: saved=%d errors=%d skipped=%d total=%d', saved, errors, skipped, total)
+
+
+@app.route('/api/auto-fetch-gallery', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_auto_fetch_gallery():
+    """Start background task to auto-fetch tags for gallery files."""
+    if not _check_internet():
+        return jsonify({'error': 'No internet connection.'}), 503
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'error': 'no media dir'}), 400
+    with _scan_lock:
+        if _scan_in_progress:
+            return jsonify({'ok': True, 'async': True, 'skipped': 'scan_in_progress'})
+        threading.Thread(target=_gallery_auto_tagfetch_bg, args=(media_dir,), daemon=True).start()
+    return jsonify({'ok': True, 'async': True})
+
+
+@app.route('/api/auto-fetch-all', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_auto_fetch_all():
+    """Start both gallery tag-fetch and comics auto-create in sequence."""
+    if not _check_internet():
+        return jsonify({'error': 'No internet connection.'}), 503
+    media_dir = settings.get('media_dir', '')
+    if not media_dir:
+        return jsonify({'error': 'no media dir'}), 400
+    with _scan_lock:
+        if _scan_in_progress:
+            return jsonify({'ok': True, 'async': True, 'skipped': 'scan_in_progress'})
+
+        def _run_both(md):
+            _gallery_auto_tagfetch_bg(md)
+            _comics_auto_create_bg(md)
+
+        threading.Thread(target=_run_both, args=(media_dir,), daemon=True).start()
+    return jsonify({'ok': True, 'async': True})
 
 # Скачивание файла БД (mediavault.db).
 @app.route('/api/export_db', methods=['GET'])
@@ -5340,6 +6340,33 @@ def api_find_duplicates():
         db = _db_conn()
         media_dir = settings.get('media_dir', '')
         rows = db.execute("SELECT path, name, type, COALESCE(size,0) as sz, COALESCE(phash,'') as phash, COALESCE(folder_type,'') as folder_type, COALESCE(tags,'') as tags FROM files").fetchall()
+
+        # Stale records: files in DB no longer on disk → try relocate, else delete
+        valid_rows = []
+        stale_found = 0
+        relocated = 0
+        for row in rows:
+            path = row[0]
+            full = os.path.join(media_dir, path) if media_dir else path
+            if os.path.exists(full):
+                valid_rows.append(row)
+            else:
+                # Try to find file by basename in media_dir first
+                new_path = _relocate_or_clean(path)
+                if new_path:
+                    relocated += 1
+                    # Re-create row with updated path for duplicate detection
+                    new_row = list(row)
+                    new_row[0] = os.path.relpath(new_path, media_dir) if media_dir else new_path
+                    valid_rows.append(tuple(new_row))
+                else:
+                    stale_found += 1
+        if relocated:
+            log_info_yellow('find-duplicates: relocated %d files by basename', relocated)
+        if stale_found:
+            log_info_yellow('find-duplicates: removed %d stale DB records (not found anywhere)', stale_found)
+        rows = valid_rows
+
         # Auto-compute phash for files missing it (images only)
         compute_count = 0
         for i, (path, name, ftype, sz, phash, folder_type, tags) in enumerate(rows):
@@ -5442,7 +6469,24 @@ def _find_sample_originals_task(task_id):
         with _find_originals_lock:
             _find_originals_progress[task_id] = {'status': 'running', 'total': 0, 'found': 0, 'errors': 0, 'done': 0, 'results': {}}
         db = _db_conn()
+        media_dir = settings.get('media_dir', '')
         rows = db.execute("SELECT path, name, COALESCE(tags,'') as tags FROM files WHERE name LIKE 'sample_%'").fetchall()
+
+        # Stale check: skip + remove sample records whose files no longer exist
+        valid_rows = []
+        stale_count = 0
+        for path, name, tags in rows:
+            full = os.path.join(media_dir, path) if media_dir else path
+            if os.path.exists(full):
+                valid_rows.append((path, name, tags))
+            else:
+                _remove_stale_record(db, path, 'find-originals: sample file not on disk')
+                stale_count += 1
+        if stale_count:
+            log_info_yellow('find-originals: removed %d stale sample_ records', stale_count)
+            db.commit()
+        rows = valid_rows
+
         db.close()
         md5_map = {}
         for path, name, tags in rows:
@@ -5560,7 +6604,7 @@ def api_download_original():
         filename = f'{md5}{ext}'
         
         # Map source to download directory (same logic as content-search)
-        source_map = {'r34': 'rule34', 'dan': 'danbooru', 'nhentai': 'nhentai', 'eh': 'ehentai'}
+        source_map = {'r34': 'Rule34', 'dan': 'Danbooru', 'nhentai': 'nHentai', 'eh': 'E-Hentai'}
         source_dir = source_map.get(source.lower(), source.lower())
         if not source_dir or source_dir == 'unknown':
             source_dir = 'unknown'
@@ -5837,6 +6881,110 @@ def api_comics_pages_tag():
     finally:
         db.close()
 
+@app.route('/api/comics/metadata-export')
+@admin_required
+@api_error_handler
+def api_comics_metadata_export():
+    comic_id = request.args.get('comic_id', type=int)
+    if not comic_id:
+        return jsonify({'error': 'Missing comic_id'}), 400
+    try:
+        db = _db_conn()
+        row = db.execute('SELECT id, title, cover_path, created_at, source, source_id, tags FROM comics WHERE id = ?', [comic_id]).fetchone()
+        if not row:
+            db.close()
+            return jsonify({'error': 'not_found'}), 404
+        pages = db.execute('SELECT page_number, file_path FROM comic_pages WHERE comic_id = ? ORDER BY page_number', [comic_id]).fetchall()
+        db.close()
+
+        tags_list = [t.strip() for t in (row[6] or '').split(',') if t.strip()] if row[6] else []
+
+        metadata = {
+            'version': 1,
+            'title': row[1],
+            'source': row[4] or '',
+            'source_id': row[5] or '',
+            'tags': tags_list,
+            'cover': os.path.basename(row[2]) if row[2] else '',
+            'pages': [os.path.basename(p[1]) for p in pages]
+        }
+
+        if row[4] == 'nhentai' and row[5]:
+            metadata['source_url'] = f'https://nhentai.net/g/{row[5]}/'
+
+        if tags_list:
+            db2 = _db_conn()
+            placeholders = ','.join('?' * len(tags_list))
+            cat_rows = db2.execute(f'SELECT tag_name, category FROM tag_category_members WHERE tag_name IN ({placeholders})', tags_list).fetchall()
+            db2.close()
+            tbc = {}
+            for cr in cat_rows:
+                tbc.setdefault(cr[1], []).append(cr[0])
+            metadata['tags_by_category'] = tbc
+
+        media_dir = settings.get('media_dir', '/')
+        if pages:
+            folder = os.path.dirname(os.path.join(media_dir, pages[0][1]))
+            meta_path = os.path.join(folder, 'metadata.json')
+            with open(meta_path, 'w', encoding='utf-8') as f:
+                json.dump(metadata, f, ensure_ascii=False, indent=2)
+            return jsonify({'ok': True, 'path': meta_path})
+        return jsonify({'ok': True, 'metadata': metadata})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/comics/metadata-import', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_comics_metadata_import():
+    comic_id = request.args.get('comic_id', type=int)
+    if not comic_id:
+        return jsonify({'error': 'Missing comic_id'}), 400
+    try:
+        db = _db_conn()
+        row = db.execute('SELECT id FROM comics WHERE id = ?', [comic_id]).fetchone()
+        if not row:
+            db.close()
+            return jsonify({'error': 'not_found'}), 404
+        page = db.execute('SELECT file_path FROM comic_pages WHERE comic_id = ? ORDER BY page_number LIMIT 1', [comic_id]).fetchone()
+        if not page:
+            db.close()
+            return jsonify({'error': 'no_pages'}), 404
+
+        media_dir = settings.get('media_dir', '/')
+        folder = os.path.dirname(os.path.join(media_dir, page[0]))
+        meta_path = os.path.join(folder, 'metadata.json')
+
+        if not os.path.exists(meta_path):
+            db.close()
+            return jsonify({'error': 'metadata.json not found in ' + folder}), 404
+
+        with open(meta_path, 'r', encoding='utf-8') as f:
+            meta = json.load(f)
+
+        title = meta.get('title', '').strip() or row[1]
+        source = meta.get('source', '')
+        source_id = meta.get('source_id', '')
+        new_tags = ','.join(meta.get('tags', []))
+        db.execute('UPDATE comics SET title=?, source=?, source_id=?, tags=? WHERE id=?',
+                   [title, source, source_id, new_tags, comic_id])
+
+        tbc = meta.get('tags_by_category', {}) or {}
+        for cat_name, tag_list in tbc.items():
+            for tag in tag_list:
+                db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
+                           [cat_name, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat_name, '#cccccc')])
+                db.execute("""INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                    VALUES (?, ?, ?, ?) ON CONFLICT(tag_name) DO UPDATE SET
+                        category = excluded.category, last_updated = excluded.last_updated""",
+                           [tag, cat_name, 'auto', int(time.time())])
+
+        db.commit()
+        db.close()
+        return jsonify({'ok': True, 'message': 'Metadata imported', 'title': title})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # ── Entry point ───────────────────────────────
 
 def main():
@@ -5894,6 +7042,33 @@ def main():
         if changed:
             save_settings(s)
     settings = load_settings()
+
+    # ── Загрузка внешних плагинов ──
+    plugins_dir = os.path.join(_DB_DIR, 'plugins')
+    if os.path.isdir(plugins_dir):
+        try:
+            from plugins import PluginManager
+            pm = PluginManager(plugins_dir)
+            settings = load_settings()
+            enabled_map = settings.get('plugins_enabled', {})
+            discovered = pm.discover()
+            loaded = {}
+            for meta in discovered:
+                name = meta.get('name') or os.path.basename(meta['_path'])
+                if enabled_map.get(name, True):
+                    instance = pm.load_plugin(name)
+                    if instance:
+                        try:
+                            instance.initialize(app)
+                            loaded[name] = instance
+                        except Exception as e:
+                            log_error('Ошибка инициализации плагина \'%s\': %s', name, e)
+            if loaded:
+                log_info_green('Загружено плагинов: %s', ', '.join(loaded.keys()))
+            else:
+                log_info('Плагины не найдены в %s', plugins_dir)
+        except Exception as e:
+            log_error('Ошибка загрузки плагинов: %s', e)
 
     # Миграция старого JPEG-кэша превью в AVIF (однократно)
     if not settings.get('thumb_migrated'):

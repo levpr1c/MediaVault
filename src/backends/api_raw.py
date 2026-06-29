@@ -212,7 +212,28 @@ class ApiRawBackend:
 
         Search API returns simplified results with relative thumbnail paths.
         Full metadata (tags, page URLs) requires fetch_gallery per item.
+
+        If query is purely numeric, treat it as a gallery ID lookup
+        via _fetch_nhentai() instead of a search.
         """
+        q = query.strip()
+        if q.isdigit():
+            meta = self._fetch_nhentai(q, settings)
+            if meta and meta.get('media_id'):
+                return {
+                    'results': [{
+                        'id': meta.get('id'),
+                        'title': meta.get('title', ''),
+                        'mid': meta.get('media_id', ''),
+                        'thumbnail': meta.get('preview_url', ''),
+                        'preview_url': meta.get('preview_url', ''),
+                        'tags': meta.get('tags', []),
+                        'pages': meta.get('num_pages', 0),
+                    }],
+                    'total': 1,
+                }
+            return {'results': [], 'total': 0}
+
         import logging as _log
         try:
             r = requests.get(

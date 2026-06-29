@@ -57,6 +57,11 @@
 .cs-autocomplete-item:hover {
   background: var(--surface2);
 }
+.cs-autocomplete-highlight,
+.cs-autocomplete-item.cs-autocomplete-highlight {
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+}
 .cs-autocomplete-item:first-child {
   padding-top: 10px;
 }

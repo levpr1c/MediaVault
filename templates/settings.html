@@ -408,7 +408,7 @@ var SettingsApp = (function() {
   function checkMount() {
     var el = document.getElementById('mountStatus');
     if (!el) return;
-    _api('/api/content-mgmt/search/mount-check', {method:'GET'}).then(function(d) {
+    _api('/api/mount-check', {method:'GET'}).then(function(d) {
       el.innerHTML = d.mounted && !d.empty
         ? '<span class="mount-dot mount-dot-green"></span><span class="mount-badge mount-ok">' + _t('settingsMountOk') + '</span>'
         : '<span class="mount-dot mount-dot-red"></span><span class="mount-badge mount-fail">' + _t('settingsMountFail') + '</span>';

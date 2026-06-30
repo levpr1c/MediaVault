@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""MediaVault v1.1.1 — PyInstaller spec."""
+"""MediaVault v1.4.0 — PyInstaller spec."""
 
 from PyInstaller.utils.hooks import collect_submodules
 

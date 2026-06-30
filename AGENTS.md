@@ -1,7 +1,7 @@
 # MediaVault — База знаний
 
-**Сгенерировано:** 2026-06-28
-**Ветка:** v1.2.1-testing
+**Сгенерировано:** 2026-06-30
+**Ветка:** v1.4
 **Стек:** Flask SPA + Vanilla JS + SQLite
 
 ## ОБЗОР
@@ -15,10 +15,11 @@ Admin (/admin).
 
 ```
 MediaVault/
-├── src/                          # Бэкенд: Flask (web_app.py ~6к строк)
-│   ├── web_app.py                # 108+ роутов, SQLite, 6000+ строк
+├── src/                          # Бэкенд: Flask (web_app.py ~7.7к строк)
+│   ├── web_app.py                # 121+ роутов, SQLite, 7671 строк
 │   ├── credential_store.py       # Хранилище ключей API (keyring / файл)
-│   └── backends/api_raw.py       # Прямые API запросы (NHentai)
+│   ├── plugins/                  # Система плагинов (2 модуля)
+│   └── backends/                 # Бэкенды: api_raw.py + gallerydl.py
 ├── static/
 │   ├── shared/                   # Общие JS модули (13 файлов)
 │   │   ├── utils.js              # Shared.* хелперы, _i18nData, debounce
@@ -26,7 +27,7 @@ MediaVault/
 │   │   ├── grid-renderer.js      # HTML генераторы сеток
 │   │   ├── icons.js              # SiteIcons.getIcon — inline SVG
 │   │   ├── api.js                # API хелперы
-│   │   ├── notifications.js      # Уведомления
+
 │   │   ├── mobile-search.js      # Мобильный поиск
 │   │   ├── home-bg.js            # Three.js фон на главной
 │   │   ├── find-originals.js     # Поиск оригиналов
@@ -89,7 +90,7 @@ MediaVault/
 
 | Задача | Файл(ы) | Ключевые символы |
 |--------|---------|-------------------|
-| Роуты, API, БД | `src/web_app.py` | 108+ роутов, SQLite WAL |
+| Роуты, API, БД | `src/web_app.py` | 121+ роутов, SQLite WAL |
 | Хранилище ключей | `src/credential_store.py` | `CredentialStore`, keyring/plain |
 | Прямые API (NHentai) | `src/backends/api_raw.py` | `api_raw_nhentai` |
 | Галерея MV | `static/mediavault/mediavault.js` | `init()`, `onSidebarTagClick` |
@@ -100,7 +101,7 @@ MediaVault/
 | CM: роутинг SPA | `static/content/main.js` | `init()`, `loadSection()`, роуты |
 | CM: массовое тегирование | `static/content/tags.js` | Тегирование файлов |
 | CM: NHentai поиск | `static/content/nhentai_search.js` | Поиск манги |
-| Админка | `static/admin/admin.js` | `init()`, 5 секций (Users, DB, API, Scan, Mount) |
+| Админка | `static/admin/admin.js` | `init()`, 6 секций (Users, DB, API, Scan, Mount, Plugins) |
 | Общие утилиты | `static/shared/utils.js` | `Shared.*`, `_i18nData` |
 | Сетка карточек | `static/shared/grid-renderer.js` | `comicCardHTML()`, `buildComicsGridHTML()` |
 | Иконки | `static/shared/icons.js` | `SiteIcons.getIcon` |
@@ -197,13 +198,13 @@ MediaVault/
 
 | Символ | Тип | Файл | Роль |
 |--------|-----|------|------|
-| `web_app.py` | модуль | `src/` | 6к строк, весь бэкенд |
+| `web_app.py` | модуль | `src/` | 7.7к строк, весь бэкенд |
 | `Lightbox` | класс | `static/shared/lightbox.js` | Просмотрщик с зумом, навигацией, тегами |
 | `Shared.*` | модуль | `static/shared/utils.js` | Хелперы (hexToRgba, parseTags, getColumnCount) |
 | `SiteIcons.getIcon` | модуль | `static/shared/icons.js` | Все SVG иконки проекта |
 | `ContentSearch.*` | модуль | `static/content/content-search.js` | Поиск по R34/Dan/NH/EH |
 | `ComicsTags.*` | модуль | `static/content/comics-tags.js` | Drag-n-drop теги комиксов |
-| `AdminDashboard` | модуль | `static/admin/admin.js` | Админка (5 секций) |
+| `AdminDashboard` | модуль | `static/admin/admin.js` | Админка (6 секций) |
 | `main.js` | SPA | `static/content/main.js` | Роутинг CM |
 | `grid-renderer.js` | модуль | `static/shared/` | `comicCardHTML()`, `buildComicsGridHTML()` |
 | `comics.js` (CM) | модуль | `static/content/comics.js` | CRUD комиксов в CM |
@@ -271,7 +272,7 @@ venv/bin/pyinstaller mediavault.spec --clean --noconfirm  # Бинарник
 - `grid-auto-rows: minmax(267px, auto)` нужно на `.cm-comics-tags-grid-inner`
   (фикс бага перекрытия рядов в CSS Grid)
 - Нет pytest, ruff, flake8, CI/CD, Docker. Весь тест — `test.py`
-- Админка: 5 секций (Users, Database, API Keys, Scan, Mount)
+- Админка: 6 секций (Users, Database, API Keys, Scan, Mount, Plugins)
 - Content Search: unified API с `tags_by_category` для цветных категорий тегов
 - NHentai manga download: скачивает все страницы в `Downloads/nhentai/{gid}/`
 - Lightbox `downloadLabelFn` опция: динамическая подпись кнопки скачивания
@@ -299,7 +300,7 @@ venv/bin/pyinstaller mediavault.spec --clean --noconfirm  # Бинарник
 
 ### Критические (блокируют развитие)
 
-1. **Монолит `web_app.py` ~6000 строк**
+1. **Монолит `web_app.py` ~7700 строк**
    - Все роуты, БД, бизнес-логика, аутентификация — в одном файле
    - Рефакторинг: разбить на `routes/`, `models/`, `services/`
    - Приоритет: высокий — любое изменение рискует сломать всё
@@ -350,6 +351,7 @@ venv/bin/pyinstaller mediavault.spec --clean --noconfirm  # Бинарник
 - Вынести внешние API (R34, Danbooru, NH, EH) в отдельные адаптеры
 
 ### Фронтенд
+- **Планируется полная миграция на TypeScript** (Hono + Svelte 5 + Bun). См. [`docs/TECH-STACK-REVIEW.md`](docs/TECH-STACK-REVIEW.md).
 - Добавить Vite/esbuild для сборки JS
 - Постепенно мигрировать критические модули (Lightbox, Content Search) на TypeScript
 - Ввести единую стейт-менеджмент систему (не DOM-состояние)

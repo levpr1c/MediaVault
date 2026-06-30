@@ -1,20 +1,20 @@
 # static/content/ — Content Management SPA
 
-**LOC:** ~2000 (8 файлов + поддиректория tags-manage/)
+**LOC:** ~2486 (8 файлов + поддиректория tags-manage/)
 **Роль:** Административная панель управления контентом (/content-mgmt/)
 
 ## Файлы
 
 | Файл | LOC | Роль |
 |------|-----|------|
-| `main.js` | ~100 | SPA роутер и инициализация |
-| `content-search.js` | ~700 | Поиск по Rule34/Danbooru/NHentai/E-Hentai |
-| `comics-tags.js` | ~250 | Drag-n-drop теги для комиксов |
-| `comics.js` | ~150 | CRUD комиксов (CM версия) |
-| `tags.js` | ~200 | Массовое тегирование файлов |
-| `nhentai_search.js` | ~300 | Поиск по NHentai |
-| `utils.js` | ~100 | Утилиты CM |
-| `tags-manage/` | ~200 | Тегирование отдельных файлов |
+| `content-search.js` | 957 | Поиск по Rule34/Danbooru/NHentai/E-Hentai/HentaiLive |
+| `tags-manage/tags-manage.js` | 500 | Тегирование отдельных файлов |
+| `comics-tags.js` | 240 | Drag-n-drop теги для комиксов |
+| `tags.js` | 236 | Массовое тегирование файлов |
+| `comics.js` | 215 | CRUD комиксов (CM версия) |
+| `nhentai_search.js` | 180 | Поиск по NHentai |
+| `main.js` | 107 | SPA роутер и инициализация |
+| `utils.js` | 51 | Утилиты CM |
 
 ## main.js — SPA Роутер
 

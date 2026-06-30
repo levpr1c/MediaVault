@@ -81,6 +81,7 @@ Optional — `python3-keyring` for storing API keys in system keychain (GNOME Ke
 | [🔧 Code guide](docs/code-guide.md) | For developers: architecture, components, patterns |
 | [📊 Audit report](docs/AUDIT-REPORT.md) | Documentation accuracy audit |
 | [🤖 Build agent notes](AGENTS.md) | Project conventions and refactoring plan |
+| [🔄 Tech stack review](docs/TECH-STACK-REVIEW.md) | TypeScript migration plan (Hono + Svelte 5 + Bun) |
 
 ## Build binary
 
@@ -122,7 +123,7 @@ mv dist/mediavault dist/mediavault-linux-amd64
 # 3. Compute checksum
 sha256sum dist/mediavault-linux-amd64
 
-# 4. Create GitHub Release v1.0.0 with dist/mediavault-linux-amd64 attached
+# 4. Create GitHub Release v1.4.0 with dist/mediavault-linux-amd64 attached
 # 5. Update PKGBUILD in packaging/aur/mediavault-bin/ with new sha256sum and pkgver
 # 6. Push to AUR
 ```

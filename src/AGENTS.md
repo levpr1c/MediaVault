@@ -1,15 +1,19 @@
 # src/ — Бэкенд
 
 **Стек:** Flask + SQLite + Python 3
-**LOC:** ~6900 (web_app.py ~6000, credential_store.py ~300, backends/api_raw.py ~600)
+**LOC:** ~8945 (web_app.py 7671, credential_store.py 124, backends/ ~871, plugins/ ~279)
 
 ## Файлы
 
 | Файл | LOC | Роль |
 |------|-----|------|
-| `web_app.py` | ~6000 | Весь бэкенд: роуты, БД, аутентификация, API |
-| `credential_store.py` | ~300 | Хранилище API ключей (keyring/plain text) |
-| `backends/api_raw.py` | ~600 | Прямые HTTP запросы к NHentai API |
+| `web_app.py` | 7671 | Весь бэкенд: 121+ роутов, SQLite, аутентификация, API |
+| `credential_store.py` | 124 | Хранилище API ключей (keyring/plain text) |
+| `backends/api_raw.py` | 372 | Прямые HTTP запросы к NHentai API |
+| `backends/gallerydl.py` | 455 | CLI субпроцесс gallery-dl |
+| `backends/__init__.py` | 44 | Инициализация бэкендов |
+| `plugins/__init__.py` | 193 | Загрузчик плагинов |
+| `plugins/interface.py` | 86 | Интерфейс плагинов |
 
 ## web_app.py — Структура
 
@@ -124,7 +128,7 @@
 
 ### Бэкенд — узкие места
 
-1. **Монолит**: `web_app.py` ~6000 строк, все роуты в одном файле. Рефакторинг:
+1. **Монолит**: `web_app.py` 7671 строк, все роуты в одном файле. Рефакторинг:
    - Flask Blueprints по группам: `auth`, `media`, `tags`, `comics`, `content_search`, `admin`
    - Вынести SQL-запросы в отдельные `models/` (по таблицам)
    - Вынести бизнес-логику в `services/`

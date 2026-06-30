@@ -1,25 +1,29 @@
 # static/shared/ — Общие JS модули
 
-**LOC:** ~5200 (13 файлов + 3 поддиректории)
+**LOC:** ~4600 (17 файлов + 3 поддиректории)
 **Используется:** во всех трёх саб-приложениях (MV, CM, Admin)
 
 ## Файлы
 
 | Файл | LOC | Роль |
 |------|-----|------|
-| `utils.js` | ~800 | `Shared.*` хелперы, `_i18nData`, debounce |
-| `lightbox.js` | ~1500 | `Lightbox` класс — полноэкранный просмотрщик |
-| `icons.js` | ~500 | `SiteIcons.getIcon` — все SVG иконки |
-| `grid-renderer.js` | ~200 | `comicCardHTML()`, `buildComicsGridHTML()` |
-| `api.js` | ~200 | API хелперы (fetch, ошибки) |
-| `notifications.js` | ~100 | Система уведомлений |
-| `mobile-search.js` | ~100 | Мобильный поиск |
-| `home-bg.js` | ~100 | Three.js фон на главной |
-| `find-originals.js` | ~200 | Поиск оригиналов |
-| `init.js` | ~100 | Инициализация общих компонентов |
-| `comics/comics.js` | ~800 | CRUD + рендер комиксов (shared) |
-| `gallery/gallery.js` | ~500 | Галерея MV (рендер, фильтры) |
-| `grid/` | ~200 | Вспомогательные модули сеток |
+| `utils.js` | 1071 | `Shared.*` хелперы, `_i18nData`, debounce |
+| `lightbox.js` | 1127 | `Lightbox` класс — полноэкранный просмотрщик |
+| `find-originals.js` | 428 | Поиск оригиналов |
+| `gallery/gallery.js` | 857 | Галерея MV (рендер, фильтры) |
+| `comics/comics.js` | 554 | CRUD + рендер комиксов (shared) |
+| `grid-renderer.js` | 149 | `comicCardHTML()`, `buildComicsGridHTML()` |
+| `home-bg.js` | 145 | Three.js фон на главной |
+| `grid/shared-grid.js` | 140 | Вспомогательные модули сеток |
+| `comics/comics-list.js` | 117 | Список комиксов |
+| `init.js` | 101 | Инициализация общих компонентов |
+| `gallery/lightbox.js` | 96 | Лайтбокс галереи (shared) |
+| `mobile-search.js` | 84 | Мобильный поиск |
+| `comics/comics-search.js` | 65 | Поиск комиксов |
+| `comics/picker-bridge.js` | 53 | Мост выбора файлов |
+| `api.js` | 37 | API хелперы (fetch, ошибки) |
+| `icons.js` | 26 | `SiteIcons.getIcon` — все SVG иконки |
+| `gallery/tags.js` | 224 | Тегирование в галерее |
 
 ## Ключевые символы
 
@@ -95,7 +99,7 @@
 
 5. **Иконки через `SiteIcons.getIcon()`**: все SVG инлайном в JS — хорошо для производительности, но нельзя tree-shake
 
-6. **`notifications.js`** — примитивный toast, нет очереди, нет типов уведомлений
+6. **Нет системы уведомлений** — `notifications.js` был удалён, уведомления через примитивный toast
 
 7. **Дублирование `comics.js`**: существует и в `shared/comics/`, и в `content/comics.js` — разная реализация
 

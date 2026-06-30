@@ -38,7 +38,9 @@
 
 ## 1. Что это вообще такое?
 
-**MediaVault** — это Flask-приложение (один файл `src/web_app.py`, 5921 строка, 108+ роутов, 59 `@admin_required`, 13 `@auth_required`, 87 `@api_error_handler`) с 17 Jinja2-шаблонами, 32 JS-файлами и 2 модулями бэкендов (`gallery-dl`, `api_raw`):
+**MediaVault** — это Flask-приложение (один файл `src/web_app.py`, 7671 строка, 121+ роутов, 72 `@admin_required`, 13 `@auth_required`, 100 `@api_error_handler`) с 17 Jinja2-шаблонами, 33 JS-файлами, 8 CSS-файлами и модулями бэкендов/плагинов:
+
+> **Планируется переезд на TypeScript (Hono + Svelte 5 + Bun)** — см. [`docs/TECH-STACK-REVIEW.md`](TECH-STACK-REVIEW.md) для полного плана миграции.
 
 1. **Скачивает теги** с Rule34.xxx, Danbooru и NHentai по MD5-хешу файла
 2. **Позволяет тегировать** свою медиа-коллекцию (картинки, видео)
@@ -50,11 +52,11 @@
 
 ```mermaid
 flowchart TD
-    User[Пользователь] -->|браузер| Flask[Flask сервер<br/>web_app.py 5921 строка]
+    User[Пользователь] -->|браузер| Flask[Flask сервер<br/>web_app.py 7671 строка]
     
-    Flask --> Auth[Система авторизации<br/>@admin_required × 59<br/>@auth_required × 13<br/>session-based]
+    Flask --> Auth[Система авторизации<br/>@admin_required × 72<br/>@auth_required × 13<br/>session-based]
     Flask --> Tpl[Jinja2 шаблоны<br/>17 файлов<br/>14 extend base.html]
-    Flask --> Static[Статика<br/>33 JS модуля + 8 CSS<br/>~10051 строк]
+    Flask --> Static[Статика<br/>33 JS модуля + 8 CSS<br/>~9200 строк]
     Flask --> DB[(SQLite<br/>10 таблиц)]
     Flask --> FS[Файловая система<br/>медиа-директория]
     Flask --> Cred[Credential Store<br/>GNOME Keyring / plain]
@@ -86,10 +88,10 @@ flowchart TD
 | **Auto-tags** | Теги, которые сервер присваивает автоматически по расширению файла: `photo` (jpg/png), `video,animated` (mp4/webm), `gif`, `sound`. Плюс соотношение сторон (`16:9`, `4:3`). Функция `_get_auto_tags()` |
 | **BLOB** (Binary Large Object) | Бинарные данные в SQLite. В MediaVault — AVIF-байты превьюшки в `thumbnail_cache.data`. Ключ кэша: MD5(relpath)+mtime |
 | **Booru** | Сайты с изображениями и тегами: Rule34.xxx (XML API) и Danbooru (JSON API). Сервер ходит к ним по MD5 файла и забирает теги. См. Danbooru, Rule34 |
-| **check_status** | Эндпоинт `/api/check_status` — возвращает статусы для списка путей (db/found/not_found/no_tags). Используется в `manual.js` для расстановки `data-status` на `.path-item`. Приоритет: db > found > not_found > no_tags |
+| **check_status** | Эндпоинт `/api/check_status` — возвращает статусы для списка путей (db/found/not_found/no_tags). Используется в `manual-v2.js` для расстановки `data-status` на `.path-item`. Приоритет: db > found > not_found > no_tags |
 | **Cover** | Обложка комикса — один из файлов-страниц, помеченный `cover_path` в таблице `comics`. Выбирается через кнопку ★ в cpageGrid |
 | **cpage\*** | Префикс элементов файлового браузера для выбора страниц комикса: `cpageGrid`, `cpageSearch`, `cpageSortDateBtn`, `cpagePreview`, `cpage-item`, `cpage-star`. Ранее назывался `cp*` (Comic Picker) |
-| **CSS** (Cascading Style Sheets) | Язык для внешнего вида страниц: цвета, шрифты, отступы, анимации. В проекте 6 CSS-файлов (1579 строк). Все CSS-переменные определены в `shared.css` |
+| **CSS** (Cascading Style Sheets) | Язык для внешнего вида страниц: цвета, шрифты, отступы, анимации. В проекте 8 CSS-файлов (2960 строк). Все CSS-переменные определены в `shared.css` |
 | **Danbooru** | Сайт с аниме-артом, где картинки размечены тегами по категориям (artist/character/copyright/general/meta). MediaVault ищет теги на Danbooru по MD5 файла через JSON API |
 | **Effects toggle** | CSS-эффекты (анимации, тени, переходы) можно отключить через `/api/effects` — атрибут `data-no-effects` на `<html>`. Полезно для слабых машин |
 | **Flask** | Веб-фреймворк на Python. Движок MediaVault — принимает запросы, работает с БД, отдаёт HTML/JSON |
@@ -116,7 +118,7 @@ flowchart TD
 | **Visual order** | Порядок элементов в DOM для masonry отличается от визуального. `getVisualOrder()` сортирует по `getBoundingClientRect()` (top → left) для счётчика `lb-pos` |
 | **Авто-сканирование** (Auto Scan) | Ранее **Batch Scan** — автоматическое сканирование медиа-папки. SSE-поток с прогрессом по каждому файлу. Только auto-tags, без API. Запускается при старте сервера в фоне |
 | **Админ-панель** (Admin Panel) | Страница `/admin`: управление пользователями, API-ключами, базой данных |
-| **Декоратор** (decorator) | Пометка над функцией Python, добавляющая поведение. В проекте: `@admin_required` (48 шт), `@auth_required` (5 шт), `@api_error_handler` (69 шт). Порядок: `@app.route` → auth → handler |
+| **Декоратор** (decorator) | Пометка над функцией Python, добавляющая поведение. В проекте: `@admin_required` (72 шт), `@auth_required` (13 шт), `@api_error_handler` (100 шт). Порядок: `@app.route` → auth → handler |
 | **Категории тегов** | Группы тегов с цветами: Artist (голубой), Character (оранжевый), Copyright (фиолетовый), General (зелёный), Meta (синий). Таблицы: `tag_categories` + `tag_category_members` |
 | **Комикс** (comic) | Подборка файлов для последовательного чтения. Два режима: Scroll (лента) и Lightbox (постранично). Таблицы: `comics` + `comic_pages` (FK с CASCADE) |
 | **Медиа-директория** (media_dir) | Путь к папке с медиафайлами. Указывается в Settings → Appearance. Сканируется при старте через `_quick_scan()` |
@@ -135,8 +137,11 @@ flowchart TD
 ```
 MediaVault/
 ├── src/
-│   ├── web_app.py             ← ВЕСЬ СЕРВЕР (5921 строка, 108+ роутов)
+│   ├── web_app.py             ← ВЕСЬ СЕРВЕР (7671 строка, 121+ роутов)
 │   ├── credential_store.py    ← Хранилище API-ключей (GNOME Keyring / plain text)
+│   ├── plugins/               ← Система плагинов (2 модуля + hentaichan)
+│   │   ├── __init__.py        ← PluginManager: register, load_all, get_plugin
+│   │   └── interface.py       ← PluginInterface: search(), get_gallery(), metadata
 │   └── backends/              ← Система бэкендов для тегов (2 модуля)
 │       ├── __init__.py        ← BACKENDS registry, fetch_tags(), search_tags()
 │       ├── api_raw.py         ← ApiRawBackend (Rule34 + Danbooru + NHentai)
@@ -162,9 +167,9 @@ MediaVault/
 │   ├── content-mgmt/
 │   │   └── tags.html          ← Управление тегами/категориями
 │   └── admin/
-│       └── admin.html         ← SPA Admin Panel: 5 разделов
+│       └── admin.html         ← SPA Admin Panel: 6 разделов
 ├── static/
-│   ├── css/                   ← 8 файлов, 2932 строки
+│   ├── css/                   ← 8 файлов, 2960 строк
 │   │   ├── shared.css         ← CSS vars, темы, base, header, mobile
 │   │   ├── content.css        ← Content SPA: drag-drop теги, файлы, комиксы
 │   │   ├── content-search.css ← Content Search: search bar, grid, mobile
@@ -174,8 +179,8 @@ MediaVault/
 │   │   ├── settings.css       ← Settings SPA: табы, карточки, DB tools grid
 │   │   └── shared-grid.css    ← Shared grid renderer: comics, tags-manage
 │   ├── shared/                ← Общий JS (shared модули)
-│   │   ├── utils.js           ← i18n словари, layout utilities (1031 строка)
-│   │   ├── lightbox.js        ← Единый лайтбокс (zoom, nav, tags, swipe, 1080 строк)
+│   │   ├── utils.js           ← i18n словари, layout utilities (1071 строка)
+│   │   ├── lightbox.js        ← Единый лайтбокс (zoom, nav, tags, swipe, 1127 строк)
 │   │   ├── find-originals.js  ← Find Originals модал (IIFE, 428 строк)
 │   │   ├── mobile-search.js   ← MobileSearch (IIFE, 84 строки)
 │   │   ├── grid-renderer.js   ← ES-модуль: render сеток для comics-tags, tags-manage (149 строк)
@@ -200,13 +205,12 @@ MediaVault/
 │   │   ├── manual/manual-v2.js← Ручной режим + файловый браузер (648 строк)
 │   │   └── auto/auto.js       ← Автоматический режим (SSE, 395 строк)
 │   ├── mediavault/            ← MediaVault модуль
-│   │   ├── mediavault.js      ← Оркестратор: связь всего, mobile search sync (284 строки)
+│   │   ├── mediavault.js      ← Оркестратор: связь всего, mobile search sync (287 строк)
 │   │   ├── db.js              ← Работа с БД (26 строк)
-│   │   ├── api.js             ← API-вызовы (47 строк)
-│   │   └── utils.js           ← Утилиты (45 строк)
+│   │   └── api.js             ← API-вызовы (47 строк)
 │   ├── content/               ← Content Manager ES модули
 │   │   ├── main.js            ← Точка входа (108 строк)
-│   │   ├── content-search.js  ← Unified поиск (ES модуль, 812 строк)
+│   │   ├── content-search.js  ← Unified поиск (ES модуль, 957 строк)
 │   │   ├── comics-tags.js     ← Comics drag-to-tag (ES модуль, 224 строки)
 │   │   ├── nhentai_search.js  ← NHentai поиск (ES модуль, 180 строк)
 │   │   ├── tags.js            ← CRUD категорий (236 строк)
@@ -215,7 +219,7 @@ MediaVault/
 │   │   ├── comics.js          ← CRUD комиксов (117 строк)
 │   │   └── utils.js           ← Утилиты, делегаты к Shared (51 строка)
 │   └── admin/
-│       └── admin.js           ← AdminDashboard SPA (1052 строки, 5 разделов + mount monitoring)
+│       └── admin.js           ← AdminDashboard SPA (1306 строк, 6 разделов + mount monitoring)
 ├── static/shared/icons/       ← SVG файлы: rule34.svg, danbooru.svg, nhentai.svg, ehentai.svg, kemono.svg, coomer.svg
 ├── AGENTS.md                  ← Памятка для OpenCode
 ├── docs/code-guide.md         ← ЭТОТ ФАЙЛ
@@ -228,34 +232,36 @@ MediaVault/
 | Файл | Строк | Что делает |
 |------|-------|------------|
 | **Python** | | |
-| `web_app.py` | 5921 | **Весь сервер** — 108+ роутов, БД, кэш, i18n, auth, backends |
+| `web_app.py` | 7671 | **Весь сервер** — 121+ роутов, БД, кэш, i18n, auth, backends, plugins |
 | `credential_store.py` | 124 | Хранилище API-ключей (Keyring / plain text) |
 | `backends/__init__.py` | 44 | BACKENDS registry, fetch_tags(), search_tags() |
-| `backends/api_raw.py` | 351 | ApiRawBackend: Rule34 + Danbooru + NHentai fetch + search |
+| `backends/api_raw.py` | 372 | ApiRawBackend: Rule34 + Danbooru + NHentai fetch + search |
 | `backends/gallerydl.py` | 455 | GalleryDlBackend: Rule34 + Danbooru + NHentai + E-Hentai + Kemono + Coomer |
-| **Total Python** | **6895** | **6 файлов** |
+| `plugins/__init__.py` | 193 | PluginManager: register, load_all, get_plugin |
+| `plugins/interface.py` | 86 | PluginInterface: search(), get_gallery(), metadata |
+| **Total Python** | **8945** | **8 файлов** |
 | **JS** | | |
-| `shared/lightbox.js` | 1080 | Единый лайтбокс (zoom, nav, tags, swipe) |
-| `admin/admin.js` | 1052 | AdminDashboard SPA: 5 разделов + mount monitoring |
-| `shared/utils.js` | 1031 | i18n словари (274 ключа), layout utilities |
-| `shared/gallery/gallery.js` | 856 | Галерея: загрузка, фильтр, пагинация, сортировка, popular tags |
-| `content/content-search.js` | 812 | Unified поиск по сайтам (ES модуль) |
+| `admin/admin.js` | 1306 | AdminDashboard SPA: 6 разделов + mount monitoring |
+| `shared/lightbox.js` | 1127 | Единый лайтбокс (zoom, nav, tags, swipe) |
+| `shared/utils.js` | 1071 | i18n словари, layout utilities |
+| `content/content-search.js` | 957 | Unified поиск по сайтам (ES модуль) |
+| `shared/gallery/gallery.js` | 857 | Галерея: загрузка, фильтр, пагинация, сортировка, popular tags |
 | `tagfetch/manual/manual-v2.js` | 648 | Ручной режим Tagfetch + файловый браузер |
-| `shared/comics/comics.js` | 621 | Файловый браузер ComicsPicker (cpGrid, preview, DnD) |
-| `content/tags-manage/tags-manage.js` | 505 | Файлы, masonry, lightbox |
+| `shared/comics/comics.js` | 554 | Файловый браузер ComicsPicker (cpGrid, preview, DnD) |
+| `content/tags-manage/tags-manage.js` | 500 | Файлы, masonry, lightbox |
 | `shared/find-originals.js` | 428 | Find Originals модал (IIFE) |
 | `tagfetch/auto/auto.js` | 395 | Авто-режим Tagfetch (SSE) |
-| `mediavault/mediavault.js` | 284 | Оркестратор: связывает всё, mobile search sync |
+| `mediavault/mediavault.js` | 287 | Оркестратор: связывает всё, mobile search sync |
 | `content/tags.js` | 236 | CRUD категорий |
 | `shared/gallery/tags.js` | 224 | UI тегирования + категории, cat cache |
-| `content/comics-tags.js` | 224 | Comics drag-to-tag (ES модуль) |
+| `content/comics-tags.js` | 240 | Comics drag-to-tag (ES модуль) |
 | `content/nhentai_search.js` | 180 | NHentai поиск (ES модуль) |
 | `shared/grid-renderer.js` | 149 | ES-модуль: render сеток для comics-tags, tags-manage |
 | `shared/home-bg.js` | 145 | Three.js фон (ES модуль) |
 | `shared/grid/shared-grid.js` | 140 | Shared grid: кастомные сетки комиксов |
 | `shared/comics/comics-list.js` | 117 | Список комиксов (MV view, add-card для admin) |
-| `content/comics.js` | 117 | CRUD комиксов |
-| `content/main.js` | 108 | Точка входа Content Manager (ES модуль) |
+| `content/comics.js` | 215 | CRUD комиксов |
+| `content/main.js` | 107 | Точка входа Content Manager (ES модуль) |
 | `shared/init.js` | 101 | Точка входа, drawer, banner, инициализация страниц |
 | `shared/gallery/lightbox.js` | 96 | Лайтбокс-враппер (делегирует в Shared) |
 | `tagfetch/api.js` | 96 | API-вызовы (autoStatus, autoScan) |
@@ -264,42 +270,41 @@ MediaVault/
 | `shared/comics/picker-bridge.js` | 53 | ES-мост ComicsPicker |
 | `content/utils.js` | 51 | Утилиты, делегаты к Shared (ES модуль) |
 | `mediavault/api.js` | 47 | API-вызовы |
-| `mediavault/utils.js` | 45 | Утилиты |
 | `shared/api.js` | 37 | Базовый fetch с обработкой ошибок |
-| `shared/icons.js` | 26 | Site icons: SVG-иконки для Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer |
+| `shared/icons.js` | 26 | Site icons: SVG-иконки для всех сайтов |
 | `mediavault/db.js` | 26 | Работа с БД |
 | `tagfetch/tagfetch.js` | 17 | Определение вкладки из URL (getCurrentTab) |
-| **Total JS** | **10051** | **33 файла** (без lib/three.module.js) |
+| **Total JS** | **~10580** | **33 файла** (без lib/three.module.js) |
 | **CSS** | | |
-| `content.css` | 790 | Content SPA: drag-drop теги, файлы, комиксы |
-| `admin.css` | 607 | Admin SPA: карточки, таблицы, модалы, mount indicator |
-| `content-search.css` | 366 | Content Search: search bar, grid, mobile |
+| `content.css` | 788 | Content SPA: drag-drop теги, файлы, комиксы |
+| `admin.css` | 646 | Admin SPA: карточки, таблицы, модалы, mount indicator |
+| `content-search.css` | 352 | Content Search: search bar, grid, mobile |
 | `shared.css` | 339 | CSS vars, темы, base, header, mobile |
-| `mediavault.css` | 334 | Галерея, лайтбокс, комиксы, тегирование, хедер |
+| `mediavault.css` | 335 | Галерея, лайтбокс, комиксы, тегирование, хедер |
 | `tagfetch.css` | 248 | Tagfetch |
-| `settings.css` | 175 | Settings SPA: табы, карточки, DB tools grid |
+| `settings.css` | 179 | Settings SPA: табы, карточки, DB tools grid |
 | `shared-grid.css` | 73 | Shared grid: кастомные сетки комиксов |
-| **Total CSS** | **2932** | **8 файлов** |
+| **Total CSS** | **2960** | **8 файлов** |
 | **Templates** | | |
 | `settings.html` | 596 | Настройки: Appearance, Database, Account (SPA) |
 | `shared/view.html` | 421 | Просмотр standalone + comics reader |
 | `home.html` | 386 | Главная 3 блока + Three.js bg |
-| `base.html` | 349 | Главный скелет: head, CONFIG, JS, CSS, footer |
+| `base.html` | 343 | Главный скелет: head, CONFIG, JS, CSS, footer |
 | `login.html` | 177 | Логин username+password (standalone) |
-| `shared/gallery.html` | 151 | Галерея + comics tabs + lightbox |
-| `content-search.html` | 144 | Content Search: unified поиск по сайтам |
+| `shared/gallery.html` | 152 | Галерея + comics tabs + lightbox |
+| `content-search.html` | 138 | Content Search: unified поиск по сайтам |
 | `kemono_import.html` | 138 | Страница импорта с Kemono |
-| `shared/comics-list.html` | 115 | Список комиксов (MV + CM режимы) |
+| `shared/comics-list.html` | 117 | Список комиксов (MV + CM режимы) |
+| `tagfetch/auto.html` | 122 | Авто-режим Tagfetch (SSE) |
 | `nhentai_search.html` | 110 | Страница поиска NHentai |
 | `tagfetch/manual.html` | 102 | Ручной режим Tagfetch |
-| `admin/admin.html` | 52 | Admin SPA (5 разделов) |
+| `admin/admin.html` | 61 | Admin SPA (6 разделов) |
 | `similar.html` | 47 | Страница похожих файлов |
 | `shared/macros.html` | 41 | 6 Jinja2-макросов |
-| `tagfetch/auto.html` | 36 | Авто-режим Tagfetch |
 | `shared/popular_tags.html` | 31 | Популярные теги |
 | `content-mgmt/tags.html` | 28 | Управление тегами/категориями |
-| **Total templates** | **2924** | **17 файлов** |
-| **Total** | **22802** | **Весь проект** (Python 6895 + JS 10051 + CSS 2932 + Templates 2924) |
+| **Total templates** | **~3010** | **17 файлов** |
+| **Total** | **~26495** | **Весь проект** (Python 8945 + JS ~10580 + CSS 2960 + Templates ~3010) |
 
 ---
 
@@ -547,12 +552,12 @@ erDiagram
 
 | Метрика | Значение |
 |---------|----------|
-| Строк кода | **5921** |
-| `def` функций | **180+** (включая внутренние) |
-| `@app.route` (роутов) | **108** |
-| `@admin_required` | **59** (57 API + 2 страницы) |
+| Строк кода | **7671** |
+| `def` функций | **222** (включая внутренние) |
+| `@app.route` (роутов) | **121** |
+| `@admin_required` | **72** (70 API + 2 страницы) |
 | `@auth_required` | **13** |
-| `@api_error_handler` | **87** |
+| `@api_error_handler` | **100** |
 | `@app.before_request` | **1** (`check_auth`) |
 | `@app.after_request` | **1** (`log_access`) |
 | `@app.context_processor` | **2** (`inject_i18n`, `inject_media_vars`) |
@@ -561,7 +566,7 @@ erDiagram
 
 ```mermaid
 flowchart LR
-    subgraph "web_app.py (5921 строка)"
+    subgraph "web_app.py (7671 строка)"
         A["1-84: Логирование\n11 функций, ANSI colors"] --> B["85-145: Импорты, константы\nMETA_TAGS, _MEDIA_EXTS"]
         B --> C["150-546: LOCALE i18n\n548 ключей (274en + 274ru)"]
         C --> D["549-556: context_processors\ninject_i18n + inject_media_vars"]
@@ -574,7 +579,8 @@ flowchart LR
         J --> K["~1280-1950: Роуты страниц (20+)\n+ API роуты (80+)"]
         K --> L["~1907-1925: Middleware\ncheck_auth (before_request),\nlog_access (after_request)"]
         L --> M["~1940-2014: _quick_scan\nСтартовое сканирование (daemon)"]
-        M --> N["~2015-5921: API эндпоинты\nSystem, Auth, Admin, Media,\nTags, Comics, Content-Search"]
+        M --> N["~2015-5921: API эндпоинты\nSystem, Auth, Admin, Media,\nTags, Comics, Content-Search,\nDashboard, Plugins"]
+        N --> O["~5922-7671: Плагины, HentaiLive,\nDashboard, общие улучшения,\nдополнительные API эндпоинты"]
     end
 ```
 
@@ -807,7 +813,7 @@ def admin_required(f):
     return decorated_function
 ```
 
-Используется на **59** эндпоинтах (54 API + 5 страниц: `/content-mgmt/comics-edit`, `/nhentai-search`, `/content-mgmt/comics-tags`, `/content-mgmt/search`, `/kemono-import`).
+Используется на **72** эндпоинтах (70 API + 2 страницы: `/content-mgmt/comics-edit`, `/content-mgmt/comics-tags`).
 
 #### `@api_error_handler(f)` (строка 1262)
 
@@ -823,7 +829,7 @@ def api_error_handler(f):
     return wrapper
 ```
 
-Используется на **87** эндпоинтах. Единый формат ошибок: `{'error': str(e)}` с HTTP 500.
+Используется на **100** эндпоинтах. Единый формат ошибок: `{'error': str(e)}` с HTTP 500.
 
 #### Правильный порядок декораторов (CRITICAL)
 
@@ -909,11 +915,11 @@ def log_access(response):
 - `GET /api/credential_status` — текущий бэкенд + доступные варианты
 - `POST /api/set_credential_backend` — миграция ключей между бэкендами
 
-### 10. API endpoints (82 route, 10 групп)
+### 10. API endpoints (121 route, 14+ групп)
 
 ```mermaid
 flowchart TD
-    subgraph "82 Route ⋅ 41 admin ⋅ 2 auth ⋅ 62 err_handler"
+    subgraph "121 Route ⋅ 72 admin ⋅ 13 auth ⋅ 100 err_handler"
         P["Pages (20)\nHTML страницы"]
         S["System (5)\n/api/settings, theme..."]
         A["Auth (5)\n/api/login, logout..."]
@@ -924,6 +930,8 @@ flowchart TD
         AT["Admin-Tools (13)\nexport, regen, dedup"]
         C["Comics (6)\n/api/comics/*"]
         NF["New Features (8)\nnhentai, kemono,\nfranchise, cache"]
+        PL["Plugins (6)\nAPI плагинов,\nsearch, browse,\ntoggle"]
+        DB["Dashboard (3)\n/api/dashboard,\nrehash, find-originals"]
     end
 
     P -->|"1 admin, 19 public"| A
@@ -1027,7 +1035,7 @@ flowchart TD
 | `POST /api/save_all_fetched` | `api_save_all_fetched()` | `@admin_required`, `@api_error_handler` | 2667 |
 | `POST /api/auto_scan` | `api_auto_scan()` | `@admin_required`, `@api_error_handler` | 2758 |
 
-**Приоритет `check_status`:** `db` > `found` > `not_found` > `no_tags`. Используется в `manual.js` для расстановки `data-status` на `.path-item`.
+**Приоритет `check_status`:** `db` > `found` > `not_found` > `no_tags`. Используется в `manual-v2.js` для расстановки `data-status` на `.path-item`.
 
 #### Tags-Edit (3) — редактирование тегов
 
@@ -1081,7 +1089,9 @@ flowchart TD
 | Comics | 6 | 4 | 0 | 6 |
 | New Features | 8 | 5 | 0 | 8 |
 | Content Search | 5 | 1 | 4 | 5 |
-| **Всего** | **92** | **48** | **6** | **70** |
+| Dashboard | 3 | 2 | 0 | 3 |
+| Plugins | 6 | 4 | 0 | 4 |
+| **Всего** | **~121** | **~72** | **~13** | **~100** |
 
 ### Контекстные процессоры
 
@@ -1098,29 +1108,31 @@ flowchart TD
 
 ## 7. Фронтенд: шаблоны, JS-модули, CSS и i18n
 
+> **Планируется миграция на TypeScript (Svelte 5 + Hono + Bun).** Полный план: [`docs/TECH-STACK-REVIEW.md`](TECH-STACK-REVIEW.md). Новые фичи рекомендуется сразу делать в TS-стеке.
+
 ### 7.1 Архитектура шаблонов
 
 Все страницы, кроме `/login`, наследуют `base.html` через `{% extends "base.html" %}`. Это даёт общий скелет: `<head>` с CONFIG JSON, CSS, JS, хедер, футер.
 
-#### 17 шаблонов (2924 строки)
+#### 17 шаблонов (~3010 строк)
 
 | Файл | Строк | Роут |
 |------|-------|------|
-| templates/base.html | 349 | Shell, CONFIG JSON, CSS/JS links, header blocks |
+| templates/base.html | 343 | Shell, CONFIG JSON, CSS/JS links, header blocks |
 | templates/settings.html | 596 | Settings с 3 табами (Appearance/Database/Account) |
 | templates/shared/view.html | 421 | Fullscreen viewer + comics reader |
 | templates/home.html | 386 | Home page 3 блока, Three.js bg |
 | templates/login.html | 177 | Login (standalone, не base.html), Three.js bg |
-| templates/shared/gallery.html | 151 | Gallery + lightbox |
-| templates/content-search.html | 144 | Content search page (R34, Danbooru, NHentai, E-Hentai) |
+| templates/shared/gallery.html | 152 | Gallery + lightbox |
+| templates/content-search.html | 138 | Content search page (R34, Danbooru, NHentai, E-Hentai, HentaiLive) |
 | templates/kemono_import.html | 138 | Kemono import page |
-| templates/shared/comics-list.html | 115 | Comics list (MV view + CM edit modes) |
+| templates/shared/comics-list.html | 117 | Comics list (MV view + CM edit modes) |
+| templates/tagfetch/auto.html | 122 | Auto tagfetch (SSE) |
 | templates/nhentai_search.html | 110 | NHentai search page |
 | templates/tagfetch/manual.html | 102 | Manual tagfetch |
-| templates/admin/admin.html | 52 | Admin SPA |
+| templates/admin/admin.html | 61 | Admin SPA (6 разделов: Dashboard, Users, DB, API Keys, Scan, Mount, Plugins) |
 | templates/similar.html | 47 | Similar files page |
 | templates/shared/macros.html | 41 | 2 Jinja2-макроса (password_field, theme_buttons) |
-| templates/tagfetch/auto.html | 36 | Auto tagfetch |
 | templates/shared/popular_tags.html | 31 | Popular tags |
 | templates/content-mgmt/tags.html | 28 | Tags management + Comics Tags |
 
@@ -1202,14 +1214,14 @@ window.MediaVaultGallery = MediaVaultGallery;
 
 ES-модули загружаются через `<script type="module" src="...">` и могут `import` друг друга. IIFE-файлы — через обычные `<script src="...">` (глобальный порядок).
 
-#### 33 JS-файла (10051 строка, без three.module.js)
+#### 33 JS-файла (~10580 строк, без three.module.js)
 
-**shared/ (9 файлов, 3051 строка):**
+**shared/ (9 файлов, ~3068 строк):**
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
-| static/shared/lightbox.js | 1080 | Fullscreen viewer, zoom, swipe, keyboard nav, tag panel |
-| static/shared/utils.js | 1031 | i18n словари (274 ключа), layout, Shared.* namespace |
+| static/shared/lightbox.js | 1127 | Fullscreen viewer, zoom, swipe, keyboard nav, tag panel |
+| static/shared/utils.js | 1071 | i18n словари (274 ключа), layout, Shared.* namespace |
 | static/shared/find-originals.js | 428 | Find Originals модал (IIFE, два столбца) |
 | static/shared/grid-renderer.js | 149 | ES-модуль: render сеток для comics-tags, tags-manage |
 | static/shared/home-bg.js | 145 | Three.js background для home/login (ES module) |
@@ -1218,11 +1230,11 @@ ES-модули загружаются через `<script type="module" src="..
 | static/shared/api.js | 37 | Базовый fetch GET/POST/POST upload |
 | static/shared/icons.js | 26 | Site icons: Rule34, Danbooru, NHentai, E-Hentai, Kemono, Coomer |
 
-**shared/gallery/ (3 файла, 1176 строк):**
+**shared/gallery/ (3 файла, 1177 строк):**
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
-| static/shared/gallery/gallery.js | 856 | Gallery load, filter, pagination, sort, popular tags |
+| static/shared/gallery/gallery.js | 857 | Gallery load, filter, pagination, sort, popular tags |
 | static/shared/gallery/tags.js | 224 | Tag UI + categories, cat cache |
 | static/shared/gallery/lightbox.js | 96 | Lightbox wrapper, делегирует в Shared |
 
@@ -1232,42 +1244,41 @@ ES-модули загружаются через `<script type="module" src="..
 |------|-------|-----------|
 | static/shared/grid/shared-grid.js | 140 | Shared grid renderer для comics (IIFE) |
 
-**shared/comics/ (4 файла, 856 строк):**
+**shared/comics/ (4 файла, 789 строк):**
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
-| static/shared/comics/comics.js | 621 | ComicsPicker: cpageGrid, preview, DnD |
+| static/shared/comics/comics.js | 554 | ComicsPicker: cpageGrid, preview, DnD |
 | static/shared/comics/comics-list.js | 117 | Comic grid render для MV view mode |
 | static/shared/comics/comics-search.js | 65 | Поиск по комиксам |
 | static/shared/comics/picker-bridge.js | 53 | ES module bridge для ComicsPicker |
 
-**mediavault/ (4 файла, 402 строки):**
+**mediavault/ (3 файла, 360 строк):**
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
-| static/mediavault/mediavault.js | 284 | Orchestrator для MV subapp |
+| static/mediavault/mediavault.js | 287 | Orchestrator для MV subapp |
 | static/mediavault/api.js | 47 | API calls |
-| static/mediavault/utils.js | 45 | Utilities |
 | static/mediavault/db.js | 26 | DB operations |
 
 **content/ (8 файлов, 2233 строки, ES modules):**
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
-| static/content/content-search.js | 812 | Unified search (R34, Danbooru, NHentai, E-Hentai) |
-| static/content/tags-manage/tags-manage.js | 505 | Files, masonry, lightbox |
+| static/content/content-search.js | 957 | Unified search (R34, Danbooru, NHentai, E-Hentai, HentaiLive) |
+| static/content/tags-manage/tags-manage.js | 500 | Files, masonry, lightbox |
 | static/content/tags.js | 236 | Tag categories CRUD |
-| static/content/comics-tags.js | 224 | Comics grid + category tags, drag-to-tag |
+| static/content/comics-tags.js | 240 | Comics grid + category tags, drag-to-tag |
 | static/content/nhentai_search.js | 180 | NHentai search (individual page) |
-| static/content/comics.js | 117 | Comics CRUD |
-| static/content/main.js | 108 | Entry point (ES module), section router |
+| static/content/comics.js | 215 | Comics CRUD |
+| static/content/main.js | 107 | Entry point (ES module), section router |
 | static/content/utils.js | 51 | Shared utilities, fallback к Shared.* |
 
-**admin/ (1 файл, 1052 строки):**
+**admin/ (1 файл, 1306 строк):**
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
-| static/admin/admin.js | 1052 | AdminDashboard SPA (mount monitoring, scan progress, 5 разделов) |
+| static/admin/admin.js | 1306 | AdminDashboard SPA (mount monitoring, scan progress, 6 разделов: Dashboard, Users, DB, API Keys, Scan, Mount, Plugins) |
 
 **tagfetch/ (4 файла, 1156 строк):**
 
@@ -1331,17 +1342,17 @@ IIFE-модули просто присваивают: `var hexToRgba = Shared.h
 
 ### 7.4 CSS-архитектура
 
-#### 8 CSS-файлов (2932 строки)
+#### 8 CSS-файлов (2960 строк)
 
 | Файл | Строк | Назначение |
 |------|-------|-----------|
-| static/css/content.css | 790 | CM: tags drag-drop, files, comics, comics-tags |
-| static/css/admin.css | 607 | Admin cards, tables, modals, mount indicator |
-| static/css/content-search.css | 366 | Content search: search bar, grid, mobile override |
+| static/css/content.css | 788 | CM: tags drag-drop, files, comics, comics-tags |
+| static/css/admin.css | 646 | Admin cards, tables, modals, mount indicator, toggle-switch |
+| static/css/content-search.css | 352 | Content search: search bar, grid, mobile override |
 | static/css/shared.css | 339 | CSS vars, themes, base, header, mobile |
-| static/css/mediavault.css | 334 | Gallery, lightbox, comics, sidebar |
+| static/css/mediavault.css | 335 | Gallery, lightbox, comics, sidebar |
 | static/css/tagfetch.css | 248 | Tagfetch sidebar, preview panels |
-| static/css/settings.css | 175 | Settings tabs, cards, DB grid, mount indicator |
+| static/css/settings.css | 179 | Settings tabs, cards, DB grid, mount indicator |
 | static/css/shared-grid.css | 73 | Shared grid: кастомные сетки комиксов |
 
 Порядок загрузки (важен для специфичности, **никакого `!important`**):
@@ -1533,7 +1544,7 @@ flowchart TD
 static/tagfetch/
 ├── tagfetch.js        ← getCurrentTab() — определение вкладки из URL
 ├── api.js             ← API-вызовы (autoStatus, autoScan)
-├── manual/manual.js   ← Ручной режим (выбор 1 файла, API) + файловый браузер
+├── manual/manual-v2.js← Ручной режим (выбор 1 файла, API) + файловый браузер
 └── auto/auto.js       ← Авто-режим (SSE, сетка карточек)
 ```
 
@@ -1541,7 +1552,7 @@ static/tagfetch/
 
 Файловый браузер показывает понятные сообщения: "Media directory is not set", "No media files found", "No files found matching your search".
 
-Реализовано в `manual.js` — `loadBrowser()` проверяет `settings.media_dir` и длину списка файлов.
+Реализовано в `manual-v2.js` — `loadBrowser()` проверяет `settings.media_dir` и длину списка файлов.
 
 ### Откуда данные
 
@@ -1552,7 +1563,7 @@ static/tagfetch/
 
 ### Фильтры в ручном режиме (Manual)
 
-В `manual.js` есть кнопки фильтра: All, No Tags, Found, Not Found, In DB.
+В `manual-v2.js` есть кнопки фильтра: All, No Tags, Found, Not Found, In DB.
 
 ```javascript
 function setFilter(mode) {
@@ -1797,7 +1808,7 @@ Mouse leaves #cpagePreview → 400ms таймер → _hidePreview()
 |-------|------|-----------|---------|
 | MediaVault Gallery | `gallery.js` | `_sortMode` | `toggleDateSort()` |
 | Comic modal (cpGrid) | `comics.js` | `_cpSortMode` | `toggleDateSort()` |
-| Tagfetch Manual sidebar | `manual.js` | `_tfSortMode` | `toggleDateSort()` |
+| Tagfetch Manual sidebar | `manual-v2.js` | `_tfSortMode` | `toggleDateSort()` |
 
 ### Три состояния
 
@@ -1866,6 +1877,8 @@ Drawer сделан как dropdown (не sidebar) чтобы:
 ---
 
 ## 14. Как добавлять новую фичу
+
+> **Планируется переезд на TypeScript.** См. [`docs/TECH-STACK-REVIEW.md`](TECH-STACK-REVIEW.md) для плана миграции и нового стека.
 
 ### Новая страница
 
@@ -3352,8 +3365,8 @@ Tagfetch is implemented via `fetch_tags()` in `src/backends/__init__.py` (line 2
 |---|---|
 | `static/tagfetch/api.js` (96 lines) | API client: `TagfetchAPI.browse()`, `.fetchFile()`, `.saveFile()`, `.autoScan()`, `.checkStatus()`, etc. |
 | `static/tagfetch/tagfetch.js` (17 lines) | Tab switching utility |
-| `static/tagfetch/manual/manual.js` (611 lines) | IIFE module: file browser with `loadBrowser()`, `selectFile()`, `fetchTags()`, `fetchAllFiles()`, `saveFile()`, filter/sort, Save All modal |
-| `static/tagfetch/auto/auto.js` (366 lines) | IIFE module: SSE stream reader with `startAutoScan()`, `addAutoCard()`, `saveAllAutoResults()`, hover preview for videos |
+| `static/tagfetch/manual/manual-v2.js` (648 lines) | IIFE module: file browser with `loadBrowser()`, `selectFile()`, `fetchTags()`, `fetchAllFiles()`, `saveFile()`, filter/sort, Save All modal |
+| `static/tagfetch/auto/auto.js` (395 lines) | IIFE module: SSE stream reader with `startAutoScan()`, `addAutoCard()`, `saveAllAutoResults()`, hover preview for videos |
 
 **Templates:**
 

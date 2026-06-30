@@ -2,7 +2,7 @@
 
 [![RU](https://img.shields.io/badge/lang-RU-blue.svg)](README.ru.md)
 
-Local web tool for collecting, tagging and viewing media files with Rule34/Danbooru tag support, comics reader, gallery with lightbox. Two subapps: **Tagfetch** (tag search) + **MediaVault** (media tagger with gallery and comics reader).
+Local web tool for collecting, tagging and viewing media files with Rule34/Danbooru tag support, comics reader, gallery with lightbox, plugin system. Three subapps: **MediaVault** (read-only gallery/comics), **Content Management** (admin tagging/tagfetch), **Admin Panel** (users, DB, API keys, plugins).
 
 ## Quick start
 
@@ -55,20 +55,20 @@ Optional — `python3-keyring` for storing API keys in system keychain (GNOME Ke
 
 | Layer | Technology |
 |-------|-----------|
-| Server | Python / Flask (single file, ~4460 lines) |
+| Server | Python / Flask (single file, ~7700 lines) |
 | Database | SQLite (`~/.local/share/MediaVault/MediaVaultDataBase.db`) |
-| Templates | Jinja2 (18 files) |
-| Frontend | Vanilla JS (30 modules + 2 files backends) |
-| Styles | CSS (7 files) |
+| Templates | Jinja2 (17 files) |
+| Frontend | Vanilla JS (33 ES + IIFE modules) |
+| Styles | CSS (8 files) |
 | Thumbnails | AVIF (Pillow for images, FFmpeg for video) |
 
 ## Architecture highlights
 
 - **Decorator order matters**: `@app.route` → `@admin_required` → `@api_error_handler` (wrong order breaks auth)
-- **User/admin separation**: templates use `{% if session.role == 'admin' %}`; backend enforces via `@admin_required` (47+ endpoints)
+- **User/admin separation**: templates use `{% if session.role == 'admin' %}`; backend enforces via `@admin_required` (70+ endpoints)
 - **Shared JS utilities**: `Shared.hexToRgba()`, `Shared.parseTags()`, `Shared.getColumnCount()`, `Shared.reorderGalleryDOM()`, `Shared.getVisualOrder()` — single source of truth
 - **Two-level logging**: `log_debug()`/`log_info()`/`log_error()` with ANSI colors + optional file in `--debug` mode
-- **@api_error_handler**: unified error handling on all 65+ API endpoints — consistent JSON responses
+- **@api_error_handler**: unified error handling on all 100+ API endpoints — consistent JSON responses
 - **Content Search**: unified API (`/api/content-search`) with `tags_by_category` for color-coded tags in lightbox, AI filter for Rule34 only, download with tag indexing
 - **NHentai manga download**: `POST /api/content-search/download-manga` downloads all pages of a gallery into `Downloads/nhentai/{gid}/` with DB indexing and gallery tags
 - **Lightbox `downloadLabelFn` option**: dynamic download button text showing site name (e.g. "Download from Danbooru")
@@ -79,10 +79,7 @@ Optional — `python3-keyring` for storing API keys in system keychain (GNOME Ke
 |----------|-------------|
 | [📖 User guide](docs/user-guide.md) (Russian) | How to use everything |
 | [🔧 Code guide](docs/code-guide.md) | For developers: architecture, components, patterns |
-| [📗 Glossary](docs/GLOSSARY.md) | Terms explained in plain language |
-| [❓ FAQ](docs/FAQ.md) | Frequently asked questions |
-| [🆘 Troubleshooting](docs/TROUBLESHOOTING.md) | Fix common problems |
-| [🎨 Design system](DESING.md) | Colors, typography, spacing, animations |
+| [📊 Audit report](docs/AUDIT-REPORT.md) | Documentation accuracy audit |
 | [🤖 Build agent notes](AGENTS.md) | Project conventions and refactoring plan |
 
 ## Build binary
@@ -141,6 +138,6 @@ sha256sum dist/mediavault-linux-amd64
 ## Verify
 
 ```bash
-venv/bin/python check.py
-# → 68 syntax checks + 3 smoke tests (Flask start, page load, API auth)
+venv/bin/python test.py
+# → Syntax checks, linting, and functional tests
 ```

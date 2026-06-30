@@ -214,6 +214,53 @@ def _start_background_task(task_type, fn, *args, **kwargs):
     threading.Thread(target=_run, daemon=True).start()
     return task_id
 
+
+# ── Plugin helpers (generic, no hardcoded plugin names) ──
+
+def _get_plugin_for_site(site_name):
+    """Find loaded plugin that handles given site name.
+
+    Returns:
+        tuple (plugin_name: str | None, instance: BasePlugin | None)
+    """
+    loaded_plugins = app.extensions.get('plugins_loaded', {})
+    for pname, instance in loaded_plugins.items():
+        try:
+            meta = instance.get_metadata()
+            if site_name in meta.get('search_sites', []):
+                return pname, instance
+        except Exception:
+            continue
+    return None, None
+
+
+def _get_plugin_download_folder(site_name):
+    """Get download subfolder name for a plugin site (e.g. 'HentaiChan')."""
+    _, instance = _get_plugin_for_site(site_name)
+    if instance:
+        try:
+            return instance.get_metadata().get('download_folder', '') or ''
+        except Exception:
+            pass
+    return ''
+
+
+def _get_plugin_site_folders():
+    """Build dict {site_name: download_folder} from all loaded plugins with download_folder set."""
+    result = {}
+    loaded_plugins = app.extensions.get('plugins_loaded', {})
+    for pname, instance in loaded_plugins.items():
+        try:
+            meta = instance.get_metadata()
+            dl_folder = meta.get('download_folder', '')
+            if dl_folder:
+                for site in meta.get('search_sites', []):
+                    result[site] = dl_folder
+        except Exception:
+            continue
+    return result
+
+
 # ── i18n ──
 LOCALE = {
     'en': {
@@ -939,7 +986,7 @@ def _db_conn():
     _ensure_db_dir()
     conn = sqlite3.connect(_DB_PATH)
     conn.execute('PRAGMA journal_mode=WAL')
-    conn.execute('PRAGMA busy_timeout=5000')
+    conn.execute('PRAGMA busy_timeout=15000')
     return conn
 
 # Объединяет существующие теги с новыми, удаляя дубликаты
@@ -1270,6 +1317,7 @@ def _ensure_categories(dan_result):
         'tag_artist': 'artist',
         'tag_character': 'character',
         'tag_copyright': 'copyright',
+        'tag_translator': 'translator',
         'tag_meta': 'meta',
         'tag_general': 'general',
     }
@@ -1277,6 +1325,7 @@ def _ensure_categories(dan_result):
         'artist': '#ff4444',
         'character': '#44cc44',
         'copyright': '#4488ff',
+        'translator': '#ff8800',
         'meta': '#999999',
         'general': '#cccccc',
     }
@@ -1313,6 +1362,7 @@ _R34_CAT_PREFIXES = {
     'character': 'character',
     'series': 'copyright',
     'copyright': 'copyright',
+    'translator': 'translator',
     'meta': 'meta',
 }
 
@@ -1360,7 +1410,7 @@ def _ensure_r34_categories(r34_tags):
         _ensure_common_meta(db)
         for tag in r34_tags:
             cat = _categorize_r34_tag(tag)
-            db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)", [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
+            db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)", [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','translator':'#ff8800','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
             db.execute("""
                 INSERT INTO tag_category_members (tag_name, category, source, last_updated)
                 VALUES (?, ?, 'rule34', ?)
@@ -2107,8 +2157,12 @@ def api_content_search():
         instance = plugin_site_map[s]
         try:
             plugin_results = instance.search(q, page=page)
+            raw = plugin_results.get('results', [])
             results[s] = {
-                'results': plugin_results.get('results', []),
+                'results': [
+                    {**r, '_source': s, '_sourceUrl': r.get('url', '')}
+                    for r in raw
+                ],
                 'total': plugin_results.get('total', 0),
             }
             total += results[s]['total']
@@ -2121,6 +2175,7 @@ def api_content_search():
         'tag_artist': 'artist',
         'tag_character': 'character',
         'tag_copyright': 'copyright',
+        'tag_translator': 'translator',
         'tag_general': 'general',
         'tag_meta': 'meta',
         'tag_language': 'language',
@@ -2130,6 +2185,7 @@ def api_content_search():
         'artist': '#ff4444',
         'character': '#44cc44',
         'copyright': '#4488ff',
+        'translator': '#ff8800',
         'general': '#cccccc',
         'meta': '#999999',
         'language': '#ffaa00',
@@ -2202,9 +2258,17 @@ def api_content_mgmt_plugin_sources():
             meta = {**info['metadata'], **instance_meta}
             search_sites = meta.get('search_sites', []) or [name]
             for site_id in search_sites:
+                # Detect gallery-type plugins (container has scraper.get_pages)
+                is_gallery = False
+                if instance:
+                    try:
+                        is_gallery = hasattr(instance, 'scraper') and hasattr(instance.scraper, 'get_pages')
+                    except Exception:
+                        pass
                 sources.append({
                     'id': site_id,
                     'label': meta.get('description', site_id),
+                    'type': 'gallery' if is_gallery else 'single',
                 })
     return jsonify({'sources': sources})
 
@@ -2229,6 +2293,52 @@ def api_content_search_nhentai_gallery():
     if not meta or not meta.get('media_id'):
         return jsonify({'error': 'gallery not found'}), 404
     return jsonify(meta)
+
+
+@app.route('/api/content-mgmt/search/plugin-gallery')
+@admin_required
+@api_error_handler
+def api_content_search_plugin_gallery():
+    """Fetch manga gallery pages via plugin scraper. Returns page URLs + metadata.
+    Query params: site (plugin search_site name, e.g. hentailive), url (manga URL).
+    """
+    site = request.args.get('site', '') or request.args.get('source', '')
+    manga_url = request.args.get('url', '')
+    if not site or not manga_url:
+        return jsonify({'error': 'site and url required'}), 400
+
+    _, instance = _get_plugin_for_site(site)
+    if not instance or not hasattr(instance, 'scraper') or not instance.scraper:
+        return jsonify({'error': f'plugin for site "{site}" not available'}), 503
+
+    try:
+        pages = instance.scraper.get_pages(manga_url)
+        if not pages:
+            return jsonify({'error': 'no pages found for this manga'}), 404
+
+        page_urls = [p.image_url for p in pages]
+
+        # Also get details for metadata (title, tags, description)
+        details = None
+        try:
+            details = instance.scraper.get_details(manga_url)
+        except Exception:
+            pass
+
+        return jsonify({
+            'success': True,
+            'page_urls': page_urls,
+            'num_pages': len(pages),
+            'title': details.title if details else '',
+            'tags': details.tags if details else [],
+            'description': details.description if details else '',
+            'author': details.author if details else '',
+            'cover_url': details.cover_url if details else '',
+        })
+    except Exception as e:
+        log_error('[plugin-gallery] error site=%s: %s', site, e)
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/content-mgmt/search/download', methods=['GET', 'POST'])
 @auth_required
@@ -2268,7 +2378,8 @@ def api_content_search_download():
         'r34': 'Rule34', 'dan': 'Danbooru',
         'nhentai': 'nHentai', 'eh': 'E-Hentai',
     }
-    source = _SOURCE_FOLDER.get(source, source.lower())
+    plugin_folder = _get_plugin_download_folder(source)
+    source = plugin_folder or _SOURCE_FOLDER.get(source, source.lower())
     dl_dir = settings.get('downloads_dir', 'Downloads')
     target_dir = os.path.join(media_dir, dl_dir, source)
     try:
@@ -2589,7 +2700,7 @@ def api_content_search_download_manga():
                     try:
                         for ntype, cat in _NHENTAI_TYPE_MAP.items():
                             db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
-                                       [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
+                                       [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','translator':'#ff8800','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
                         for tag_name in api_tags:
                             ntype = api_tag_types.get(tag_name, 'tag')
                             cat = _NHENTAI_TYPE_MAP.get(ntype, 'general')
@@ -2887,7 +2998,7 @@ def _bg_download_manga(gid, media_id, num_pages, title, tags_str, overwrite=Fals
             db = _db_conn()
             for ntype, cat in _NHENTAI_TYPE_MAP.items():
                 db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
-                           [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
+                           [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','translator':'#ff8800','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
             for tag_name in api_tags:
                 ntype = api_tag_types.get(tag_name, 'tag')
                 cat = _NHENTAI_TYPE_MAP.get(ntype, 'general')
@@ -2945,6 +3056,299 @@ def api_content_search_download_manga_async():
 
     task_id = _start_background_task('manga', _bg_download_manga, gid, media_id, num_pages, title, tags_str, overwrite)
     return jsonify({'task_id': task_id})
+
+
+@app.route('/api/content-mgmt/search/download-plugin-async', methods=['POST'])
+@admin_required
+@api_error_handler
+def api_content_search_download_plugin_async():
+    """Start async download of plugin manga pages. Returns task_id.
+    JSON body: site (search_site name), url, title (optional), tags (optional).
+    """
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'no data'}), 400
+    site = (data.get('site') or data.get('source') or '').strip()
+    manga_url = (data.get('url') or '').strip()
+    title = (data.get('title') or '').strip()
+    tags_str = (data.get('tags') or '').strip()
+    if not site or not manga_url:
+        return jsonify({'error': 'site and url required'}), 400
+
+    _, instance = _get_plugin_for_site(site)
+    if not instance or not hasattr(instance, 'scraper') or not instance.scraper:
+        return jsonify({'error': f'plugin for site "{site}" not available'}), 503
+
+    task_id = _start_background_task(site, _bg_download_plugin, site, manga_url, title, tags_str, instance.scraper)
+    return jsonify({'task_id': task_id})
+
+
+def _bg_download_plugin(site, manga_url, title, tags_str, scraper):
+    """Background task: download all pages of a plugin manga (e.g. hentailive).
+
+    Follows the same pattern as _bg_download_manga().
+    site — plugin search_site name (e.g. 'hentailive'), used for folder/source resolution.
+    """
+    s = load_settings()
+    media_dir = s.get('media_dir', '')
+    if not media_dir:
+        raise ValueError('Media directory not configured')
+    if not os.path.isdir(media_dir) or not os.listdir(media_dir):
+        raise ValueError('storage_empty')
+
+    if not scraper:
+        raise ValueError(f'scraper for site "{site}" not available')
+
+    dl_dir = s.get('downloads_dir', 'Downloads')
+    gd = s.get('gallery_dir', 'Gallery')
+    cd = s.get('comics_dir', 'Comics')
+    dd = s.get('downloads_dir', 'Downloads')
+
+    # Resolve download folder from plugin metadata (e.g. 'HentaiChan')
+    download_folder = _get_plugin_download_folder(site) or site.capitalize()
+
+    # Get pages via scraper
+    pages = scraper.get_pages(manga_url)
+    if not pages:
+        raise ValueError('no pages returned from scraper')
+
+    # Extract manga ID from URL
+    manga_id = scraper._extract_manga_id(manga_url) or manga_url.rstrip('/').rsplit('/', 1)[-1]
+    if manga_id and manga_id.endswith('.html'):
+        manga_id = manga_id.rsplit('.', 1)[0]
+    manga_id_str = str(manga_id)
+
+    # Create target directory: <media_dir>/<downloads_dir>/<download_folder>/<safe_title>_<id>/
+    safe_title = ''
+    if title:
+        safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')[:80]
+    folder_name = f"{safe_title}_{manga_id_str}" if safe_title else manga_id_str
+    target_dir = os.path.join(media_dir, dl_dir, download_folder, folder_name)
+    os.makedirs(target_dir, exist_ok=True)
+
+    log_info('[BgTask] plugin site=%s manga=%s: target dir=%s, pages=%d', site, manga_id_str, target_dir, len(pages))
+
+    _ensure_db_schema()
+
+    # Get tags for indexing
+    all_tags = set()
+    if tags_str:
+        for t in tags_str.split(','):
+            t = t.strip()
+            if t:
+                all_tags.add(t)
+
+    # Try to get details for richer tags
+    api_tags = []
+    details = None
+    try:
+        details = scraper.get_details(manga_url)
+        if details:
+            if details.tags:
+                api_tags = list(details.tags)
+                for t in api_tags:
+                    if t:
+                        all_tags.add(t)
+            if details.author:
+                author_tag = 'author:' + details.author.replace(' ', '_')
+                all_tags.add(author_tag)
+                api_tags.append(author_tag)
+            if details.series:
+                series_tag = 'series:' + details.series.replace(' ', '_')
+                all_tags.add(series_tag)
+                api_tags.append(series_tag)
+            if details.translator:
+                translator_tag = 'translator:' + details.translator.replace(' ', '_')
+                all_tags.add(translator_tag)
+                api_tags.append(translator_tag)
+    except Exception:
+        pass
+
+    merged_tags_str = ','.join(sorted(all_tags))
+
+    # Download pages concurrently
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    downloaded = {}
+    errors = 0
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futs = {}
+        for p in pages:
+            n = p.page_number
+            img_url = p.image_url
+            if '/manganew_thumbs/' in img_url:
+                img_url = re.sub(r'img(\d)\.imgschan\.xyz/manganew_thumbs/', r'mimg\1.imgschan.xyz/manganew/', img_url)
+            ext = img_url.rsplit('.', 1)[-1].split('?')[0] if '.' in img_url else 'jpg'
+            filename = f"{n}.{ext}"
+            target_path = os.path.join(target_dir, filename)
+            if os.path.exists(target_path):
+                downloaded[n] = (target_path, filename, ext)
+                continue
+            futs[pool.submit(_dl_plugin_page, scraper, img_url, site)] = (n, filename, ext, target_path)
+
+        for f in as_completed(futs):
+            n, filename, ext, target_path = futs[f]
+            try:
+                img_data = f.result()
+                if img_data:
+                    with open(target_path, 'wb') as fout:
+                        fout.write(img_data)
+                    downloaded[n] = (target_path, filename, ext)
+                    log_info('[BgTask] plugin site=%s manga=%s: page %d OK', site, manga_id_str, n)
+                else:
+                    log_error('[BgTask] plugin site=%s manga=%s: page %d EMPTY', site, manga_id_str, n)
+                    errors += 1
+            except Exception as e:
+                log_error('[BgTask] plugin site=%s manga=%s: page %d FAILED: %s', site, manga_id_str, n, e)
+                errors += 1
+
+    count = 0
+    log_info('[BgTask] plugin site=%s manga=%s: saving %d pages to DB...', site, manga_id_str, len(downloaded))
+
+    # Single connection for all DB ops to avoid "database is locked" from thread contention
+    db = _db_conn()
+    try:
+        for n in sorted(downloaded):
+            target_path, filename, ext = downloaded[n]
+            rel_path = os.path.relpath(target_path, media_dir)
+            ftype = 'image'
+            auto_tags = _get_auto_tags(target_path)
+            auto_set = set(t.strip() for t in auto_tags.split(',') if t.strip()) if auto_tags else set()
+            for t in merged_tags_str.split(','):
+                t = t.strip()
+                if t:
+                    auto_set.add(t)
+            stat = os.stat(target_path)
+            w, h = _get_image_dimensions(target_path)
+            ar_tag = _get_aspect_ratio_tag(w, h) if w and h else ''
+            if ar_tag:
+                auto_set.add(ar_tag)
+            merged = ','.join(sorted(auto_set))
+            first_dir = rel_path.split('/')[0] if '/' in rel_path else ''
+            folder_type = {gd: 'gallery', cd: 'comics', dd: 'downloads'}.get(first_dir, 'gallery')
+
+            existing_row = db.execute('SELECT tags FROM files WHERE path=?', [rel_path]).fetchone()
+            if existing_row:
+                existing_tags = existing_row[0] or ''
+                existing_set = set(t.strip() for t in existing_tags.split(',') if t.strip())
+                existing_set.update(auto_set)
+                merged = ','.join(sorted(existing_set))
+                db.execute('UPDATE files SET tags=?, width=?, height=? WHERE path=?',
+                           [merged, w or 0, h or 0, rel_path])
+            else:
+                db.execute(
+                    'INSERT INTO files (path, name, type, size, mtime, tags, width, height, created_at, folder_type) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                    [rel_path, filename, ftype, stat.st_size, int(stat.st_mtime), merged, w, h,
+                     int(time.time()), folder_type])
+            if api_tags:
+                for tag in api_tags:
+                    db.execute('INSERT OR REPLACE INTO file_tags (path, tag, source) VALUES (?, ?, ?)',
+                               [rel_path, tag, site])
+            count += 1
+
+            # Commit every 10 pages to keep WAL manageable
+            if count % 10 == 0:
+                db.commit()
+
+        db.commit()
+
+        # Insert tags into tag_category_members for category-aware display in lightbox
+        if api_tags:
+            try:
+                for ttag in api_tags:
+                    cat_name = 'general'
+                    if ttag.startswith('author:'):
+                        cat_name = 'artist'
+                    elif ttag.startswith('series:'):
+                        cat_name = 'copyright'
+                    elif ttag.startswith('translator:'):
+                        cat_name = 'translator'
+                    db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
+                               [cat_name, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','translator':'#ff8800','general':'#cccccc','meta':'#999999'}.get(cat_name, '#cccccc')])
+                    db.execute("""INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(tag_name) DO UPDATE SET
+                            category = excluded.category, last_updated = excluded.last_updated""",
+                               [ttag, cat_name, site, int(time.time())])
+            except Exception:
+                pass
+
+        try:
+            sorted_pages = sorted(
+                os.path.relpath(os.path.join(target_dir, f), media_dir)
+                for f in os.listdir(target_dir)
+                if os.path.isfile(os.path.join(target_dir, f)) and f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'))
+            )
+            sorted_pages.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+            metadata = {
+                'version': 1,
+                'title': title or f'{download_folder} #{manga_id_str}',
+                'source': site,
+                'source_id': manga_id_str,
+                'source_url': manga_url,
+                'author': details.author if details and details.author else '',
+                'series': details.series if details and details.series else '',
+                'translator': details.translator if details and details.translator else '',
+                'tags': sorted(all_tags),
+                'cover': sorted_pages[0] if sorted_pages else None,
+                'pages': sorted_pages,
+                'download_date': int(time.time()),
+            }
+            with open(os.path.join(target_dir, 'metadata.json'), 'w', encoding='utf-8') as mf:
+                json.dump(metadata, mf, ensure_ascii=False, indent=2)
+            log_info('[BgTask] plugin site=%s manga=%s: metadata.json created', site, manga_id_str)
+        except Exception as e:
+            log_error('[BgTask] metadata.json creation failed for plugin site=%s manga=%s: %s', site, manga_id_str, e)
+
+        # Auto-create comics entry (same connection)
+        comics_id = None
+        if count > 0:
+            try:
+                existing = db.execute('SELECT id FROM comics WHERE source=? AND source_id=?',
+                                      [site, manga_id_str]).fetchone()
+                if existing:
+                    comics_id = existing[0]
+                    if merged_tags_str:
+                        db.execute('UPDATE comics SET tags=? WHERE id=?', [merged_tags_str, comics_id])
+                    db.commit()
+                    log_info('[BgTask] plugin site=%s manga=%s: comics already exists id=%d, updated tags', site, manga_id_str, comics_id)
+                else:
+                    comics_title = title or f'{download_folder} #{manga_id_str}'
+                    _img_exts = ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif')
+                    pages_rel = sorted(
+                        os.path.relpath(os.path.join(target_dir, f), media_dir)
+                        for f in os.listdir(target_dir)
+                        if os.path.isfile(os.path.join(target_dir, f)) and f.lower().endswith(_img_exts)
+                    )
+                    pages_rel.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
+                    cover = pages_rel[0] if pages_rel else None
+                    c = db.execute(
+                        'INSERT INTO comics (title, cover_path, source, source_id, tags) VALUES (?, ?, ?, ?, ?)',
+                        [comics_title, cover, site, manga_id_str, merged_tags_str or None])
+                    comics_id = c.lastrowid
+                    for i, p in enumerate(pages_rel):
+                        db.execute('INSERT INTO comic_pages (comic_id, page_number, file_path) VALUES (?, ?, ?)',
+                                   [comics_id, i + 1, p])
+                    db.commit()
+                    log_info('[BgTask] plugin site=%s manga=%s: comics created id=%d title="%s" pages=%d tags=%d',
+                             site, manga_id_str, comics_id, comics_title, len(pages_rel), len(all_tags))
+            except Exception as e:
+                log_error('[BgTask] Comics auto-create failed for plugin site=%s manga=%s: %s', site, manga_id_str, e)
+    finally:
+        db.close()
+
+    return {'ok': True, 'count': count, 'errors': errors, 'dir': target_dir, 'comics_id': comics_id}
+
+
+def _dl_plugin_page(scraper, img_url, site='plugin'):
+    """Download one page image via plugin scraper. Returns bytes or None."""
+    try:
+        return scraper.download_image(img_url)
+    except Exception as e:
+        log_error('[plugin] site=%s download failed: %s: %s', site, img_url, e)
+        return None
+
 
 @app.route('/api/content-mgmt/search/task/<task_id>')
 @auth_required
@@ -5368,14 +5772,24 @@ def _comics_auto_create_bg(media_dir):
     created = skipped = errors = 0
     folders = []
 
-    # Walk only Comics/ and Downloads/nHentai/ — collect subdirectories with images
+    # Build plugin download path map dynamically: {'Downloads/HentaiChan/': 'hentailive', ...}
+    plugin_path_map = {}
+    for site, folder in _get_plugin_site_folders().items():
+        if folder:
+            plugin_path_map[f'Downloads/{folder}/'] = site
+    plugin_root_dirs = set()
+    for p in plugin_path_map:
+        plugin_root_dirs.add(p.rstrip('/'))
+
+    # Walk Comics/, Downloads/nHentai/, and plugin download folders
+    known_prefixes = ['Comics/', 'Downloads/nHentai/'] + sorted(plugin_path_map.keys(), key=len, reverse=True)
+    skip_root_dirs = {'Comics', 'Downloads', 'Downloads/nHentai'} | plugin_root_dirs
     for root, dirs, files in os.walk(media_dir):
         dirs[:] = [d for d in dirs if not d.startswith('.')]
         rel = os.path.relpath(root, media_dir)
-        if not rel.startswith('Comics/') and not rel.startswith('Downloads/nHentai/'):
+        if not any(rel.startswith(p) for p in known_prefixes):
             continue
-        # Skip the root Comics/ and Downloads/nHentai/ dirs themselves
-        if rel == 'Comics' or rel == 'Downloads' or rel == 'Downloads/nHentai':
+        if rel in skip_root_dirs:
             continue
         img_files = [f for f in files if not f.startswith('.') and os.path.splitext(f)[1].lower() in _MEDIA_EXTS]
         if img_files:
@@ -5410,7 +5824,15 @@ def _comics_auto_create_bg(media_dir):
 
             meta_path = os.path.join(media_dir, folder_rel, 'metadata.json')
             meta_title = folder_name
-            meta_source = 'nhentai' if folder_rel.startswith('Downloads/nHentai/') else 'comics'
+            # Detect source: built-in nhentai, plugin download folders, or comics
+            if folder_rel.startswith('Downloads/nHentai/'):
+                meta_source = 'nhentai'
+            else:
+                meta_source = 'comics'
+                for p, s in plugin_path_map.items():
+                    if folder_rel.startswith(p):
+                        meta_source = s
+                        break
             meta_source_id = ''
             meta_tags_list = []
             meta_tbc = {}
@@ -5460,7 +5882,7 @@ def _comics_auto_create_bg(media_dir):
                                [comic_id, i, rp])
                 for cat_name, tag_list in meta_tbc.items():
                     db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
-                               [cat_name, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat_name, '#cccccc')])
+                               [cat_name, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','translator':'#ff8800','general':'#cccccc','meta':'#999999'}.get(cat_name, '#cccccc')])
                     for tag in tag_list:
                         db.execute("""INSERT INTO tag_category_members (tag_name, category, source, last_updated)
                             VALUES (?, ?, ?, ?) ON CONFLICT(tag_name) DO UPDATE SET
@@ -5551,6 +5973,8 @@ def _comics_enrich_metadata_bg(media_dir):
 
             nhentai_tags = []
             nhentai_tag_types = {}
+            plugin_extra_tags = {}  # prefixed tag -> category
+            plugin_extra_fields = {}  # author/series/translator/source_url
             if source == 'nhentai' and source_id:
                 try:
                     r = requests.get(
@@ -5570,9 +5994,45 @@ def _comics_enrich_metadata_bg(media_dir):
                     log_error('comics_enrich_metadata[%d/%d] NHentai API error for gid=%s: %s',
                               idx, total, source_id, e)
 
+            if source_id:
+                plugin_name, instance = _get_plugin_for_site(source)
+                if instance and hasattr(instance, 'scraper') and instance.scraper:
+                    try:
+                        manga_url = None
+                        if os.path.exists(meta_path):
+                            try:
+                                with open(meta_path, 'r', encoding='utf-8') as mf:
+                                    old_meta = json.load(mf)
+                                manga_url = old_meta.get('source_url', '')
+                            except Exception:
+                                pass
+                        if not manga_url:
+                            manga_url = source_id
+                        details = instance.scraper.get_details(manga_url)
+                        if details:
+                            if details.author:
+                                plugin_extra_fields['author'] = details.author
+                                t = 'author:' + details.author
+                                plugin_extra_tags[t] = 'artist'
+                            if details.series:
+                                plugin_extra_fields['series'] = details.series
+                                t = 'series:' + details.series
+                                plugin_extra_tags[t] = 'copyright'
+                            if details.translator:
+                                plugin_extra_fields['translator'] = details.translator
+                                t = 'translator:' + details.translator
+                                plugin_extra_tags[t] = 'translator'
+                            if hasattr(details, 'url') and details.url:
+                                plugin_extra_fields['source_url'] = details.url
+                    except Exception as e:
+                        log_error('comics_enrich_metadata[%d/%d] plugin fetch error for source=%s id=%s: %s',
+                                  idx, total, source, source_id, e)
+
             all_tags_set = set(tag_list)
             if nhentai_tags:
                 all_tags_set.update(nhentai_tags)
+            if plugin_extra_tags:
+                all_tags_set.update(plugin_extra_tags.keys())
             all_tags = sorted(all_tags_set)
 
             tbc = {}
@@ -5605,10 +6065,23 @@ def _comics_enrich_metadata_bg(media_dir):
             }
             if source == 'nhentai' and source_id:
                 metadata['source_url'] = f'https://nhentai.net/g/{source_id}/'
+            if plugin_extra_fields:
+                metadata.update(plugin_extra_fields)
             if tbc:
                 metadata['tags_by_category'] = tbc
 
+            # Preserve extra fields from existing metadata.json (author, series, translator, source_url, etc.)
             existing_meta = os.path.exists(meta_path)
+            if existing_meta:
+                try:
+                    with open(meta_path, 'r', encoding='utf-8') as mf:
+                        old_meta = json.load(mf)
+                    for preserved_key in ('author', 'series', 'translator', 'source_url', 'download_date'):
+                        if preserved_key in old_meta and preserved_key not in metadata:
+                            metadata[preserved_key] = old_meta[preserved_key]
+                except Exception:
+                    pass
+
             try:
                 with open(meta_path, 'w', encoding='utf-8') as f:
                     json.dump(metadata, f, ensure_ascii=False, indent=2)
@@ -5647,8 +6120,8 @@ def _comics_enrich_metadata_bg(media_dir):
                     for cat_name in set(_NHENTAI_TYPE_MAP.values()):
                         db5.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
                                     [cat_name, {'artist':'#ff4444','character':'#44cc44',
-                                                'copyright':'#4488ff','general':'#cccccc',
-                                                'meta':'#999999'}.get(cat_name, '#cccccc')])
+                                                'copyright':'#4488ff','translator':'#ff8800',
+                                                'general':'#cccccc','meta':'#999999'}.get(cat_name, '#cccccc')])
                     for tag_name in nhentai_tags:
                         ntype = nhentai_tag_types.get(tag_name, 'tag')
                         cat = _NHENTAI_TYPE_MAP.get(ntype, 'general')
@@ -5662,6 +6135,26 @@ def _comics_enrich_metadata_bg(media_dir):
                     db5.close()
                 except Exception as e:
                     log_error('comics_enrich_metadata[%d/%d] tag_category_members error: %s', idx, total, e)
+
+            if plugin_extra_tags:
+                try:
+                    db6 = _db_conn()
+                    for cat_name in ('artist', 'character', 'copyright', 'translator', 'general', 'meta'):
+                        db6.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
+                                    [cat_name, {'artist':'#ff4444','character':'#44cc44',
+                                                'copyright':'#4488ff','translator':'#ff8800',
+                                                'general':'#cccccc','meta':'#999999'}.get(cat_name, '#cccccc')])
+                    for tag_name, cat in plugin_extra_tags.items():
+                        db6.execute("""INSERT INTO tag_category_members (tag_name, category, source, last_updated)
+                            VALUES (?, ?, ?, ?) ON CONFLICT(tag_name) DO UPDATE SET
+                                category = excluded.category,
+                                source = excluded.source,
+                                last_updated = excluded.last_updated""",
+                                   [tag_name, cat, source, int(time.time())])
+                    db6.commit()
+                    db6.close()
+                except Exception as e:
+                    log_error('comics_enrich_metadata[%d/%d] plugin tag_category_members error for source=%s: %s', idx, total, source, e)
 
             log_info('comics_enrich_metadata[%d/%d] OK id=%d title=%s tags=%d nhentai=%d meta=%s',
                      idx, total, comic_id, title, len(all_tags), len(nhentai_tags),
@@ -6935,7 +7428,7 @@ def api_comics_pages_tag():
             if source == 'r34':
                 cat = _categorize_r34_tag(tag)
             db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
-                       [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
+                       [cat, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','translator':'#ff8800','general':'#cccccc','meta':'#999999'}.get(cat, '#cccccc')])
             db.execute("""
                 INSERT INTO tag_category_members (tag_name, category, source, last_updated)
                 VALUES (?, ?, ?, ?)
@@ -7048,7 +7541,7 @@ def api_comics_metadata_import():
         for cat_name, tag_list in tbc.items():
             for tag in tag_list:
                 db.execute("INSERT OR IGNORE INTO tag_categories (name, color) VALUES (?, ?)",
-                           [cat_name, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','general':'#cccccc','meta':'#999999'}.get(cat_name, '#cccccc')])
+                           [cat_name, {'artist':'#ff4444','character':'#44cc44','copyright':'#4488ff','translator':'#ff8800','general':'#cccccc','meta':'#999999'}.get(cat_name, '#cccccc')])
                 db.execute("""INSERT INTO tag_category_members (tag_name, category, source, last_updated)
                     VALUES (?, ?, ?, ?) ON CONFLICT(tag_name) DO UPDATE SET
                         category = excluded.category, last_updated = excluded.last_updated""",

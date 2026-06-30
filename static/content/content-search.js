@@ -34,6 +34,7 @@ let _csPageStart = 0
 // Source display maps — dynamically extended with plugin sources
 var _sourceLabels = { r34: 'R34', dan: 'Dan', nhentai: 'NH', eh: 'EH' }
 var _sourceSiteLabels = { r34: 'Rule34', dan: 'Danbooru', nhentai: 'NHentai', eh: 'E-Hentai' }
+var _sourcesTypes = {}
 
 function getActiveSites() {
   return Array.from(sourceCbs).filter(cb => cb.checked).map(cb => cb.value).join(',')
@@ -253,7 +254,14 @@ async function fetchPage(rawQuery, sites, pageNum, keepLoading, showLoading) {
       return
     }
     _apiPage = pageNum
-    _allResults = _allResults.concat(newItems)
+    var seen = new Set(_allResults.map(function(r) { return r._source + ':' + r.id }))
+    var unique = newItems.filter(function(r) {
+      var key = r._source + ':' + (r.id || '')
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    _allResults = _allResults.concat(unique)
     var totalPages = Math.max(1, Math.ceil(_allResults.length / _pageSize))
     renderPage()
     // Show total count from each source
@@ -394,7 +402,7 @@ function cardHTML(r) {
   var sourceLabel = _sourceLabels[r._source] || r._source
   var truncatedTags = tagsStr.length > 80 ? tagsStr.slice(0, 80) + '...' : tagsStr
   var imgTag = imgSrc ? '<img src="' + esc(imgSrc) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : ''
-  return '<div class="file-card"' + (r._source === 'nhentai' ? ' data-gid="' + esc(r.id) + '"' : '') + '>' +
+  return '<div class="file-card"' + (r._source === 'nhentai' || r._source === 'hentailive' ? ' data-gid="' + esc(r.id) + '"' : '') + '>' +
     '<div class="file-card-thumb">' + imgTag + '</div>' +
     '<div class="file-card-body">' +
     '<div class="file-card-content">' +
@@ -501,6 +509,31 @@ try {
           });
         });
         return;
+      } else if (file._source === 'hentailive' && file._gid) {
+        var payload = {
+          source: 'hentailive',
+          url: file._galleryUrl || '',
+          title: file._galleryTitle || '',
+          tags: file.tags || '',
+        };
+
+        fetch('/api/content-mgmt/search/download-plugin-async', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.error) { toast(data.error, 'error'); return; }
+          toast(_t('downloadStarted'), 'info');
+          pollTask(data.task_id, function(err, result) {
+            if (err) { toast(err, 'error'); return; }
+            var msg = _t('downloadCompleted').replace('{count}', (result && result.count) || 0);
+            if (result && result.comics_id) {
+              msg += ' <a href="/comics/view?id=' + result.comics_id + '" style="color:#fff;text-decoration:underline">' + _t('contentSearchViewComics') + '</a>';
+            }
+            toast(msg, 'success');
+          });
+        });
+        return;
       }
 
       var payload = {
@@ -547,6 +580,32 @@ try {
                 file._tagsByCategory = tbc;
                 if (meta.tags && meta.tags.length) file.tags = meta.tags.join(', ');
                 updateNhCategories(lb, tbc);
+              }
+              cb && cb();
+            })
+            .catch(function() { cb && cb(); });
+        };
+        if (!file._pageUrls || file._pageUrls.length === 0) {
+          doFetchGallery(function() {
+            var overlay = document.getElementById('csOverlay');
+            if (overlay && overlay.classList.contains('open')) lb._renderContent(true);
+          });
+          return false;
+        }
+        buildMangaViewer(file, media, lb);
+        return true;
+      } else if (file._source === 'hentailive' && file._gid && file._galleryUrl) {
+        var doFetchGallery = function(cb) {
+          fetch('/api/content-mgmt/search/plugin-gallery?site=hentailive&url=' + encodeURIComponent(file._galleryUrl))
+            .then(function(r) { return r.json(); })
+            .then(function(meta) {
+              if (!meta || meta.error) { cb && cb(); return; }
+              file._galleryTitle = meta.title || file._galleryTitle;
+              file._displayName = meta.title || file._displayName;
+              if (meta.page_urls && meta.page_urls.length) {
+                file._pageUrls = meta.page_urls;
+                file._numPages = meta.num_pages || meta.page_urls.length;
+                if (meta.tags && meta.tags.length) file.tags = meta.tags.join(', ');
               }
               cb && cb();
             })
@@ -754,6 +813,12 @@ function showLightbox(index) {
       item._numPages = r.pages || 1;
       item._galleryTitle = r.title || '';
       item._pageUrls = r.page_urls || [];
+    } else if (r._source === 'hentailive') {
+      item._gid = r.id;
+      item._galleryUrl = r.url || '';
+      item._numPages = r.chapters_count || 1;
+      item._galleryTitle = r.title || '';
+      item._pageUrls = r.page_urls || [];
     } else if (r._source === 'eh') {
       item._gid = r.id;
       item._token = r.token || '';
@@ -784,6 +849,7 @@ fetch('/api/content-mgmt/plugin-sources').then(function(r) { return r.json() }).
     });
     _sourceLabels[ps.id] = (ps.label || ps.id).slice(0, 10);
     _sourceSiteLabels[ps.id] = ps.label || ps.id;
+    _sourcesTypes[ps.id] = ps.type || 'single';
   });
   sourceCbs = document.querySelectorAll('.cs-source input');
 }).catch(function(e) { console.warn('[content-search] plugin sources fetch failed:', e); });
